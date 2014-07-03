@@ -80,10 +80,30 @@ public interface IAlarms {
     final String GROUP_TAG = "group";
 
     /*
-     * The base marker; all specific alarm types carry an additional
-     * embedded Marker.
+     * The base marker; all alarms must carry this marker.
      */
     final String ALARM_MARKER = "ALARM";
+
+    /*
+     * The severity marker; submarker indicates the level.
+     */
+    final String ALARM_MARKER_SEVERITY = "ALARM_SEVERITY";
+
+    /*
+     * The type marker; submarker indicates the alarm type.
+     */
+    final String ALARM_MARKER_TYPE = "ALARM_TYPE";
+
+    /*
+     * Default alarm type.
+     */
+    final String ALARM_MARKER_TYPE_GENERIC = "GENERIC";
+
+    /*
+     * The key marker; submarker specifies the key properties determining
+     * alarm identity.
+     */
+    final String ALARM_MARKER_KEY = "ALARM_KEY";
 
     /*
      * Placeholder for host name which cannot be resolved.
