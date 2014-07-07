@@ -29,11 +29,14 @@ import diskCacheV111.util.TimeoutCacheException;
 import dmg.cells.nucleus.CellCommandListener;
 import dmg.cells.nucleus.CellLifeCycleAware;
 
+import org.dcache.alarms.AlarmMarkerFactory;
+import org.dcache.alarms.Severity;
 import org.dcache.pool.repository.EntryState;
 import org.dcache.pool.repository.IllegalTransitionException;
 import org.dcache.pool.repository.ReplicaDescriptor;
 import org.dcache.pool.repository.Repository;
 import org.dcache.pool.repository.Repository.OpenFlags;
+import org.dcache.pool.repository.v5.CacheRepositoryV5;
 import org.dcache.util.Args;
 import org.dcache.util.Checksum;
 
@@ -50,6 +53,7 @@ public class ChecksumScanner
     private Repository _repository;
     private PnfsHandler _pnfs;
     private ChecksumModuleV1 _csm;
+    private String poolName = "<unknown>";
 
     private File _scrubberStateFile;
 
@@ -71,6 +75,9 @@ public class ChecksumScanner
     public void setRepository(Repository repository)
     {
         _repository = repository;
+        if (repository instanceof CacheRepositoryV5) {
+            poolName = ((CacheRepositoryV5)repository).getPoolName();
+        }
     }
 
     public void setPnfs(PnfsHandler pnfs)
@@ -425,7 +432,14 @@ public class ChecksumScanner
                     }
                 } catch (FileCorruptedCacheException e) {
                     _badCount++;
-                    _log.error("Marking {} as BROKEN: {}", id, e.getMessage());
+                    _log.error(AlarmMarkerFactory.getMarker(Severity.MODERATE,
+                                                            "CHECKSUM",
+                                                            id.toString(),
+                                                            poolName),
+                                    "Marking {} on {} as BROKEN: {}",
+                                    id,
+                                    poolName,
+                                    e.getMessage());
                     try {
                         _repository.setState(id, EntryState.BROKEN);
                     } catch (IllegalTransitionException | CacheException f) {
