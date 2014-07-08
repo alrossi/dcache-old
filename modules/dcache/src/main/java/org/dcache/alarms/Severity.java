@@ -59,38 +59,83 @@ documents or software obtained from this server.
  */
 package org.dcache.alarms;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.base.Preconditions;
+import org.slf4j.IMarkerFactory;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
-import java.util.List;
+import java.util.Iterator;
 
 /**
- * For marking alarm level.
+ * Provides internal API for constructing alarm markers.
  *
  * @author arossi
  */
-public enum Severity {
-    LOW, MODERATE, HIGH, CRITICAL;
+public final class AlarmMarkerFactory {
 
-    private static final List<String> labels = ImmutableList.of(
-                    LOW.toString(), MODERATE.toString(),
-                    HIGH.toString(), CRITICAL.toString());
+    private static final IMarkerFactory factory
+        = MarkerFactory.getIMarkerFactory();
 
-    public static List<String> asList() {
-        return labels;
+    public static Marker getMarker() {
+        return getMarker((Severity)null, null);
     }
 
-    /*
-     * It is cleaner to persist the enum as a number; this allows restoration of
-     * the enum from the underlying store.
-     */
-    public static Severity fromOrdinal(Integer severity) {
-        if (severity != null) {
-            for (Severity value : Severity.values()) {
-                if (severity == value.ordinal()) {
-                    return value;
-                }
+    public static Marker getMarker(String severity,
+                                   String type,
+                                   String ... keywords) {
+        if (severity == null) {
+            return getMarker((Severity)null, type, keywords);
+        }
+
+        return getMarker(Severity.valueOf(severity), type, keywords);
+    }
+
+    public static Marker getMarker(Severity severity,
+                                   String type,
+                                   String ... keywords) {
+        if (severity == null) {
+            severity = Severity.HIGH;
+        }
+
+        if (type == null) {
+            type = IAlarms.ALARM_MARKER_TYPE_GENERIC;
+        }
+
+        Marker alarmMarker = factory.getDetachedMarker(IAlarms.ALARM_MARKER);
+
+        Marker severityMarker
+            = factory.getDetachedMarker(IAlarms.ALARM_MARKER_SEVERITY);
+        Marker alarmSeverity = factory.getDetachedMarker(severity.toString());
+        severityMarker.add(alarmSeverity);
+        alarmMarker.add(severityMarker);
+
+        Marker typeMarker = factory.getDetachedMarker(IAlarms.ALARM_MARKER_TYPE);
+        Marker alarmType = factory.getDetachedMarker(type);
+        typeMarker.add(alarmType);
+        alarmMarker.add(typeMarker);
+
+        if (keywords != null) {
+            Marker keyMarker
+                = factory.getDetachedMarker(IAlarms.ALARM_MARKER_KEY);
+            for (String keyword: keywords) {
+                Marker alarmKey = factory.getDetachedMarker(keyword);
+                keyMarker.add(alarmKey);
+            }
+            alarmMarker.add(keyMarker);
+        }
+
+        return alarmMarker;
+    }
+
+    public static Marker getSubmarker(Marker marker, String name) {
+        Preconditions.checkNotNull(marker);
+        Preconditions.checkNotNull(name);
+        for (Iterator<Marker> m = marker.iterator(); m.hasNext();) {
+            Marker next = m.next();
+            if (name.equals(next.getName())) {
+                return next;
             }
         }
-        return MODERATE;
+        return null;
     }
 }
