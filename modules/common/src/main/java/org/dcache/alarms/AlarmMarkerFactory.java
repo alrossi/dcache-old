@@ -77,7 +77,12 @@ public final class AlarmMarkerFactory {
         = MarkerFactory.getIMarkerFactory();
 
     public static Marker getMarker() {
-        return getMarker((Severity)null, null);
+        return getMarker((String)null, null);
+    }
+
+    public static Marker getMarker(String severity,
+                                   String type) {
+        return getMarker(severity, type, (String[])null);
     }
 
     public static Marker getMarker(String severity,

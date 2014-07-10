@@ -294,7 +294,7 @@ public class SendAlarm {
         MDC.put(IAlarms.DOMAIN_TAG, alarmArgs.sourceDomain);
         MDC.put(IAlarms.SERVICE_TAG, alarmArgs.sourceService);
         Logger logger = configureLogger(alarmArgs.destinationHost,
-                        alarmArgs.destinationPort);
+                                        alarmArgs.destinationPort);
         logger.error(alarmArgs.marker, alarmArgs.message);
     }
 }
