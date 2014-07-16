@@ -22,12 +22,14 @@ define env replicaManagerOn.exe endExe
   set env -c broadcastSetupReplicaManager1 "register diskCacheV111.vehicles.PoolStatusChangedMessage       ${broadcast.service.replica}"
   set env -c broadcastSetupReplicaManager2 "register diskCacheV111.vehicles.PnfsModifyCacheLocationMessage ${broadcast.service.replica}"
   set env -c broadcastSetupReplicaManager3 "register diskCacheV111.vehicles.PoolRemoveFilesMessage         ${broadcast.service.replica}"
+  set env -c broadcastSetupReplicaManager4 "register org.dcache.vehicles.replication.CorruptFileMessage    ${broadcast.service.replica}"
 endExe
 eval ${broadcast.enable.replica} true ==
 exec env replicaManagerOn.exe -ifok
 set env -c broadcastSetupReplicaManager1 ""
 set env -c broadcastSetupReplicaManager2 ""
 set env -c broadcastSetupReplicaManager3 ""
+set env -c broadcastSetupReplicaManager4 ""
 onerror shutdown
 
 #
@@ -51,6 +53,7 @@ define context broadcastSetup endDefine
    ${broadcastSetupReplicaManager1}
    ${broadcastSetupReplicaManager2}
    ${broadcastSetupReplicaManager3}
+   ${broadcastSetupReplicaManager4}
 
    ${broadcastToSpaceManager1}
    ${broadcastToSpaceManager2}

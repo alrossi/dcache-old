@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -29,15 +30,15 @@ import diskCacheV111.util.PnfsId;
 import diskCacheV111.util.RetentionPolicy;
 import diskCacheV111.vehicles.PoolManagerPoolInformation;
 
+import dmg.cells.nucleus.AbstractCellComponent;
+import dmg.cells.nucleus.CellCommandListener;
 import dmg.cells.nucleus.CellEndpoint;
+import dmg.cells.nucleus.CellMessageReceiver;
 import dmg.util.command.Argument;
 import dmg.util.command.Command;
 import dmg.util.command.CommandLine;
 import dmg.util.command.Option;
 
-import dmg.cells.nucleus.AbstractCellComponent;
-import dmg.cells.nucleus.CellCommandListener;
-import dmg.cells.nucleus.CellMessageReceiver;
 import org.dcache.cells.CellStub;
 import org.dcache.pool.repository.CacheEntry;
 import org.dcache.pool.repository.EntryState;
@@ -126,7 +127,7 @@ public class MigrationModule
     private final static Pattern STICKY_PATTERN =
             Pattern.compile("(\\w+)(\\((-?\\d+)\\))?");
 
-    private final Map<String,Job> _jobs = new HashMap<>();
+    private final Map<String,Job> _jobs = new ConcurrentHashMap<String, Job>();
     private final Map<Job,String> _commands = new HashMap<>();
     private final MigrationContext _context = new MigrationContext();
 

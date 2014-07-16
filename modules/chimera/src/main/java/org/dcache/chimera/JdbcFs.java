@@ -16,6 +16,8 @@
  */
 package org.dcache.chimera;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Multimap;
 import com.zaxxer.hikari.HikariDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -3088,5 +3090,48 @@ public class JdbcFs implements FileSystemProvider {
     @Override
     public void unpin(String pnfsid) throws ChimeraFsException {
        throw new ChimeraFsException(NOT_IMPL);
+    }
+
+   /**
+    * This is not really part of the FileSystem API in that it<br>
+    * <ul><li> is not based on a single PnfsId;</li>
+    *     <li> bypasses the FsInode abstraction.</li></ul>
+    *
+    * @param location having the requested pnfsids.
+    * @param excluded other locations to exclude from the threshold count.
+    * @param threshold of the inequality which determines whether a pnfsid
+    *        and its alternate locations should be included.
+    * @param minimum query is for less than minimum threshold
+    *        (can be <code>null</code>, in which case this constraint is ignored).
+    * @param maximum query is for greater than maximum threshold
+    *        (can be <code>null</code>, in which case this constraint is ignored).
+    * @return each qualifying pnfsid at the location to
+    *         the set of all locations containing it.
+    */
+    public Multimap<String, String> getCacheLocations(String location,
+                                                      ImmutableList<String> excluded,
+                                                      Integer minimum,
+                                                      Integer maximum)
+                    throws ChimeraFsException {
+        Connection dbConnection;
+        try {
+            dbConnection = _dbConnectionsPool.getConnection();
+        } catch (SQLException e) {
+            throw new BackEndErrorHimeraFsException(e.getMessage());
+        }
+
+        try {
+            dbConnection.setAutoCommit(true);
+            return _sqlDriver.getLocations(dbConnection,
+                                           location,
+                                           excluded,
+                                           minimum,
+                                           maximum);
+        } catch (SQLException e) {
+            _log.error("getCacheLocations", e);
+            throw new IOHimeraFsException(e.getMessage());
+        } finally {
+            tryToClose(dbConnection);
+        }
     }
 }

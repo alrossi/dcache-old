@@ -14,6 +14,7 @@ import diskCacheV111.util.PnfsId;
 import diskCacheV111.vehicles.StorageInfo;
 
 import org.dcache.pool.repository.CacheEntry;
+import org.dcache.pool.repository.StickyRecord;
 
 /**
  *
@@ -39,6 +40,7 @@ public class CacheRepositoryEntryInfo implements Serializable {
     private long creationTime;
     private StorageInfo storageInfo;
     private long size;
+    private boolean systemSticky;
 
 
     /**
@@ -78,7 +80,20 @@ public class CacheRepositoryEntryInfo implements Serializable {
         case DESTROYED:
             throw new RuntimeException("Bug. An entry should never be in NEW or DESTROYED.");
         }
-        setBit(STICKY_BIT, entry.isSticky());
+
+        boolean sticky = entry.isSticky();
+        setBit(STICKY_BIT, sticky);
+        systemSticky = false;
+
+        if (sticky) {
+            for (StickyRecord record : entry.getStickyRecords()) {
+                if ("system".equalsIgnoreCase(record.owner())) {
+                    systemSticky = true;
+                    break;
+                }
+            }
+        }
+
     }
 
     private void setBit(int bitnum, boolean val) {
@@ -142,6 +157,10 @@ public class CacheRepositoryEntryInfo implements Serializable {
 
     public boolean isSticky()  {
         return getBit(STICKY_BIT);
+    }
+
+    public boolean isSystemSticky()  {
+        return systemSticky;
     }
 
     public long getCreationTime() {

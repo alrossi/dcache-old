@@ -1,0 +1,23 @@
+onerror shutdown
+
+check -strong dcache.enable.replica-manager
+
+define env dontStartService.exe enddefine
+    say -level=esay "dcache.enable.replica-manager must be set to true "
+    say -level=esay "in order to run the replica manager."
+    say -level=esay ""
+    say -level=esay "The replica manager service will not be started."
+enddefine
+
+define env startService.exe enddefine
+    create org.dcache.cells.UniversalSpringCell ${replicamanager.cell.name} \
+        "classpath:org/dcache/replication/replicamanager.xml \
+        -export=${replicamanager.cell.export}"
+enddefine
+
+onerror continue
+eval ${billing.enable.db} true ==
+exec env startService.exe -ifok
+exec env dontStartService.exe -ifnotok
+
+onerror shutdown
