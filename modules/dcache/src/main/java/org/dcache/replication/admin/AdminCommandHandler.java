@@ -77,8 +77,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import diskCacheV111.poolManager.PoolSelectionUnit;
+import diskCacheV111.poolManager.PoolSelectionUnit.SelectionLink;
 import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPool;
 import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPoolGroup;
+import diskCacheV111.poolManager.PoolSelectionUnit.SelectionUnit;
+import diskCacheV111.poolManager.PoolSelectionUnit.SelectionUnitGroup;
+import diskCacheV111.poolManager.StorageUnit;
 import diskCacheV111.util.AccessLatency;
 import diskCacheV111.util.CacheException;
 import diskCacheV111.util.PnfsId;
@@ -114,19 +118,22 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * Control procedures for the admin shell.  These include:
  *
  * <ul>
+ *      <li><code>adjust &lt;f|p|g&gt; &lt;id or name&gt;</code>:
+ *          &nbsp;Adjust replicas for a single pnfsid, pool, or pool group.</li>
  *      <li><code>scan info</code>:
  *          &nbsp;Gives the datetime of the next scheduled scan.</li>
  *      <li><code>scan run [&lt;yyyy/MM/dd HH:mm:ss&gt;]</code>:
  *          &nbsp;Override the scheduled scan to run immediately (default),
  *          or at an indicated time.</li>
- *      <li><code>ls &lt;u|r|d[a][g][c]&gt; [-o=&lt;path&gt] &lt;poolName&gt;</code>:
- *          &nbsp;List pnfsids and locations according to the indicated criteria.</li>
- *      <li><code>adjust &lt;f|p|g&gt; &lt;id or name&gt;</code>:
- *          &nbsp;Adjust replicas for a single pnfsid, pool, or pool group.</li>
  *      <li><code>drainoff &lt;pool name&gt; [-toPool=&lt;name&gt]</code>:
  *          &nbsp; Extract all unique files from a pool and replicate
  *          them on other pools in the source pool's group (default),
  *          or optionally to the indicated pool.</li>
+ *      <li><code>ls &lt;u|r|d[a][g][c]&gt; [-o=&lt;path&gt] &lt;poolName&gt;</code>:
+ *          &nbsp;List pnfsids and locations according to the indicated criteria.</li>
+ *      <li><code>ls constraints <pool group></code>:
+ *          &nbsp;lists the default min/max, the storage group min/maxes,
+ *          &nbsp;and the adjusted min/max.</li>
  *      <li><code>ls operations</code>:
  *          &nbsp;shows operations in progress.</li>
  *      <li><code>ls statistics/code>:
@@ -628,6 +635,80 @@ public final class AdminCommandHandler implements CellCommandListener {
             }
 
             return builder.toString();
+        }
+    }
+
+    @Command(name = "ls constraints",
+             hint = "List replica min and max values for the pool group.",
+             description = "Gives the default values for the pool, a list"
+                             + " of related storage groups with their values,"
+                             + " and the adjusted value for the pool"
+                             + " (computed as the greatest lower bound and least"
+                             + " upper bound from the storage group members). The"
+                             + " latter is used to list all possible deficient"
+                             + " and redundant files, and will produce false"
+                             + " positives but no false negatives.")
+    class ListConstraintsCommand implements Callable<String> {
+        @Argument(index = 0,
+                  required = true,
+                  usage = "Name of pool group.")
+        String name;
+
+        public String call() throws Exception {
+            PoolSelectionUnit psu =hub.getPoolMonitor().getPoolSelectionUnit();
+            SelectionPoolGroup poolGroup = psu.getPoolGroups().get(name);
+            if (poolGroup == null) {
+                return "No such pool group: " + name;
+            }
+
+            int minimum = poolGroup.getMinReplicas();
+
+            if (minimum < 2) {
+                return "Pool group " + name + " is not resilient";
+            }
+
+            int maximum = poolGroup.getMaxReplicas();
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("Default  mininum: \t\t").append(minimum).append("\n");
+            sb.append("Default  maximum: \t\t").append(maximum).append("\n\n");
+
+            Collection<SelectionLink> links
+                = psu.getLinksPointingToPoolGroup(poolGroup.getName());
+            for (SelectionLink link : links) {
+                Collection<SelectionUnitGroup> ugroups
+                    = link.getUnitGroupsTargetedBy();
+                for (SelectionUnitGroup ugroup : ugroups) {
+                    Collection<SelectionUnit> units = ugroup.getMemeberUnits();
+                    for (SelectionUnit unit : units) {
+                        if (unit instanceof StorageUnit) {
+                            StorageUnit sunit = (StorageUnit) unit;
+                            String suName = sunit.getCanonicalName();
+                            Integer smax = sunit.getMaxReplicas();
+                            Integer smin = sunit.getMinReplicas();
+                            if (smax != null) { // both should be valid
+                                maximum = Math.min(maximum, smax);
+                                minimum = Math.max(minimum, smin);
+                            }
+                            sb.append("\t")
+                              .append(suName)
+                              .append("\t")
+                              .append("\t")
+                              .append("(")
+                              .append(smin)
+                              .append(", ")
+                              .append(smax)
+                              .append(")")
+                              .append("\n");
+                        }
+                    }
+                }
+            }
+
+            sb.append("\nGreatest mininum: \t\t").append(minimum).append("\n");
+            sb.append("Least    maximum: \t\t").append(maximum).append("\n");
+
+            return sb.toString();
         }
     }
 
