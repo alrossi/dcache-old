@@ -56,17 +56,11 @@ class KpwdPrincipal
 
     public KpwdPrincipal(UserPwdRecord record) {
         init(record);
-        gids = new long[]{record.GID};
         isDisabled = record.isDisabled();
-
     }
 
     public KpwdPrincipal(UserAuthRecord record) {
         init(record);
-        gids = new long[record.GIDs.length];
-        for (int i = 0; i < gids.length; i++ ){
-            gids[i] = record.GIDs[i];
-        }
         isDisabled = false;
     }
 
@@ -77,6 +71,10 @@ class KpwdPrincipal
         home = record.Home;
         root = record.Root;
         isReadOnly = record.ReadOnly;
+        gids = new long[record.GIDs.size()];
+        for (int i = 0; i < gids.length; i++ ){
+            gids[i] = record.GIDs.get(i);
+        }
     }
 
     @Override
