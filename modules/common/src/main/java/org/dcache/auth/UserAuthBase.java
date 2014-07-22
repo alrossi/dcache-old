@@ -3,6 +3,7 @@ package org.dcache.auth;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public abstract class UserAuthBase implements Serializable {
     private static final long serialVersionUID = -7700110348980815506L;
@@ -52,8 +53,7 @@ public abstract class UserAuthBase implements Serializable {
                         String home,
                         String root,
                         String fsroot) {
-        initialize(user, DN, fqan, readOnly, priority, uid, home, root, fsroot);
-        GIDs.add(gid);
+        this(user, DN, fqan, readOnly, priority, uid, new int[]{gid}, home, root, fsroot);
     }
 
     public UserAuthBase(String user,
@@ -66,26 +66,6 @@ public abstract class UserAuthBase implements Serializable {
                         String home,
                         String root,
                         String fsroot) {
-
-        initialize(user, DN, fqan, readOnly, 0, uid, home, root, fsroot);
-        if (gids == null) {
-            GIDs.add(-1);
-        } else {
-            for (int gid : gids) {
-                GIDs.add(gid);
-            }
-        }
-    }
-
-    private void initialize(String user,
-                            String DN,
-                            String fqan,
-                            boolean readOnly,
-                            int priority,
-                            int uid,
-                            String home,
-                            String root,
-                            String fsroot) {
         Username = user;
         this.DN = DN;
         if (fqan != null) {
@@ -99,6 +79,13 @@ public abstract class UserAuthBase implements Serializable {
         Home = home;
         Root = root;
         FsRoot = fsroot;
+        if (gids == null) {
+            GIDs.add(-1);
+        } else {
+            for (int gid: gids) {
+                GIDs.add(gid);
+            }
+        }
     }
 
     /**
@@ -121,5 +108,10 @@ public abstract class UserAuthBase implements Serializable {
 
     public FQAN getFqan() {
         return fqan;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(Username, UID);
     }
 }

@@ -1,6 +1,7 @@
 package org.dcache.auth;
 
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -24,7 +25,7 @@ public class UserAuthRecord extends UserAuthBase {
         this.principals = new TreeSet<>(principals);
     }
 
-  public UserAuthRecord(String user,
+    public UserAuthRecord(String user,
                           String DN,
                           String fqan,
 			              boolean readOnly,
@@ -40,7 +41,7 @@ public class UserAuthRecord extends UserAuthBase {
     }
 
 
-  public UserAuthRecord(String user,
+    public UserAuthRecord(String user,
 			              boolean readOnly,
                           int uid,
                           int[] GIDs,
@@ -52,7 +53,7 @@ public class UserAuthRecord extends UserAuthBase {
         this.principals = new TreeSet<>(principals);
     }
 
-  public UserAuthRecord(String user,
+    public UserAuthRecord(String user,
 			              boolean readOnly,
                           int uid,
                           int gid,
@@ -183,11 +184,6 @@ public class UserAuthRecord extends UserAuthBase {
 
     public void removeSecureIdentities(Set<String> ids) {
         principals.removeAll(ids);
-    }
-
-    @Override
-    public int hashCode() {
-        return UID;
     }
 
   @Override

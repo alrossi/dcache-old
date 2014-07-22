@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -336,13 +335,10 @@ public class Subjects
         Set<Principal> principals = subject.getPrincipals();
         principals.add(new UidPrincipal(user.UID));
 
-        Iterator<Integer> it = user.GIDs.iterator();
-        if (it.hasNext()) {
-            principals.add(new GidPrincipal(it.next(), primary));
-        }
-
-        while(it.hasNext()) {
-            principals.add(new GidPrincipal(it.next(), false));
+        boolean isPrimary = primary;
+        for (int gid: user.GIDs) {
+            principals.add(new GidPrincipal(gid, isPrimary));
+            isPrimary = false;
         }
 
         String name = user.Username;
@@ -377,13 +373,10 @@ public class Subjects
         Set<Principal> principals = subject.getPrincipals();
         principals.add(new UidPrincipal(user.UID));
 
-        Iterator<Integer> it = user.GIDs.iterator();
-        if (it.hasNext()) {
-            principals.add(new GidPrincipal(it.next(), true));
-        }
-
-        while(it.hasNext()) {
-            principals.add(new GidPrincipal(it.next(), false));
+        boolean primary = true;
+        for (int gid: user.GIDs) {
+            principals.add(new GidPrincipal(gid, primary));
+            primary = false;
         }
 
         String name = user.Username;

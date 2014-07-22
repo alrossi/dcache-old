@@ -66,6 +66,8 @@ COPYRIGHT STATUS:
 
 package org.dcache.auth;
 
+import com.google.common.base.Joiner;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -229,7 +231,7 @@ public class KAuthFile {
             }
         }
         int uid = Integer.parseInt(t.nextToken());
-        int[] gids = parseGids(t);
+        int[] gids = parseGids(t.nextToken());
         String home = t.nextToken();
         String root = t.nextToken();
         String fsroot = root;
@@ -251,14 +253,7 @@ public class KAuthFile {
             principals.add(line);
         }
 
-        UserAuthRecord rec =  new UserAuthRecord(user,
-                                                 readOnly,
-                                                 uid,
-                                                 gids,
-                                                 home,
-                                                 root,
-                                                 fsroot,
-                                                 principals);
+        UserAuthRecord rec =  new UserAuthRecord(user,readOnly,uid,gids,home,root,fsroot,principals);
 
         if (rec.isValid()) {
             return rec;
@@ -284,7 +279,7 @@ public class KAuthFile {
             }
         }
         int uid = Integer.parseInt(t.nextToken());
-        int[] gids = parseGids(t);
+        int[] gids = parseGids(t.nextToken());
         String home = t.nextToken();
         String root = t.nextToken();
         String fsroot = root;
@@ -292,14 +287,7 @@ public class KAuthFile {
             fsroot = t.nextToken();
         }
 
-        UserPwdRecord rec =  new UserPwdRecord(username,
-                                               passwd,
-                                               readOnly,
-                                               uid,
-                                               gids,
-                                               home,
-                                               root,
-                                               fsroot);
+        UserPwdRecord rec =  new UserPwdRecord(username,passwd,readOnly,uid,gids,home,root,fsroot);
 
         if (rec.isValid()) {
             return rec;
@@ -310,8 +298,8 @@ public class KAuthFile {
     /*
      * Allow gids to be a comma-separated list.
      */
-    private int[] parseGids(StringTokenizer t) {
-        StringTokenizer st1 = new StringTokenizer(t.nextToken(), ",");
+    private int[] parseGids(String token) {
+        StringTokenizer st1 = new StringTokenizer(token, ",");
         int[] gids = new int[st1.countTokens()];
         for(int i =0; st1.hasMoreTokens(); ++i) {
            gids[i]= Integer.parseInt(st1.nextToken());
@@ -369,14 +357,8 @@ public class KAuthFile {
         sb.append(record.Password).append(" ");
         sb.append(record.readOnlyStr()).append(" ");
         sb.append(record.UID).append(" ");
-        Iterator<Integer> it = record.GIDs.iterator();
-        if (it.hasNext()) {
-            sb.append(it.next());
-            while(it.hasNext()) {
-                sb.append(",").append(it.next());
-            }
-            sb.append(" ");
-        }
+        sb.append(Joiner.on(",").skipNulls()
+                        .join(record.GIDs.iterator())).append(" ");
         sb.append(record.Home).append(" ");
         sb.append(record.Root);
         if (!record.Root.equals(record.FsRoot)) {

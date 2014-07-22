@@ -46,25 +46,15 @@ class KpwdPrincipal
     implements Principal, Serializable
 {
     private static final long serialVersionUID = -5104794169722666904L;
-    String name;
-    long uid;
-    long gids[];
-    boolean isDisabled;
-    String home;
-    String root;
-    boolean isReadOnly;
+    final String name;
+    final long uid;
+    final long[] gids;
+    final boolean isDisabled;
+    final String home;
+    final String root;
+    final boolean isReadOnly;
 
-    public KpwdPrincipal(UserPwdRecord record) {
-        init(record);
-        isDisabled = record.isDisabled();
-    }
-
-    public KpwdPrincipal(UserAuthRecord record) {
-        init(record);
-        isDisabled = false;
-    }
-
-    private void init(UserAuthBase record) {
+    public KpwdPrincipal(UserAuthBase record) {
         checkNotNull(record);
         name = record.Username;
         uid = record.UID;
@@ -74,6 +64,11 @@ class KpwdPrincipal
         gids = new long[record.GIDs.size()];
         for (int i = 0; i < gids.length; i++ ){
             gids[i] = record.GIDs.get(i);
+        }
+        if (record instanceof UserPwdRecord) {
+            isDisabled = ((UserPwdRecord)record).isDisabled();
+        } else {
+            isDisabled = false;
         }
     }
 
