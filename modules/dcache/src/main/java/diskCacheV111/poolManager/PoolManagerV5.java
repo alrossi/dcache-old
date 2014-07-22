@@ -354,6 +354,10 @@ public class PoolManagerV5
                                   + " and serialId " + poolMessage.getSerialId());
         }
 
+        boolean normalLifecycleChange
+            = poolMessage.getMessage().contains("Initializing") ||
+              poolMessage.getMessage().contains("Shutdown");
+
         /* For compatibility with previous versions of dCache, a pool
          * marked DISABLED, but without any other DISABLED_ flags set
          * is considered fully disabled.
@@ -404,9 +408,10 @@ public class PoolManagerV5
                                     poolMessage.getCode(),
                                     poolMessage.getMessage());
 
-                if (!oldMode.equals(newMode) &&
-                                (newMode.isDisabled(PoolV2Mode.DISABLED_DEAD) ||
-                                 newMode.isDisabled(PoolV2Mode.DISABLED_STRICT))) {
+                if (!normalLifecycleChange &&
+                    oldMode.equals(newMode) &&
+                    (newMode.isDisabled(PoolV2Mode.DISABLED_DEAD) ||
+                     newMode.isDisabled(PoolV2Mode.DISABLED_STRICT))) {
                 _logPoolMonitor.error(AlarmMarkerFactory.getMarker(Severity.MODERATE,
                                                                   "POOL_DOWN",
                                                                   poolName),
