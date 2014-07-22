@@ -1,7 +1,7 @@
 package org.dcache.auth;
 
-import java.util.Iterator;
-import java.util.Objects;
+import com.google.common.base.Joiner;
+
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -80,14 +80,7 @@ public class UserAuthRecord extends UserAuthBase {
             sb.append(" read-write");
         }
         sb.append( ' ').append( UID).append( ' ');
-        Iterator<Integer> it = GIDs.iterator();
-        if (it.hasNext()) {
-            sb.append(it.next());
-        }
-        while(it.hasNext()) {
-            sb.append(",").append(it.next());
-        }
-        sb.append(' ');
+        sb.append(Joiner.on(",").skipNulls().join(GIDs.iterator())).append(' ');
         sb.append( Home ).append(' ');
         sb.append( Root ).append(' ');
         sb.append( FsRoot ).append('\n');
@@ -132,14 +125,7 @@ public class UserAuthRecord extends UserAuthBase {
                       .append("\n");
         sb.append("            UID = ").append(UID).append('\n');
         sb.append("           GIDs = ");
-        Iterator<Integer> it = GIDs.iterator();
-        if (it.hasNext()) {
-            sb.append(it.next());
-        }
-        while(it.hasNext()) {
-            sb.append(",").append(it.next());
-        }
-        sb.append('\n');
+        sb.append(Joiner.on(",").skipNulls().join(GIDs.iterator())).append('\n');
         sb.append("           Home = ").append(Home).append('\n');
         sb.append("           Root = ").append(Root).append('\n');
         sb.append("         FsRoot = ").append(FsRoot).append('\n');
