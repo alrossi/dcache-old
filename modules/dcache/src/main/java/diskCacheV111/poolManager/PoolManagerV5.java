@@ -55,7 +55,6 @@ import dmg.cells.nucleus.DelayedReply;
 
 import org.dcache.alarms.AlarmMarkerFactory;
 import org.dcache.alarms.Severity;
-import org.dcache.alarms.logback.AlarmDefinition;
 import org.dcache.cells.CellStub;
 import org.dcache.poolmanager.Partition;
 import org.dcache.poolmanager.PoolInfo;
@@ -404,10 +403,17 @@ public class PoolManagerV5
                                     poolMessage.getPoolMode(),
                                     poolMessage.getCode(),
                                     poolMessage.getMessage());
-                _logPoolMonitor.warn(AlarmMarkerFactory.getMarker(Severity.MODERATE,
+
+                if (!oldMode.equals(newMode) &&
+                                (newMode.isDisabled(PoolV2Mode.DISABLED_DEAD) ||
+                                 newMode.isDisabled(PoolV2Mode.DISABLED_STRICT))) {
+                _logPoolMonitor.error(AlarmMarkerFactory.getMarker(Severity.MODERATE,
                                                                   "POOL_DOWN",
                                                                   poolName),
-                                     "Pool {} is DOWN", poolName);
+                                     "Pool {} is {}: {}", poolName,
+                                                          poolMessage.getPoolMode(),
+                                                          poolMessage.getMessage());
+                }
             } else {
                 _requestContainer.poolStatusChanged(poolName,
                                                     PoolStatusChangedMessage.UP);
