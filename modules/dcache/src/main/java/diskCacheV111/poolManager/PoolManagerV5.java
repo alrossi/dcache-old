@@ -409,7 +409,7 @@ public class PoolManagerV5
                                     poolMessage.getMessage());
 
                 if (!normalLifecycleChange &&
-                    oldMode.equals(newMode) &&
+                    !oldMode.equals(newMode) &&
                     (newMode.isDisabled(PoolV2Mode.DISABLED_DEAD) ||
                      newMode.isDisabled(PoolV2Mode.DISABLED_STRICT))) {
                 _logPoolMonitor.error(AlarmMarkerFactory.getMarker(Severity.MODERATE,
