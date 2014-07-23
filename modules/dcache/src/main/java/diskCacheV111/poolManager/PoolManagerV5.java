@@ -292,6 +292,11 @@ public class PoolManagerV5
                     _requestContainer.poolStatusChanged(name, PoolStatusChangedMessage.DOWN);
                     sendPoolStatusRelay(name, PoolStatusChangedMessage.DOWN,
                                         null, 666, "DEAD");
+                    _logPoolMonitor.error(AlarmMarkerFactory.getMarker(Severity.HIGH,
+                                    "POOL_DOWN",
+                                    name),
+                                    "Pool {} is DOWN, (no ping in "
+                                    + deathDetectedTimer/1000 +" seconds).");
                 }
             }
         }
@@ -354,10 +359,6 @@ public class PoolManagerV5
                                   + " and serialId " + poolMessage.getSerialId());
         }
 
-        boolean normalLifecycleChange
-            = poolMessage.getMessage().contains("Initializing") ||
-              poolMessage.getMessage().contains("Shutdown");
-
         /* For compatibility with previous versions of dCache, a pool
          * marked DISABLED, but without any other DISABLED_ flags set
          * is considered fully disabled.
@@ -407,18 +408,6 @@ public class PoolManagerV5
                                     poolMessage.getPoolMode(),
                                     poolMessage.getCode(),
                                     poolMessage.getMessage());
-
-                if (!normalLifecycleChange &&
-                    !oldMode.equals(newMode) &&
-                    (newMode.isDisabled(PoolV2Mode.DISABLED_DEAD) ||
-                     newMode.isDisabled(PoolV2Mode.DISABLED_STRICT))) {
-                _logPoolMonitor.error(AlarmMarkerFactory.getMarker(Severity.MODERATE,
-                                                                  "POOL_DOWN",
-                                                                  poolName),
-                                     "Pool {} is {}: {}", poolName,
-                                                          poolMessage.getPoolMode(),
-                                                          poolMessage.getMessage());
-                }
             } else {
                 _requestContainer.poolStatusChanged(poolName,
                                                     PoolStatusChangedMessage.UP);
