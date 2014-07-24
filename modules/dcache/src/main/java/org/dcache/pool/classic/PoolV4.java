@@ -478,7 +478,6 @@ public class PoolV4
                     disablePool(PoolV2Mode.DISABLED_DEAD | PoolV2Mode.DISABLED_STRICT,
                             666, "Init failed: " + e.getMessage());
                 } catch (Throwable e) {
-                    _log.error("Repository reported a problem: " + e.getMessage());
                     _log.error(AlarmMarkerFactory.getMarker
                                     (Severity.HIGH, "POOL_DISABLED", _poolName),
                                      "Pool {} initialization failed, repository "

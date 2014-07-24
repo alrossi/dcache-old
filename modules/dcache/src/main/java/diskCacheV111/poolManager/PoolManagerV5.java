@@ -285,17 +285,13 @@ public class PoolManagerV5
             if (pool != null) {
                 if (pool.getActive() > deathDetectedTimer
                     && pool.setSerialId(0L)) {
-
-                    if( _logPoolMonitor.isDebugEnabled() ) {
-                        _logPoolMonitor.debug("Pool " + name + " declared as DOWN (no ping in " + deathDetectedTimer/1000 +" seconds).");
-                    }
                     _requestContainer.poolStatusChanged(name, PoolStatusChangedMessage.DOWN);
                     sendPoolStatusRelay(name, PoolStatusChangedMessage.DOWN,
                                         null, 666, "DEAD");
                     _logPoolMonitor.error(AlarmMarkerFactory.getMarker(Severity.HIGH,
                                     "POOL_DOWN",
                                     name),
-                                    "Pool {} is DOWN, (no ping in "
+                                    "Pool {} declared as DOWN, (no ping in "
                                     + deathDetectedTimer/1000 +" seconds).");
                 }
             }
