@@ -145,7 +145,7 @@
   <bean id="scanner" class="org.dcache.pool.classic.ChecksumScanner">
     <description>Implements background checksum verification</description>
     <property name="poolName" value="${pool.name}"/>
-    <property name="pnfs" ref="pnfs"/>
+    <property name="broadcast" ref="broadcastStub"/>
     <property name="repository" ref="rep"/>
     <property name="checksumModule" ref="csm"/>
     <property name="scrubberStateFile" value="${pool.path}/scrubber.state"/>
@@ -204,6 +204,9 @@
   <bean id="billing-stub" class="org.dcache.cells.CellStub">
       <description>Billing communication stub</description>
       <property name="destination" value="${pool.service.billing}"/>
+  </bean>
+  <bean id="broadcastStub" class="org.dcache.cells.CellStub">
+      <property name="destination" value="${dcache.service.broadcast}"/>
   </bean>
 
   <bean id="pnfsStub" class="org.dcache.cells.CellStub">

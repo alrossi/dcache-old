@@ -117,6 +117,11 @@ public interface Repository
                InterruptedException;
 
     /**
+     * @return name of the parent pool.
+     */
+    String getPoolName();
+
+    /**
      * Sets the lifetime of a named sticky flag. If expiration time is
      * -1, then the sticky flag never expires. If is is 0, the flag
      * expires immediately.
