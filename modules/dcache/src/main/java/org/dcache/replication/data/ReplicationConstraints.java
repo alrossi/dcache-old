@@ -82,7 +82,6 @@ import dmg.cells.nucleus.CellEndpoint;
 import org.dcache.acl.enums.AccessMask;
 import org.dcache.cells.CellStub;
 import org.dcache.namespace.FileAttribute;
-import org.dcache.replication.api.PnfsCacheMessageType;
 import org.dcache.replication.api.ReplicationQueryUtilities;
 import org.dcache.vehicles.FileAttributes;
 import org.dcache.vehicles.PnfsGetFileAttributes;
@@ -147,8 +146,7 @@ public final class ReplicationConstraints {
         /*
          * do not handle temporary copies
          */
-        if (!PnfsCacheMessageType.CLEAR.equals(opData.sourceType) &&
-            !utils.isSystemSticky(pnfsId.toString(), opData.poolName, endpoint)) {
+        if ( !utils.isSystemSticky(pnfsId.toString(), opData.poolName, endpoint)) {
             return;
         }
 

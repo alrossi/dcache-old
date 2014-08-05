@@ -269,7 +269,7 @@ public final class ReplicationQueryUtilitiesImpl implements ReplicationQueryUtil
         stub.setDestination(pool);
 
         PoolCopyIsSystemStickyMessage msg;
-        boolean cached = false;
+        boolean ready = false;
         int attempt = 1;
 
         do {
@@ -291,8 +291,12 @@ public final class ReplicationQueryUtilitiesImpl implements ReplicationQueryUtil
                     case CACHED:
                     case PRECIOUS:
                     case BROKEN:
-                        cached = true;
+                    case NEW: // p2p can produce this state
+                        ready = true;
                         break;
+                    case FROM_CLIENT:
+                    case FROM_STORE:
+                    case FROM_POOL:
                     default:
                         synchronized (this) {
                             try {
@@ -309,7 +313,7 @@ public final class ReplicationQueryUtilitiesImpl implements ReplicationQueryUtil
                 throw new MissingResourceException(e.getMessage(), pool,
                                 "PoolCopyIsSystemStickyMessage");
             }
-        } while (!cached);
+        } while (!ready);
 
         return msg.isSystemSticky();
     }

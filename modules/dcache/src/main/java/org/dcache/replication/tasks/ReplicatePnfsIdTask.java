@@ -116,10 +116,11 @@ public final class ReplicatePnfsIdTask extends PnfsIdRequestTask {
             LOGGER.error(AlarmMarkerFactory.getMarker(Severity.HIGH,
                                                       PnfsIdMetadata.ALARM_INACCESSIBLE,
                                                       opData.poolName),
-                            "The only copy of {} has been remove from {}; "
+                            "The only copy of {} has been removed from {}; "
                             + "this file must be recovered manually.",
                             opData.pnfsId,
                             opData.poolName);
+            map.unregister(opData);
             return null;
         }
 
