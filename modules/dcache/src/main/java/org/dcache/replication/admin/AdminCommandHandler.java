@@ -693,7 +693,7 @@ public final class AdminCommandHandler implements CellCommandListener {
                              + "map and/or prints out map.")
     class TokenCommand implements Callable<String> {
         @Argument(index = 0,
-                  valueSpec = "clear | info ",
+                  valueSpec = "clear|info ",
                         required = true,
                         usage = "Either clear the operation token(s) from the "
                                         + "map or display the contents of the map.")
@@ -715,11 +715,6 @@ public final class AdminCommandHandler implements CellCommandListener {
             TokensMode type = TokensMode.parseOption(option);
 
             switch(type) {
-                case INFO:
-                    /*
-                     * just print the map
-                     */
-                    break;
                 case CLEAR:
                     if (expression != null) {
                         map.removeMatchingKeys(expression);
@@ -728,7 +723,10 @@ public final class AdminCommandHandler implements CellCommandListener {
                     }
                     break;
                 default:
-                        // should not happen
+                      /*
+                       * Just print the map.
+                       */
+
             }
 
             return map.print();

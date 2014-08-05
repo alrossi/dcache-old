@@ -71,7 +71,6 @@ import java.util.regex.Pattern;
 import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPoolGroup;
 import diskCacheV111.util.CacheException;
 import diskCacheV111.util.PnfsId;
-import diskCacheV111.vehicles.PnfsAddCacheLocationMessage;
 import diskCacheV111.vehicles.PnfsModifyCacheLocationMessage;
 
 import org.dcache.alarms.AlarmMarkerFactory;
@@ -240,73 +239,79 @@ public final class MapOperationRegistry implements ReplicationOperationRegistry 
 
         LOGGER.debug("update {}, {}", key, pool);
 
-        if (message instanceof PnfsAddCacheLocationMessage) {
-            if (!opData.hasReplica(pool)) {
-                opData.addReplicaPool(pool);
-            }
+        switch(opData.sourceType) {
+            case CLEAR:
+                opData.removeReplicaPool(pool);
 
-            if (opData.isRequestSatisfied()) {
+                switch(opData.getMode()) {
+                    case REDUCE:
+                        if (opData.isRequestSatisfied()) {
+                            registry.remove(key);
+                        }
+                        break;
+                    case REPLICATE:
+                        /*
+                         * A corrupted file was picked during a replication
+                         * operation, whose subsequent removal triggered this
+                         * clear cache location message.  We need to choose
+                         * another source, copy the current metadata with
+                         * the new source pool, and return it so a new
+                         * task can be submitted.
+                         */
+                        String source = utils.removeRandomEntry(opData.getReplicaPools());
+
+                        if (source == null) {
+                            registry.remove(key);
+                            LOGGER.error(AlarmMarkerFactory.getMarker(Severity.HIGH,
+                                                                      PnfsIdMetadata.ALARM_INACCESSIBLE,
+                                                                      opData.pnfsId.toString()),
+                                            "{} is corrupted an alternate source"
+                                            + " pool cannot be located; "
+                                            + "abandoning operation.",
+                                            opData.pnfsId);
+                            return opData;
+                        }
+
+                        /*
+                         * add back source pool, since it contains replica
+                         */
+                        opData.addReplicaPool(source);
+
+                        /*
+                         * clone the data
+                         */
+                        opData = opData.copy(source);
+
+                        /*
+                         * replace entry (the key is the same)
+                         */
+                        registry.put(key, opData);
+
+                        break;
+                    case NONE:
+                        throw new IllegalStateException("trying to update operation "
+                                        + opData
+                                        + " with undefined mode; this should not "
+                                        + "happen and is likely a bug");
+                }
+                break;
+            case ADD:
+                if (!opData.hasReplica(pool)) {
+                    opData.addReplicaPool(pool);
+                }
+
+                if (opData.isRequestSatisfied()) {
+                    /*
+                     * we can pre-empt the ACK counting in this case.
+                     */
+                    registry.remove(key);
+                }
+                break;
+            default:
                 /*
-                 * we can pre-empt the ACK counting in this case.
+                 * should not happen (SCAN messages are blocked from update)
                  */
-                registry.remove(key);
-            }
-        } else {
-            opData.removeReplicaPool(pool);
-
-            switch(opData.getMode()) {
-                case REDUCE:
-                    if (opData.isRequestSatisfied()) {
-                        registry.remove(key);
-                    }
-                    break;
-                case REPLICATE:
-                    /*
-                     * A corrupted file was picked during a replication
-                     * operation, whose subsequent removal triggered this
-                     * clear cache location message.  We need to choose
-                     * another source, copy the current metadata with
-                     * the new source pool, and return it so a new
-                     * task can be submitted.
-                     */
-                    String source = utils.removeRandomEntry(opData.getReplicaPools());
-
-                    if (source == null) {
-                        registry.remove(key);
-                        LOGGER.error(AlarmMarkerFactory.getMarker(Severity.HIGH,
-                                                                  PnfsIdMetadata.ALARM_INACCESSIBLE,
-                                                                  opData.pnfsId.toString()),
-                                        "{} is corrupted an alternate source"
-                                        + " pool cannot be located; "
-                                        + "abandoning operation.",
-                                        opData.pnfsId);
-                        return opData;
-                    }
-
-                    /*
-                     * add back source pool, since it contains replica
-                     */
-                    opData.addReplicaPool(source);
-
-                    /*
-                     * clone the data
-                     */
-                    opData = opData.copy(source);
-
-                    /*
-                     * replace entry (the key is the same)
-                     */
-                    registry.put(key, opData);
-
-                    break;
-                case NONE:
-                    throw new IllegalStateException("trying to update operation "
-                                    + opData
-                                    + " with undefined mode; this should not "
-                                    + "happen and is likely a bug");
-            }
         }
-
         return opData;
     }
 
