@@ -160,15 +160,15 @@ public final class AdminCommandHandler implements CellCommandListener {
         }
     }
 
-    enum TokensMode {
+    enum TaskMode {
         CLEAR, INFO;
 
-        public static TokensMode parseOption(String option) {
+        public static TaskMode parseOption(String option) {
             switch(option.toUpperCase()) {
                 case "CLEAR":
-                    return TokensMode.CLEAR;
+                    return TaskMode.CLEAR;
                 case "INFO":
-                    return TokensMode.INFO;
+                    return TaskMode.INFO;
                 default:
                     throw new IllegalArgumentException("Unrecognized "
                                     + "option: '" + option + "'.");
@@ -292,6 +292,7 @@ public final class AdminCommandHandler implements CellCommandListener {
             return "Running 'adjust " + option + " " + target + "'";
         }
     }
+
     @Command(name = "drainoff",
              hint = "Copy all unique files from the source pool to other pools"
                              + " in the source's replicating group, or to the"
@@ -677,6 +678,36 @@ public final class AdminCommandHandler implements CellCommandListener {
         }
     }
 
+    @Command(name = "set greedy",
+                    hint = "Change logic governing the number of copies to "
+                                    + "request for replication or removal.",
+                    description = "True means that when a replication request "
+                                    + "is issued, the highest reasonable number "
+                                    + "of replicas will be requested (the "
+                                    + "maximum minus the number currently "
+                                    + "accessible on UP pools in the group), "
+                                    + "and when a reduction request is issued, "
+                                    + "all but the minimum number will be eliminated. "
+                                    + "When set to false, the replication request "
+                                    + "will ask for the minimum and the reduction "
+                                    + "request will eliminate all down to the "
+                                    + "maximum number of copies.")
+    class SetCommand implements Callable<String> {
+        @Argument(index = 0,
+                  valueSpec = "true | false ",
+                  required = true)
+        String value;
+
+        @Override
+        public String call() throws Exception {
+            boolean previous = utils.isUseGreedyRequests();
+            boolean changedto = Boolean.valueOf(value);
+            utils.setUseGreedyRequests(changedto);
+            return "replicamanager.requests.use-greedy-limits changed from "
+                + previous + " to " + changedto;
+        }
+    }
+
     @Command(name = "stat",
              hint = "Show statistics: counts for messages and tasks.",
              description = "Accesses internal counters.")
@@ -687,11 +718,11 @@ public final class AdminCommandHandler implements CellCommandListener {
         }
     }
 
-    @Command(name = "token",
-             hint = "Clear current operation tokens or list current tokens.",
+    @Command(name = "tasks",
+             hint = "Clear current task tokens or list current tokens.",
              description = "Removes entries from the internal operations "
                              + "map and/or prints out map.")
-    class TokenCommand implements Callable<String> {
+    class TasksCommand implements Callable<String> {
         @Argument(index = 0,
                   valueSpec = "clear|info ",
                         required = true,
@@ -712,7 +743,7 @@ public final class AdminCommandHandler implements CellCommandListener {
 
         @Override
         public String call() throws Exception {
-            TokensMode type = TokensMode.parseOption(option);
+            TaskMode type = TaskMode.parseOption(option);
 
             switch(type) {
                 case CLEAR:

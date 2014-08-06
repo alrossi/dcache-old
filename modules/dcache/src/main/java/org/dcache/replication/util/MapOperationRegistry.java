@@ -237,9 +237,12 @@ public final class MapOperationRegistry implements ReplicationOperationRegistry 
 
         String pool = message.getPoolName();
 
-        LOGGER.debug("update {}, {}", key, pool);
+        LOGGER.debug("update {}, {}, {}, {}", key,
+                                              pool,
+                                              opData.getSourceType(),
+                                              opData.getMode());
 
-        switch(opData.sourceType) {
+        switch(opData.getSourceType()) {
             case CLEAR:
                 opData.removeReplicaPool(pool);
 

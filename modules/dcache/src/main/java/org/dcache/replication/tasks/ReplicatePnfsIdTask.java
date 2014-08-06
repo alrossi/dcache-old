@@ -106,7 +106,7 @@ public final class ReplicatePnfsIdTask extends PnfsIdRequestTask {
         int limit = opData.getAbsoluteDelta();
 
         String sourcePool;
-        if (opData.sourceType.equals(PnfsCacheMessageType.CLEAR)) {
+        if (opData.getSourceType().equals(PnfsCacheMessageType.CLEAR)) {
             sourcePool = utils.removeRandomEntry(opData.getReplicaPools());
         } else {
             sourcePool = opData.poolName;

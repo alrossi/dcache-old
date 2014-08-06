@@ -86,7 +86,6 @@ public final class PnfsIdMetadata {
     public final PnfsId pnfsId;
     public final String poolName;
     public final PoolGroupMetadata poolGroupData;
-    public final PnfsCacheMessageType sourceType;
 
     /**
      * Acks from ReplicationStatusMessage.
@@ -94,6 +93,8 @@ public final class PnfsIdMetadata {
     public final AtomicInteger successAcknowledgments;
 
     private final List<String> replicaPools;
+
+    private PnfsCacheMessageType sourceType;
     private ReplicationOperationMode mode;
     private int replicaDelta;
 
@@ -204,6 +205,10 @@ public final class PnfsIdMetadata {
         return new ArrayList<>(replicaPools);
     }
 
+    public PnfsCacheMessageType getSourceType() {
+        return sourceType;
+    }
+
     @Override
     public int hashCode() {
         return Objects.hashCode(pnfsId, poolName);
@@ -240,6 +245,10 @@ public final class PnfsIdMetadata {
         } else {
             mode = ReplicationOperationMode.NONE;
         }
+    }
+
+    public void setSourceType(PnfsCacheMessageType sourceType) {
+        this.sourceType = sourceType;
     }
 
     @Override

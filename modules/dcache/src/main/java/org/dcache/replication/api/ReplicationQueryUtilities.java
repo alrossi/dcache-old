@@ -179,4 +179,12 @@ public interface ReplicationQueryUtilities {
      * the group, a full scan task is submitted.
      */
     void scanActivePools(SelectionPoolGroup poolGroup, PoolSelectionUnit psu);
+
+    /**
+     * @param changedto if true, copy requests should ask for the maximum and
+     *         remove requests should reduce the count to the minimum;
+     *         if false, copy requests should ask for the minimum and
+     *         remove requests should reduce the count to the maximum.
+     */
+    void setUseGreedyRequests(boolean greedy);
 }

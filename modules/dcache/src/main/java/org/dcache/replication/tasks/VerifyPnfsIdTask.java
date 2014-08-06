@@ -70,6 +70,7 @@ import diskCacheV111.util.PnfsId;
 
 import dmg.cells.nucleus.CellEndpoint;
 
+import org.dcache.replication.api.PnfsCacheMessageType;
 import org.dcache.replication.api.ReplicationEndpoints;
 import org.dcache.replication.api.ReplicationOperationRegistry;
 import org.dcache.replication.api.ReplicationQueryUtilities;
@@ -148,9 +149,15 @@ public final class VerifyPnfsIdTask extends PnfsIdTask {
 
                 switch (opData.getMode()) {
                     case REPLICATE:
+                        if (opData.getSourceType().equals(PnfsCacheMessageType.SCAN)) {
+                            opData.setSourceType(PnfsCacheMessageType.ADD);
+                        }
                         executor.submitReplicateTask(opData);
                         break;
                     case REDUCE:
+                        if (opData.getSourceType().equals(PnfsCacheMessageType.SCAN)) {
+                            opData.setSourceType(PnfsCacheMessageType.CLEAR);
+                        }
                         executor.submitReduceTask(opData);
                         break;
                     default:
