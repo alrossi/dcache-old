@@ -6,13 +6,32 @@ onerror shutdown
 
 check -strong alarms.cell.name
 check -strong alarms.net.port
-check -strong alarms.log.config.path
 check -strong alarms.db.type
 check -strong alarms.db.url
-check -strong alarms.log.root-level
-check -strong alarms.definitions.path
-check alarms.dir
+check -strong alarms.custom-definitions.path
+check -strong alarms.db.datanucleus-properties.path
 check alarms.db.xml.path
+check alarms.enable.email
+check alarms.email.smtp-host
+check alarms.email.smtp-port
+check alarms.email.start-tls
+check alarms.email.ssl
+check alarms.email.user
+check alarms.email.password
+check alarms.email.to
+check alarms.email.from
+check alarms.email.subject
+check alarms.email.buffer-size
+check alarms.email.threshold
+check alarms.email.encoding-pattern
+check alarms.enable.history
+check alarms.history.threshold
+check alarms.history.encoding-pattern
+check alarms.history.log-path
+check alarms.history.log-file.pattern
+check alarms.history.max-file-size
+check alarms.history.min-index
+check alarms.history.max-index
 
 define env dontStartService.exe enddefine
     say -level=esay "You have configured this domain to host the alarms service together with one"

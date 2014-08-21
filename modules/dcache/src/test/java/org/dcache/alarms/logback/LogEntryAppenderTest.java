@@ -62,9 +62,6 @@ package org.dcache.alarms.logback;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.Appender;
-import ch.qos.logback.core.AppenderBase;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -75,7 +72,7 @@ import org.dcache.alarms.dao.ILogEntryDAO;
 import org.dcache.alarms.dao.LogEntry;
 
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertThat;
 
 /**
  * Tests filtering and storing of logging events.<br>
@@ -112,41 +109,16 @@ public class LogEntryAppenderTest {
     };
 
     private LogEntry lastEntry;
-    private ILoggingEvent lastInternalEvent;
-    private ILoggingEvent lastMailEvent;
-
-    private final Appender<ILoggingEvent> internal = new AppenderBase<ILoggingEvent>() {
-        @Override
-        public String getName() {
-            return "internal";
-        }
-
-        @Override
-        protected void append(ILoggingEvent eventObject) {
-            lastInternalEvent = eventObject;
-        }
-    };
-
-    private final Appender<ILoggingEvent> mail = new AppenderBase<ILoggingEvent>() {
-        @Override
-        public String getName() {
-            return "mail";
-        }
-
-        @Override
-        protected void append(ILoggingEvent eventObject) {
-            lastMailEvent = eventObject;
-        }
-    };
 
     @Before
     public void setup() {
         clearLast();
         LogEntryAppender appender = new LogEntryAppender();
         appender.setContext(new LoggerContext());
-        appender.setStore(store);
+        appender.setEmailEnabled(false);
+        appender.setHistoryEnabled(false);
         addDefinitions(appender);
-        addDelegates(appender);
+        appender.setStore(store);
         appender.start();
         logger = new LoggerContext().getLogger(LogEntryAppenderTest.class);
         logger.addAppender(appender);
@@ -158,8 +130,6 @@ public class LogEntryAppenderTest {
         String message = givenLoggingMessageWhichMatchesType("JVM_OUT_OF_MEMORY");
         whenMessageIsLogged(AlarmMarkerFactory.getMarker(), Level.ERROR, message, null);
         assertThat(lastEntry.isAlarm(), is(true));
-        assertNotNull(lastInternalEvent);
-        assertNotNull(lastMailEvent);
     }
 
     @Test
@@ -167,8 +137,6 @@ public class LogEntryAppenderTest {
         String message = givenLoggingMessageWhichMatchesType("CHECKSUM");
         whenMessageIsLogged(null, Level.ERROR, message, null);
         assertThat(lastEntry.isAlarm(), is(true));
-        assertNotNull(lastInternalEvent);
-        assertNotNull(lastMailEvent);
     }
 
     @Test
@@ -176,8 +144,6 @@ public class LogEntryAppenderTest {
         String message = givenLoggingMessageWhichMatchesType(null);
         whenMessageIsLogged(AlarmMarkerFactory.getMarker(), Level.ERROR, message, null);
         assertThat(lastEntry.isAlarm(), is(true));
-        assertNotNull(lastInternalEvent);
-        assertNotNull(lastMailEvent);
     }
 
     @Test
@@ -187,8 +153,6 @@ public class LogEntryAppenderTest {
         whenMessageIsLogged(null, Level.ERROR, exception.getMessage(),
                         exception.getCause());
         assertThat(lastEntry.isAlarm(), is(true));
-        assertNotNull(lastInternalEvent);
-        assertNotNull(lastMailEvent);
     }
 
     @Test
@@ -198,8 +162,6 @@ public class LogEntryAppenderTest {
         whenMessageIsLogged(null, Level.ERROR, exception.getMessage(),
                         exception.getCause());
         assertThat(lastEntry.isAlarm(), is(true));
-        assertNotNull(lastInternalEvent);
-        assertNotNull(lastMailEvent);
     }
 
     @Test
@@ -207,8 +169,6 @@ public class LogEntryAppenderTest {
         String message = givenLoggingMessageWhichMatchesType(null);
         whenMessageIsLogged(null, Level.ERROR, message, null);
         assertThat(lastEntry.isAlarm(), is(false));
-        assertNotNull(lastInternalEvent);
-        assertNull(lastMailEvent);
     }
 
     @Test
@@ -218,8 +178,6 @@ public class LogEntryAppenderTest {
         whenMessageIsLogged(null, Level.ERROR, exception.getMessage(),
                         exception.getCause());
         assertThat(lastEntry.isAlarm(), is(false));
-        assertNotNull(lastInternalEvent);
-        assertNull(lastMailEvent);
     }
 
     @Test
@@ -229,8 +187,6 @@ public class LogEntryAppenderTest {
         whenMessageIsLogged(null, Level.ERROR, exception.getMessage(),
                         exception.getCause());
         assertThat(lastEntry.isAlarm(), is(false));
-        assertNotNull(lastInternalEvent);
-        assertNull(lastMailEvent);
     }
 
     @After
@@ -258,18 +214,8 @@ public class LogEntryAppenderTest {
                         "group1 type host service domain"));
     }
 
-    private void addDelegates(LogEntryAppender appender) {
-        internal.setContext(new LoggerContext());
-        appender.addAppender(internal);
-        mail.addFilter(new AlarmMarkerFilter());
-        mail.setContext(new LoggerContext());
-        appender.addAppender(mail);
-    }
-
     private void clearLast() {
         lastEntry = null;
-        lastInternalEvent = null;
-        lastMailEvent = null;
     }
 
     private Exception givenExceptionWithMessageEmbeddedAt(int depth,

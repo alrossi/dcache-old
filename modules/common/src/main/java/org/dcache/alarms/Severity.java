@@ -69,9 +69,10 @@ import java.util.List;
  * @author arossi
  */
 public enum Severity {
-    LOW, MODERATE, HIGH, CRITICAL;
+    LOW, MODERATE, HIGH, CRITICAL, OFF;
 
     private static final List<String> labels = ImmutableList.of(
+                    OFF.toString(),
                     LOW.toString(), MODERATE.toString(),
                     HIGH.toString(), CRITICAL.toString());
 

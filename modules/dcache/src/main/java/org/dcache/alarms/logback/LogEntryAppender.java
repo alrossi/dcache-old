@@ -59,15 +59,19 @@ documents or software obtained from this server.
  */
 package org.dcache.alarms.logback;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.PatternLayout;
+import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
+import ch.qos.logback.classic.net.SMTPAppender;
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.classic.spi.LoggingEvent;
-import ch.qos.logback.classic.spi.ThrowableProxy;
-import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.AppenderBase;
-import ch.qos.logback.core.spi.AppenderAttachable;
+import ch.qos.logback.core.FileAppender;
+import ch.qos.logback.core.rolling.FixedWindowRollingPolicy;
+import ch.qos.logback.core.rolling.RollingFileAppender;
+import ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy;
+import ch.qos.logback.core.spi.CyclicBufferTracker;
 import com.google.common.base.Charsets;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 import com.zaxxer.hikari.HikariConfig;
@@ -77,8 +81,6 @@ import org.jdom.Document;
 import org.jdom.Element;
 import org.jdom.JDOMException;
 import org.jdom.input.SAXBuilder;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.slf4j.Marker;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
@@ -88,15 +90,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
 
-import org.dcache.alarms.AlarmMarkerFactory;
 import org.dcache.alarms.IAlarms;
+import org.dcache.alarms.Severity;
 import org.dcache.alarms.dao.ILogEntryDAO;
 import org.dcache.alarms.dao.LogEntry;
 import org.dcache.alarms.dao.impl.DataNucleusLogEntryStore;
@@ -110,32 +110,31 @@ import org.dcache.db.AlarmEnabledDataSource;
  *
  * @author arossi
  */
-public class LogEntryAppender extends AppenderBase<ILoggingEvent> implements
-                AppenderAttachable<ILoggingEvent> {
-
-    public static final String EMPTY_XML_STORE = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<entries></entries>\n";
+public class LogEntryAppender extends AppenderBase<ILoggingEvent> {
+    private static final String EMPTY_XML_STORE =
+                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<entries></entries>\n";
 
     /**
-     * Fixed names, used for appenders in the logback-server.xml file.
+     *  Custom (user-facing) definitions/filters.
      */
-    public static final String ALARM_MAIL_APPENDER = "ALARM_MAIL";
-    public static final String HISTORY_APPENDER = "HISTORY";
-
     private final Map<String, AlarmDefinition> definitions
         = Collections.synchronizedMap(new TreeMap<String, AlarmDefinition>());
-    private final Map<String, Appender<ILoggingEvent>> childAppenders
-        = Collections.synchronizedMap(new HashMap<String, Appender<ILoggingEvent>>());
 
+    /**
+     *  Priority mappings.
+     */
+    // TODO
+
+    /**
+     * The main configuration for storing alarms through DAO.
+     */
     private ILogEntryDAO store;
-    private File path;
-    private String propertiesPath;
-    private String definitionsPath;
-    private String currentDomain;
+    private File xmlPath;
+    private String dnPropertiesPath;
+    private String customDefinitionsPath;
     private String url;
     private String user;
     private String password;
-    private boolean sendEmail;
-    private boolean writeHistory;
     private JDOPersistenceManagerFactory pmf;
 
     /**
@@ -145,71 +144,140 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> implements
      */
     private HikariDataSource dataSource;
 
+    /**
+     * Optional email appender configuration.
+     */
+    private SMTPAppender emailAppender;
+    private boolean emailEnabled;
+    private Severity emailThreshold;
+    private String emailEncoding;
+    private String smtpHost;
+    private int smtpPort;
+    private boolean startTls;
+    private boolean ssl;
+    private String emailUser;
+    private String emailPassword;
+    private String[] emailRecipients;
+    private String emailSender;
+    private String emailSubject;
+    private int emailBufferSize;
+
+    /**
+     * Optional history file appender configuration.
+     */
+    private FileAppender<ILoggingEvent> historyAppender;
+    private boolean historyEnabled;
+    private Severity historyThreshold;
+    private String historyEncoding;
+    private String historyFile;
+    private String historyFileNamePattern;
+    private String historyMaxFileSize;
+    private int historyMinIndex;
+    private int historyMaxIndex;
+
     public void addAlarmType(AlarmDefinition definition) {
         definitions.put(definition.getType(), definition);
     }
 
-    @Override
-    public void addAppender(Appender<ILoggingEvent> newAppender) {
-        childAppenders.put(newAppender.getName(), newAppender);
+    public void setCustomDefinitionsPath(String customDefinitionsPath) {
+        this.customDefinitionsPath = customDefinitionsPath;
     }
 
-    @Override
-    public void detachAndStopAllAppenders() {
-        for (Iterator<String> key = childAppenders.keySet().iterator(); key.hasNext();) {
-            Appender<ILoggingEvent> appender = childAppenders.get(key.next());
-            appender.stop();
-            key.remove();
-        }
+    public void setEmailBufferSize(int emailBufferSize) {
+        this.emailBufferSize = emailBufferSize;
     }
 
-    @Override
-    public boolean detachAppender(Appender<ILoggingEvent> appender) {
-        if (appender != null) {
-            return detachAppender(appender.getName());
-        }
-        return false;
+    public void setEmailEnabled(boolean emailEnabled) {
+        this.emailEnabled = emailEnabled;
     }
 
-    @Override
-    public boolean detachAppender(String name) {
-        Appender<ILoggingEvent> a = childAppenders.remove(name);
-        return a != null;
+    public void setEmailEncoding(String emailEncoding) {
+        this.emailEncoding = emailEncoding;
     }
 
-    @Override
-    public Appender<ILoggingEvent> getAppender(String name) {
-        return childAppenders.get(name);
+    public void setEmailPassword(String emailPassword) {
+        this.emailPassword = emailPassword;
     }
 
-    @Override
-    public boolean isAttached(Appender<ILoggingEvent> appender) {
-        return childAppenders.containsValue(appender);
+    public void setEmailRecipients(String emailRecipients) {
+        Preconditions.checkNotNull(emailRecipients);
+        this.emailRecipients = emailRecipients.split("[,]");
     }
 
-    @Override
-    public Iterator<Appender<ILoggingEvent>> iteratorForAppenders() {
-        return childAppenders.values().iterator();
+    public void setEmailSender(String emailSender) {
+        this.emailSender = emailSender;
     }
 
-    public void setDefinitionsPath(String definitionsPath) {
-        this.definitionsPath = definitionsPath;
+    public void setEmailSubject(String emailSubject) {
+        this.emailSubject = emailSubject;
     }
 
-    public void setSendEmail(boolean sendEmail) {
-        this.sendEmail = sendEmail;
+    public void setEmailThreshold(String emailThreshold) {
+        this.emailThreshold = Severity.valueOf(emailThreshold.toUpperCase());
     }
 
-    public void setPass(String pass) {
-        this.password = pass;
+    public void setEmailUser(String emailUser) {
+        this.emailUser = emailUser;
     }
 
-    public void setPropertiesPath(String propertiesPath) {
-        this.propertiesPath = propertiesPath;
+    public void setHistoryEnabled(boolean historyEnabled) {
+        this.historyEnabled = historyEnabled;
     }
 
-    public void setStorePath(String path) {
-        this.path = new File(path);
+    public void setHistoryEncoding(String historyEncoding) {
+        this.historyEncoding = historyEncoding;
+    }
+
+    public void setHistoryFile(String historyFile) {
+        this.historyFile = historyFile;
+    }
+
+    public void setHistoryFileNamePattern(String historyFileNamePattern) {
+        this.historyFileNamePattern = historyFileNamePattern;
+    }
+
+    public void setHistoryMaxFileSize(String historyMaxFileSize) {
+        this.historyMaxFileSize = historyMaxFileSize;
+    }
+
+    public void setHistoryMaxIndex(int historyMaxIndex) {
+        this.historyMaxIndex = historyMaxIndex;
+    }
+
+    public void setHistoryMinIndex(int historyMinIndex) {
+        this.historyMinIndex = historyMinIndex;
+    }
+
+    public void setHistoryThreshold(String historyThreshold) {
+        this.historyThreshold = Severity.valueOf(historyThreshold.toUpperCase());
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public void setPmf(JDOPersistenceManagerFactory pmf) {
+        this.pmf = pmf;
+    }
+
+    public void setDnPropertiesPath(String dnPropertiesPath) {
+        this.dnPropertiesPath = dnPropertiesPath;
+    }
+
+    public void setSmtpHost(String smtpHost) {
+        this.smtpHost = smtpHost;
+    }
+
+    public void setSmtpPort(int smtpPort) {
+        this.smtpPort = smtpPort;
+    }
+
+    public void setSsl(boolean ssl) {
+        this.ssl = ssl;
+    }
+
+    public void setStartTls(boolean startTls) {
+        this.startTls = startTls;
     }
 
     public void setUrl(String url) {
@@ -220,17 +288,15 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> implements
         this.user = user;
     }
 
-    public void setWriteHistory(boolean writeHistory) {
-        this.writeHistory = writeHistory;
+    public void setXmlPath(String xmlPath) {
+        this.xmlPath = new File(xmlPath);
     }
 
     @Override
     public void start() {
         try {
-            currentDomain = String.valueOf(MDC.get(IAlarms.DOMAIN));
-
-            if (definitionsPath != null && definitionsPath.trim().length() > 0) {
-                File file = new File(definitionsPath);
+            if (Strings.emptyToNull(customDefinitionsPath) != null) {
+                File file = new File(customDefinitionsPath);
                 if (!file.exists()) {
                     throw new FileNotFoundException(file.getAbsolutePath());
                 }
@@ -242,22 +308,12 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> implements
                 store = new DataNucleusLogEntryStore(pmf);
             }
 
-            /*
-             * The logback-server.xml is set to add the email and history
-             * appenders, for ease of configuration through standard
-             * dcache properties; hence if use of these is set to false
-             * via enable properties, they must be removed here.
-             */
-            if (!sendEmail) {
-                childAppenders.remove(ALARM_MAIL_APPENDER);
+            if (emailEnabled) {
+                startEmailAppender();
             }
 
-            if (!writeHistory) {
-                childAppenders.remove(HISTORY_APPENDER);
-            }
-
-            for (Appender<ILoggingEvent> child : childAppenders.values() ) {
-                child.start();
+            if (historyEnabled) {
+                startHistoryAppender();
             }
 
             super.start();
@@ -271,92 +327,59 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> implements
     {
         super.stop();
         store = null;
+
         if (pmf != null) {
             pmf.close();
             pmf = null;
         }
+
         if (dataSource != null) {
             dataSource.shutdown();
             dataSource = null;
         }
-    }
 
-    private void initPersistenceManagerFactory() throws IOException
-    {
-        Properties properties = new Properties();
-        if (propertiesPath != null && !propertiesPath.trim().isEmpty()) {
-            File file = new File(propertiesPath);
-            if (!file.exists()) {
-                throw new FileNotFoundException(file.getAbsolutePath());
-            }
-            try (InputStream stream = new FileInputStream(file)) {
-                properties.load(stream);
-            }
+        if (emailAppender != null) {
+            emailAppender.stop();
+            emailAppender = null;
         }
 
-        if (url.startsWith("xml:")) {
-            initializeXmlFile(path);
-            properties.setProperty("datanucleus.ConnectionURL", url);
-        } else if (url.startsWith("jdbc:")) {
-            HikariConfig config = new HikariConfig();
-            config.setDataSource(new DriverManagerDataSource(url, user, password));
-            dataSource = new HikariDataSource(config);
-            properties.setProperty("datanucleus.connectionPoolingType", "None");
-        }
-        pmf = new JDOPersistenceManagerFactory(
-                Maps.<String, Object>newHashMap(Maps.fromProperties(properties)));
-        if (dataSource != null) {
-            pmf.setConnectionFactory(dataSource);
-        }
-    }
-
-    /**
-     * Checks for the existence of the file and creates it if not. Note that
-     * existing files are not validated against any schema, explicit or
-     * implicit. If the parent does not exist, an exception will be thrown.
-     */
-    private void initializeXmlFile(File file) throws IOException {
-        if (!file.exists()) {
-            if (!file.getParentFile().isDirectory()) {
-                String parent = file.getParentFile().getAbsolutePath();
-                throw new FileNotFoundException(parent + " is not a directory");
-            }
-            Files.write(EMPTY_XML_STORE, file, Charsets.UTF_8);
+        if (historyAppender != null) {
+            historyAppender.stop();
+            historyAppender = null;
         }
     }
 
     @Override
     protected void append(ILoggingEvent eventObject) {
         if (isStarted()) {
-            if (currentDomain.equals(eventObject.getMDCPropertyMap()
-                                                .get(IAlarms.DOMAIN_TAG))) {
-                Logger logger = (Logger)LoggerFactory.getLogger("domain");
-                if (logger != null &&
-                                logger.isEnabledFor(eventObject.getLevel())) {
-                    logger.callAppenders(eventObject);
-                }
-                return;
-            }
-
             LogEntry entry = createEntryFromEvent(eventObject);
             String type = entry.getType();
-            if (type != null && !Level.ERROR.toString().equals(type)
-                             && !Level.WARN.toString().equals(type)
-                             && !Level.INFO.toString().equals(type)
-                             && !Level.DEBUG.toString().equals(type)
-                             && !Level.TRACE.toString().equals(type)) {
-                /*
-                 * means it was possibly not sent with an ALARM marker; add
-                 * one so any delegated appender with an ALARM marker filter
-                 * will catch the event
-                 */
-                eventObject = cloneAndMark(entry, eventObject);
+            int priority = getPriority(type);
+
+            /*
+             * The history log parses out all messages above a certain priority.
+             * This is just a convenience for sifting messages
+             * from the normal domain log and recording them them using
+             * the more specific alert pattern.
+             */
+            if (historyEnabled && priority >= historyThreshold.ordinal()) {
+                historyAppender.doAppend(eventObject);
             }
 
-            for (Appender<ILoggingEvent> delegate : childAppenders.values()) {
-                delegate.doAppend(eventObject);
+            /*
+             * Remote messages which are indeed alarms/alerts can be
+             * sent as email.  Only these messages will be placed in
+             *
+             */
+            if (emailEnabled &&
+                            entry.isAlarm() &&
+                            priority >= emailThreshold.ordinal()) {
+                    emailAppender.doAppend(eventObject);
             }
 
+            /*
+             * Now store the remote event.
+             */
             store.put(entry);
         }
     }
@@ -366,25 +389,6 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> implements
      */
     void setStore(ILogEntryDAO store) {
         this.store = store;
-    }
-
-    private ILoggingEvent cloneAndMark(LogEntry entry, ILoggingEvent eventObject) {
-        Marker marker = AlarmMarkerFactory.getMarker(entry.getSeverityEnum(),
-                                                     entry.getType(),
-                                                     entry.getKey());
-        LoggingEvent alarm = new LoggingEvent();
-        alarm.setArgumentArray(eventObject.getArgumentArray());
-        alarm.setCallerData(eventObject.getCallerData());
-        alarm.setLevel(eventObject.getLevel());
-        alarm.setLoggerName(eventObject.getLoggerName());
-        alarm.setLoggerContextRemoteView(eventObject.getLoggerContextVO());
-        alarm.setMDCPropertyMap(eventObject.getMDCPropertyMap());
-        alarm.setMarker(marker);
-        alarm.setMessage(eventObject.getMessage());
-        alarm.setThreadName(eventObject.getThreadName());
-        alarm.setThrowableProxy((ThrowableProxy) eventObject.getThrowableProxy());
-        alarm.setTimeStamp(eventObject.getTimeStamp());
-        return alarm;
     }
 
     private LogEntry createEntryFromEvent(ILoggingEvent eventObject) {
@@ -418,6 +422,58 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> implements
         return entry;
     }
 
+    /**
+     */
+    private int getPriority(String type) {
+        // TODO Priority map
+        return Severity.CRITICAL.ordinal();
+    }
+
+    /**
+     * Checks for the existence of the file and creates it if not. Note that
+     * existing files are not validated against any schema, explicit or
+     * implicit. If the parent does not exist, an exception will be thrown.
+     */
+    private void initializeXmlFile(File file) throws IOException {
+        if (!file.exists()) {
+            if (!file.getParentFile().isDirectory()) {
+                String parent = file.getParentFile().getAbsolutePath();
+                throw new FileNotFoundException(parent + " is not a directory");
+            }
+            Files.write(EMPTY_XML_STORE, file, Charsets.UTF_8);
+        }
+    }
+
+    private void initPersistenceManagerFactory() throws IOException
+    {
+        Properties properties = new Properties();
+        if (dnPropertiesPath != null && !dnPropertiesPath.trim().isEmpty()) {
+            File file = new File(dnPropertiesPath);
+            if (!file.exists()) {
+                throw new FileNotFoundException(file.getAbsolutePath());
+            }
+            try (InputStream stream = new FileInputStream(file)) {
+                properties.load(stream);
+            }
+        }
+
+        if (url.startsWith("xml:")) {
+            initializeXmlFile(xmlPath);
+            properties.setProperty("datanucleus.ConnectionURL", url);
+        } else if (url.startsWith("jdbc:")) {
+            HikariConfig config = new HikariConfig();
+            config.setDataSource(new DriverManagerDataSource(url, user, password));
+            dataSource = new HikariDataSource(config);
+            properties.setProperty("datanucleus.connectionPoolingType", "None");
+        }
+
+        pmf = new JDOPersistenceManagerFactory(
+                Maps.<String, Object>newHashMap(Maps.fromProperties(properties)));
+        if (dataSource != null) {
+            pmf.setConnectionFactory(dataSource);
+        }
+    }
+
     private void loadDefinitions(File xmlFile) throws JDOMException,
                     IOException {
         SAXBuilder builder = new SAXBuilder();
@@ -448,5 +504,63 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> implements
 
         entry.setAlarm(alarm);
         entry.setAlarmMetadata(event, match);
+    }
+
+    private void startEmailAppender() {
+        PatternLayout layout = new PatternLayout();
+        layout.setPattern(emailEncoding);
+        layout.setContext(getContext());
+        layout.start();
+
+        CyclicBufferTracker bufferTracker = new CyclicBufferTracker();
+        bufferTracker.setBufferSize(emailBufferSize);
+
+        emailAppender = new SMTPAppender();
+        emailAppender.setContext(context);
+        emailAppender.setPassword(emailPassword);
+        emailAppender.setUsername(emailUser);
+        emailAppender.setSmtpHost(smtpHost);
+        emailAppender.setSmtpPort(smtpPort);
+        emailAppender.setSSL(ssl);
+        emailAppender.setSTARTTLS(startTls);
+        emailAppender.setFrom(emailSender);
+        emailAppender.setSubject(emailSubject);
+        for (String to: emailRecipients) {
+            emailAppender.addTo(to);
+        }
+        emailAppender.setLayout(layout);
+        emailAppender.setCyclicBufferTracker(bufferTracker);
+        emailAppender.start();
+    }
+
+    private void startHistoryAppender() throws FileNotFoundException {
+        PatternLayoutEncoder encoder = new PatternLayoutEncoder();
+        encoder.setPattern(historyEncoding);
+        encoder.setContext(getContext());
+        encoder.start();
+
+        RollingFileAppender<ILoggingEvent> historyAppender = new RollingFileAppender<>();
+        FixedWindowRollingPolicy fwrp = new FixedWindowRollingPolicy();
+        fwrp.setMaxIndex(historyMaxIndex);
+        fwrp.setMinIndex(historyMinIndex);
+        fwrp.setFileNamePattern(historyFileNamePattern);
+        fwrp.setContext(context);
+
+        SizeBasedTriggeringPolicy sbtp = new SizeBasedTriggeringPolicy();
+        sbtp.setMaxFileSize(historyMaxFileSize);
+        sbtp.setContext(context);
+
+        historyAppender.setContext(context);
+        historyAppender.setEncoder(encoder);
+        historyAppender.setFile(historyFile);
+        historyAppender.setTriggeringPolicy(sbtp);
+        historyAppender.setRollingPolicy(fwrp);
+
+        fwrp.setParent(historyAppender);
+        fwrp.start();
+        sbtp.start();
+        historyAppender.start();
+
+        this.historyAppender = historyAppender;
     }
 }
