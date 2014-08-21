@@ -111,6 +111,7 @@ import org.dcache.db.AlarmEnabledDataSource;
  * @author arossi
  */
 public class LogEntryAppender extends AppenderBase<ILoggingEvent> {
+    private static final LogEntry LOCAL_EVENT = new LogEntry();
     private static final String EMPTY_XML_STORE =
                     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<entries></entries>\n";
 
@@ -174,6 +175,8 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> {
     private String historyMaxFileSize;
     private int historyMinIndex;
     private int historyMaxIndex;
+
+    private String serviceName;
 
     public void addAlarmType(AlarmDefinition definition) {
         definitions.put(definition.getType(), definition);
@@ -262,6 +265,10 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> {
 
     public void setDnPropertiesPath(String dnPropertiesPath) {
         this.dnPropertiesPath = dnPropertiesPath;
+    }
+
+    public void setServiceName(String serviceName) {
+        this.serviceName = serviceName;
     }
 
     public void setSmtpHost(String smtpHost) {
@@ -353,14 +360,19 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> {
     protected void append(ILoggingEvent eventObject) {
         if (isStarted()) {
             LogEntry entry = createEntryFromEvent(eventObject);
-            String type = entry.getType();
-            int priority = getPriority(type);
+
+            if (entry == LOCAL_EVENT) {
+                return;
+            }
+
+            int priority = getPriority(entry);
 
             /*
-             * The history log parses out all messages above a certain priority.
+             * The history log parses out all alerts above a certain priority.
              * This is just a convenience for sifting messages
              * from the normal domain log and recording them them using
              * the more specific alert pattern.
+             * We exclude events from the alarm service itself.
              */
             if (historyEnabled && priority >= historyThreshold.ordinal()) {
                 historyAppender.doAppend(eventObject);
@@ -368,7 +380,7 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> {
 
             /*
              * Remote messages which are indeed alarms/alerts can be
-             * sent as email.  Only these messages will be placed in
+             * sent as email.
              *
              */
             if (emailEnabled &&
@@ -392,12 +404,17 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> {
     }
 
     private LogEntry createEntryFromEvent(ILoggingEvent eventObject) {
-        LogEntry entry = new LogEntry();
-        Long timestamp = eventObject.getTimeStamp();
-        entry.setFirstArrived(timestamp);
-        entry.setLastUpdate(timestamp);
-        entry.setInfo(eventObject.getFormattedMessage());
         Map<String, String> mdc = eventObject.getMDCPropertyMap();
+
+        String service = mdc.get(IAlarms.SERVICE_TAG);
+        if (service == null) {
+            service = IAlarms.UNKNOWN_SERVICE;
+        } else if (service.equals(serviceName)) {
+            /*
+             * exclude internal events
+             */
+            return LOCAL_EVENT;
+        }
 
         String host = mdc.get(IAlarms.HOST_TAG);
         if (host == null) {
@@ -409,11 +426,11 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> {
             domain = IAlarms.UNKNOWN_DOMAIN;
         }
 
-        String service = mdc.get(IAlarms.SERVICE_TAG);
-        if (service == null) {
-            service = IAlarms.UNKNOWN_SERVICE;
-        }
-
+        LogEntry entry = new LogEntry();
+        Long timestamp = eventObject.getTimeStamp();
+        entry.setFirstArrived(timestamp);
+        entry.setLastUpdate(timestamp);
+        entry.setInfo(eventObject.getFormattedMessage());
         entry.setHost(host);
         entry.setDomain(domain);
         entry.setService(service);
@@ -424,9 +441,11 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> {
 
     /**
      */
-    private int getPriority(String type) {
-        // TODO Priority map
-        return Severity.CRITICAL.ordinal();
+    private int getPriority(LogEntry entry) {
+        if (entry.isAlarm()) {
+            return entry.getSeverity();
+        }
+        return -1;
     }
 
     /**

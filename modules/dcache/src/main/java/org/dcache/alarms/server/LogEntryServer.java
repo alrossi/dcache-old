@@ -78,7 +78,7 @@ import org.dcache.alarms.logback.LogEntryAppender;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Note that the alarm service classses such as this one depend on
+ * Note that the alarm service classes such as this one depend on
  * logback implementations of slf4j.
  *
  * @author arossi
