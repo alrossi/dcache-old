@@ -169,37 +169,6 @@ public class DataNucleusAlarmStore implements ILogEntryDAO, Runnable {
         }
     }
 
-    /*
-     * Uses JPQL (JPA-type) DISTINCT query.
-     */
-    public Collection<String> getEntryTypes() {
-        PersistenceManager readManager = pmf.getPersistenceManager();
-        if (readManager == null) {
-            return Collections.emptyList();
-        }
-
-        Transaction tx = readManager.currentTransaction();
-
-        try {
-            tx.begin();
-            Collection<String> result
-                = (Collection<String>)AlarmJDOUtils.getTypeQuery(readManager)
-                                                   .execute();
-            logger.debug("got collection {}", result);
-            tx.commit();
-            return result;
-        } catch (JDOException t) {
-            logJDOException("get entry types", null, t);
-            return Collections.emptyList();
-        } finally {
-            try {
-                rollbackIfActive(tx);
-            } finally {
-                readManager.close();
-            }
-        }
-    }
-
     public void initialize() {
         if (pmf == null) {
             active = false;

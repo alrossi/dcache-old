@@ -70,7 +70,7 @@ import javax.jdo.Transaction;
 
 import java.util.Collection;
 
-import org.dcache.alarms.dao.ILogEntryDAO;
+import org.dcache.alarms.dao.LogEntryDAO;
 import org.dcache.alarms.dao.LogEntry;
 
 /**
@@ -80,7 +80,7 @@ import org.dcache.alarms.dao.LogEntry;
  *
  * @author arossi
  */
-public class DataNucleusLogEntryStore implements ILogEntryDAO {
+public final class DataNucleusLogEntryStore implements LogEntryDAO {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final PersistenceManagerFactory pmf;
 

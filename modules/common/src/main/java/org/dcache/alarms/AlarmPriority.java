@@ -60,69 +60,10 @@ documents or software obtained from this server.
 package org.dcache.alarms;
 
 /**
- * Convenience interface for properties in common between the wire object and
- * the storage object for Alarm processing.
+ * For marking alert level.
  *
  * @author arossi
  */
-public interface IAlarms {
-    /*
-     * Shared alarm property/field names
-     */
-    final String KEY_TAG = "key";
-    final String TIMESTAMP_TAG = "timestamp";
-    final String TYPE_TAG = "type";
-    final String SEVERITY_TAG = "severity";
-    final String HOST_TAG = "host";
-    final String DOMAIN_TAG = "domain";
-    final String SERVICE_TAG = "service";
-    final String MESSAGE_TAG = "message";
-    final String GROUP_TAG = "group";
-
-    /*
-     * The base marker; all alarms must carry this marker.
-     */
-    final String ALARM_MARKER = "ALARM";
-
-    /*
-     * The severity marker; submarker indicates the level.
-     */
-    final String ALARM_MARKER_SEVERITY = "ALARM_SEVERITY";
-
-    /*
-     * The type marker; submarker indicates the alarm type.
-     */
-    final String ALARM_MARKER_TYPE = "ALARM_TYPE";
-
-    /*
-     * Default alarm type.
-     */
-    final String ALARM_MARKER_TYPE_GENERIC = "GENERIC";
-
-    /*
-     * The key marker; submarker specifies the key properties determining
-     * alarm identity.
-     */
-    final String ALARM_MARKER_KEY = "ALARM_KEY";
-
-    /*
-     * Placeholder for host name which cannot be resolved.
-     */
-    final String UNKNOWN_HOST = "<unknown host>";
-
-    /*
-     * Placeholder for host name which cannot be resolved.
-     */
-    final String UNKNOWN_SERVICE = "<unknown service>";
-
-    /*
-     * Placeholder for host name which cannot be resolved.
-     */
-    final String UNKNOWN_DOMAIN = "<unknown domain>";
-
-    /*
-     * These are defined elsewhere for use in the MDC.
-     */
-    final String CELL = "cells.cell";
-    final String DOMAIN = "cells.domain";
+public enum AlarmPriority {
+    LOW, MODERATE, HIGH, CRITICAL;
 }

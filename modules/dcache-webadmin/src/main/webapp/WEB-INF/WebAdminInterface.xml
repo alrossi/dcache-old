@@ -31,6 +31,14 @@
         <property name="retryOnNoRouteToCell" value="true"/>
     </bean>
 
+    <bean id="AlarmsCellStub" class="org.dcache.cells.CellStub">
+        <property name="cellEndpoint" ref="ServiceCellEndpoint"/>
+        <property name="destination" value="${httpd.service.alarms}"/>
+        <property name="timeout" value="${httpd.service.alarms.timeout}"/>
+        <property name="timeoutUnit" value="${httpd.service.alarms.timeout.unit}"/>
+        <property name="retryOnNoRouteToCell" value="true"/>
+    </bean>
+
     <bean id="PoolMonitorCollectorCellStub" class="org.dcache.cells.CellStub">
         <property name="cellEndpoint" ref="ServiceCellEndpoint"/>
         <property name="destination" value="${httpd.service.poolmanager}"/>
@@ -293,6 +301,7 @@
         <constructor-arg>
             <ref bean="DAOFactory"/>
         </constructor-arg>
+        <property name="alarmService" ref="AlarmsCellStub"/>
     </bean>
 
     <bean id="ThumbnailPanelProvider" class="org.dcache.webadmin.controller.util.ThumbnailPanelProvider">

@@ -73,7 +73,6 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
-import org.dcache.alarms.Severity;
 import org.dcache.alarms.dao.LogEntry;
 
 /**
@@ -188,7 +187,7 @@ public class AlarmJDOUtils {
      * @param before
      *            closed upper bound (<=) of date range; may be
      *            <code>null</code>.
-     * @param severity
+     * @param priority
      *            <code>null</code> will be treated as equivalent to
      *            <code>Severity.MODERATE</code>.
      * @param type
@@ -203,8 +202,8 @@ public class AlarmJDOUtils {
      *            may be <code>null</code>.
      */
     public static AlarmDAOFilter getFilter(Date after, Date before,
-                    Severity severity, String type, Boolean isAlarm,
-                    Integer rangeStart, Integer rangeEnd) {
+                                           String type, Boolean isAlarm,
+                                           Integer rangeStart, Integer rangeEnd) {
         StringBuilder f = new StringBuilder();
         StringBuilder p = new StringBuilder();
         List<Object> values = new ArrayList<>();
@@ -223,16 +222,6 @@ public class AlarmJDOUtils {
             f.append("lastUpdate<=b");
             p.append("java.lang.Long b");
             values.add(before.getTime());
-        }
-
-        if (severity != null) {
-            if (f.length() > 0) {
-                f.append(" && ");
-                p.append(", ");
-            }
-            f.append("severity>=s");
-            p.append("java.lang.Integer s");
-            values.add(severity.ordinal());
         }
 
         if (type != null) {

@@ -57,32 +57,23 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms.commandline;
+package org.dcache.alarms.shell;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
-import com.google.common.collect.ImmutableMap;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.slf4j.Marker;
 
 import java.net.InetAddress;
-import java.net.URI;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 
-import org.dcache.alarms.AlarmMarkerFactory;
-import org.dcache.alarms.IAlarms;
+import org.dcache.alarms.AlarmProperties;
+import org.dcache.alarms.PredefinedAlarm;
 import org.dcache.util.Args;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Allows the user to send an ad hoc alarm event directly to the alarm server.
@@ -104,14 +95,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *         <td>logging server uri (i.e., "dst://[host]:[port]"; port may be blank)</td>
  *     </tr>
  *     <tr>
- *         <td>-l=[level]</td>
- *         <td>NO</td>
- *         <td>severity level</td>
- *     </tr>
- *     <tr>
  *         <td>-t=[type]</td>
  *         <td>NO</td>
- *         <td>alarm subtype tag</td>
+ *         <td>alarm subtype tag; if used, this must be a {@link PredefinedAlarm}</td>
  *     </tr>
  *     <tr>
  *         <td>-s=[source]</td>
@@ -123,137 +109,45 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @author arossi
  */
 public class SendAlarm {
-
-    /**
-     * Wraps the parsing and management of commanline arguments for sending
-     * an alarm.
-     */
-    private static class AlarmArguments {
-        private static final String DEFAULT_SOURCE_PATH = "/NA/command-line";
-        private static final String DEFAULT_SOURCE = "src://" + LOCAL_HOST
-                        + DEFAULT_SOURCE_PATH;
-        private static final String DEFAULT_PORT = "60001";
-
-        private static final String LEVEL = "l";
-        private static final String TYPE = "t";
-        private static final String SOURCE = "s";
-        private static final String DESTINATION = "d";
-
-        private static final Map<String, String> HELP_MESSAGES
-            = ImmutableMap.of
-                (LEVEL,       "-l=<level>       (optional): severity level [CRITICAL, HIGH, MODERATE, LOW]",
-                 TYPE,        "-t=<type>        (optional): alarm subtype tag",
-                 SOURCE,      "-s=<source>      (optional): source info uri"
-                              + " (i.e., \"src://[host]/[domain]/[service]\")",
-                 DESTINATION, "-d=<destination> (required): logging server uri"
-                              + " (i.e., \"dst://[host]:[port]\"; port may be blank)");
-
-        private final Marker marker;
-        private final String sourceHost;
-        private final String sourceService;
-        private final String sourceDomain;
-        private final String destinationHost;
-        private final String destinationPort;
-        private final String message;
-
-        private AlarmArguments(Args parsed) throws Exception {
-            List<String> arguments = parsed.getArguments();
-            checkArgument(arguments.size() > 0,
-                            "please provide a non-zero-length alarm message"
-                            + "; -h[elp] for options");
-            Iterator<String> it = arguments.iterator();
-            StringBuilder msg = new StringBuilder(it.next());
-            while (it.hasNext()) {
-               msg.append(" ").append(it.next());
-            }
-            message = msg.toString();
-
-            String arg = parsed.getOption(DESTINATION);
-            checkNotNull(arg, "please provide a uri:"
-                            + LBRK + INDENT + HELP_MESSAGES.get(DESTINATION)
-                            + "; -h[elp] for options");
-
-            URI uri = new URI(arg);
-            destinationHost = uri.getHost();
-            checkNotNull(destinationHost,
-                            "please provide a host in the uri:"
-                            + LBRK + INDENT + HELP_MESSAGES.get(DESTINATION)
-                            + "; -h[elp] for other options");
-
-            arg = String.valueOf(uri.getPort());
-            if ("-1".equals(arg)) {
-                destinationPort = DEFAULT_PORT;
-            } else {
-                destinationPort = arg;
-            }
-
-            arg = parsed.getOption(SOURCE);
-            if (arg != null) {
-                uri = new URI(arg);
-            } else {
-                uri = new URI(DEFAULT_SOURCE);
-            }
-
-            arg = uri.getHost();
-            if (arg == null) {
-                arg = LOCAL_HOST;
-            }
-
-            sourceHost = arg;
-
-            arg = uri.getPath();
-            if (arg == null || arg.isEmpty()) {
-                arg = DEFAULT_SOURCE_PATH;
-            }
-
-            String[] parts = arg.substring(1).split("[/]");
-            sourceDomain = parts[0];
-            if (parts.length > 1) {
-                sourceService = parts[1];
-            } else {
-                sourceService = sourceDomain;
-            }
-
-            marker = AlarmMarkerFactory.getMarker(parsed.getOption(LEVEL),
-                                                  parsed.getOption(TYPE));
-        }
-    }
-
     private static final String CONFIG = "org/dcache/alarms/commandline/logback.xml";
     private static final String HELP = "help";
     private static final String HELP_ABBR = "h";
-    private static final String LOCAL_HOST;
-    private static final String LBRK = System.getProperty("line.separator");
-    private static final String INDENT = "   ";
+
+    static final String LOCAL_HOST;
+    static final String LBRK = System.getProperty("line.separator");
+    static final String INDENT = "   ";
 
     static {
         String host;
         try {
             host = InetAddress.getLocalHost().getCanonicalHostName();
         } catch (UnknownHostException e) {
-            host = IAlarms.UNKNOWN_HOST;
+            host = AlarmProperties.UNKNOWN_HOST;
         }
         LOCAL_HOST = host;
     }
 
     public static void main(String[] args) {
         try {
-            Args options = new Args(args);
-            if (options.hasOption(HELP_ABBR) || options.hasOption(HELP)) {
-                printHelp();
-            } else {
-                AlarmArguments alarmArgs = new AlarmArguments(options);
-                System.out.println("sending alarm to "
-                                + alarmArgs.destinationHost
-                                + ":" + alarmArgs.destinationPort );
-                sendAlarm(alarmArgs);
-            }
+            System.out.println(processRequest(args, null));
         } catch (Throwable t) {
             AlarmDefinitionManager.printError(t);
         }
     }
 
-    private static Logger configureLogger(String host, String port) throws JoranException {
+    public static String processRequest(String[] args, org.slf4j.Logger logger)
+                    throws Exception {
+        Args options = new Args(args);
+        if (options.hasOption(HELP_ABBR) || options.hasOption(HELP)) {
+            return printHelp();
+        } else {
+            AlarmArguments alarmArgs = new AlarmArguments(options);
+            return sendAlarm(alarmArgs, logger);
+        }
+    }
+
+    private static Logger configureLogger(String host, String port)
+                    throws JoranException {
         Logger logger = (Logger) LoggerFactory.getLogger("Commandline");
         LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
         lc.reset();
@@ -271,7 +165,7 @@ public class SendAlarm {
         return logger;
     }
 
-    private static void printHelp() {
+    private static String printHelp() {
         StringBuilder message = new StringBuilder();
         message.append("COMMAND LINE: dcache alarm ")
                .append("[<options>] message:")
@@ -286,15 +180,22 @@ public class SendAlarm {
                .append("('dcache send' automatically provides destination uri")
                .append(" based on dcache.log.server.host and dcache.log.server.port)")
                .append(LBRK);
-        System.out.println(message);
+       return message.toString();
     }
 
-    private static void sendAlarm(AlarmArguments alarmArgs) throws JoranException {
-        MDC.put(IAlarms.HOST_TAG, alarmArgs.sourceHost);
-        MDC.put(IAlarms.DOMAIN_TAG, alarmArgs.sourceDomain);
-        MDC.put(IAlarms.SERVICE_TAG, alarmArgs.sourceService);
-        Logger logger = configureLogger(alarmArgs.destinationHost,
-                                        alarmArgs.destinationPort);
+    private static String sendAlarm(AlarmArguments alarmArgs,
+                                    org.slf4j.Logger logger)
+                   throws JoranException {
+        MDC.put(AlarmProperties.HOST_TAG, alarmArgs.sourceHost);
+        MDC.put(AlarmProperties.DOMAIN_TAG, alarmArgs.sourceDomain);
+        MDC.put(AlarmProperties.SERVICE_TAG, alarmArgs.sourceService);
+        if (logger == null) {
+            logger = configureLogger(alarmArgs.destinationHost,
+                                     alarmArgs.destinationPort);
+        }
         logger.error(alarmArgs.marker, alarmArgs.message);
+        return "sending alarm to "
+            + alarmArgs.destinationHost
+            + ":" + alarmArgs.destinationPort;
     }
 }

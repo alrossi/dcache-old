@@ -67,7 +67,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Map;
 
-import org.dcache.alarms.IAlarms;
+import org.dcache.alarms.AlarmProperties;
 
 /**
  * This filter can be added to the appender responsible for sending logging
@@ -81,7 +81,7 @@ import org.dcache.alarms.IAlarms;
  *
  * @author arossi
  */
-public class RemoteMDCFilter extends Filter<ILoggingEvent> {
+public final class RemoteMDCFilter extends Filter<ILoggingEvent> {
 
     private static String host;
 
@@ -89,7 +89,7 @@ public class RemoteMDCFilter extends Filter<ILoggingEvent> {
         try {
             host = InetAddress.getLocalHost().getCanonicalHostName();
         } catch (UnknownHostException e) {
-            host = IAlarms.UNKNOWN_HOST;
+            host = AlarmProperties.UNKNOWN_HOST;
         }
     }
 
@@ -100,9 +100,9 @@ public class RemoteMDCFilter extends Filter<ILoggingEvent> {
     @Override
     public FilterReply decide(ILoggingEvent event) {
         Map<String,String> mdc = event.getMDCPropertyMap();
-        mdc.put(IAlarms.HOST_TAG, host);
-        mdc.put(IAlarms.SERVICE_TAG, mdc.get(IAlarms.CELL));
-        mdc.put(IAlarms.DOMAIN_TAG, mdc.get(IAlarms.DOMAIN));
+        mdc.put(AlarmProperties.HOST_TAG, host);
+        mdc.put(AlarmProperties.SERVICE_TAG, mdc.get(AlarmProperties.CELL));
+        mdc.put(AlarmProperties.DOMAIN_TAG, mdc.get(AlarmProperties.DOMAIN));
         return FilterReply.NEUTRAL;
     }
 }

@@ -71,7 +71,10 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import org.dcache.alarms.AlarmPriority;
 import org.dcache.alarms.dao.LogEntry;
+import org.dcache.alarms.file.FileBackedAlarmPriorityMap;
+import org.dcache.alarms.jdom.XmlBackedAlarmDefinitionsMap;
 import org.dcache.webadmin.controller.util.AlarmTableProvider;
 import org.dcache.webadmin.model.dataaccess.ILogEntryDAO;
 import org.dcache.webadmin.model.dataaccess.impl.DAOFactoryImplHelper;
@@ -131,6 +134,12 @@ public class StandardAlarmDisplayServiceTest {
         };
 
         provider = service.getDataProvider();
+        FileBackedAlarmPriorityMap pmap = new FileBackedAlarmPriorityMap();
+        XmlBackedAlarmDefinitionsMap dmap = new XmlBackedAlarmDefinitionsMap();
+        pmap.setDefinitions(dmap);
+        pmap.setPropertiesPath("dummy.properties");
+        pmap.initialize();
+        provider.setAlarmPriorityMap(pmap.getPriorityMap());
     }
 
     @Test
@@ -242,6 +251,7 @@ public class StandardAlarmDisplayServiceTest {
 
     @Test
     public void shouldSortOnCount() throws JSONException {
+        provider.setPriority(AlarmPriority.LOW.toString());
         int numberOfEntries = 20;
         Set<LogEntry> entries = givenSetOfAlarmEntriesOfLength(numberOfEntries);
         givenThatProviderAlarmsAre(entries);
@@ -281,7 +291,6 @@ public class StandardAlarmDisplayServiceTest {
             entry.setFirstArrived(System.currentTimeMillis()
                             + TimeUnit.MINUTES.toMillis(i));
             entry.setLastUpdate(entry.getFirstArrived());
-            entry.setSeverity(2);
             entry.setType("ALARM_" + i);
             entry.setReceived(n - i);
             set.add(entry);

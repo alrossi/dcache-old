@@ -6,21 +6,35 @@
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
 
     <context:property-placeholder/>
+   
+    <bean id="definitionsMap" class="org.dcache.alarms.jdom.XmlBackedAlarmDefinitionsMap"
+        init-method="initialize">
+        <property name="definitionsPath" value="${alarms.custom-definitions.path}"/>
+    </bean>
 
-    <bean id="server" class="org.dcache.alarms.server.LogEntryServerWrapper"
-        init-method="startUp" destroy-method="shutDown">
-        <property name="port" value="${alarms.net.port}"/>
-        <property name="baseDir" value="${alarms.dir}"/>
-        <property name="configFile" value="${alarms.log.config.path}"/>
-        <property name="path" value="${alarms.db.xml.path}"/>
+    <bean id="priorityMap" class="org.dcache.alarms.file.FileBackedAlarmPriorityMap"
+        init-method="initialize">
+        <property name="propertiesPath" value="${alarms.priority-mapping.path}"/>
+        <property name="defaultPriority" value="${alarms.priority-mapping.default}"/>
+        <property name="definitions" ref="definitionsMap"/>
+    </bean>
+    
+    <bean id="logEventConverter" class="org.dcache.alarms.logback.LoggingEventConverter">
+        <property name="serviceName" value="${alarms.cell.name}"/>
+        <property name="definitions" ref="definitionsMap"/>
+    </bean>
+    
+    <bean id="logEntryAppender" class="org.dcache.alarms.logback.LogEntryAppender">
+        <property name="priorityMap" ref="priorityMap"/>
+        <property name="coverter" ref="logEventConverter"/>
+        <property name="xmlPath" value="${alarms.db.xml.path}"/>
         <property name="url" value="${alarms.db.url}"/>
         <property name="user" value="${alarms.db.user}"/>
-        <property name="pass" value="${alarms.db.password}"/>
-        <property name="properties" value="${alarms.db.config.path}"/>
-        <property name="definitions" value="${alarms.definitions.path}"/>
-        <property name="level" value="${alarms.log.root-level}"/>
+        <property name="password" value="${alarms.db.password}"/>
+        <property name="dnPropertiesPath" value="${alarms.db.datanucleus-properties.path}"/>
         <property name="emailEnabled" value="${alarms.enable.email}"/>
-        <property name="historyEnabled" value="${alarms.enable.history}"/>
+        <property name="emailThreshold" value="${alarms.email.threshold}"/>
+        <property name="emailEncoding" value="${alarms.email.encoding-pattern}"/>
         <property name="smtpHost" value="${alarms.email.smtp-host}"/>
         <property name="smtpPort" value="${alarms.email.smtp-port}"/>
         <property name="startTls" value="${alarms.email.start-tls}"/>
@@ -31,6 +45,30 @@
         <property name="emailSender" value="${alarms.email.from}"/>
         <property name="emailSubject" value="${alarms.email.subject}"/>
         <property name="emailBufferSize" value="${alarms.email.buffer-size}"/>
+        <property name="historyEnabled" value="${alarms.enable.history}"/>
+        <property name="historyThreshold" value="${alarms.history.threshold}"/>
+        <property name="historyEncoding" value="${alarms.history.encoding-pattern}"/>
+        <property name="historyFile" value="${alarms.history.log-path}"/>
+        <property name="historyFileNamePattern" value="${alarms.history.log-file.pattern}"/>
+        <property name="historyMaxFileSize" value="${alarms.history.max-file-size}"/>
+        <property name="historyMaxIndex" value="${alarms.history.max-index}"/>
+        <property name="historyMinIndex" value="${alarms.history.min-index}"/>
+    </bean>
+
+    <bean id="serverSocketReceiver" class="ch.qos.logback.classic.net.server.ServerSocketReceiver">
+        <property name="port" value="${alarms.net.port}"/>
+    </bean>
+    
+    <bean id="server" class="org.dcache.alarms.logback.LogEntryServer"
+        init-method="start" destroy-method="stop">
+        <property name="receiver" ref="serverSocketReceiver"/>
+        <property name="appender" ref="logEntryAppender"/>
+    </bean>
+    
+    <bean id="admin" class="org.dcache.alarms.admin.AlarmCommandHandler">
+        <property name="alarmDefinitionsMap" ref="definitionsMap"/>
+        <property name="alarmPriorityMap" ref="priorityMap"/>
+        <property name="server" ref="server"/>
     </bean>
 
     <beans profile="rdbms">

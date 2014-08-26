@@ -283,20 +283,22 @@ Command for sending an arbitrary alarm message to the alarm server.
 
 .TP.TP
 .B SOURCE
-the host, domain and service issuing the alarm, in the form:
+The host, domain and service issuing the alarm, in the form:
 "src://[host]/[domain]/[service]"; if host is not given, it defaults
 to the hostname of the node where the command is issued; if domain is not
 given, it defaults to "NA"; if service is not given, it defaults to
 "command-line".
 
 .TP.TP
-.B LEVEL
-can be CRITICAL, HIGH (default), MODERATE, LOW.
-
-.TP.TP
 .B TYPE
-additional subtype marker; all alarms are marked ALARM; with type defined,
-the marker becomes: ALARM [type].
+Additional subtype marker; all alarms are marked ALARM; with type defined,
+the marker becomes: ALARM [type]. The type must belong to the set of
+predefined (internal) types (use the list predefined command to inspect them);
+otherwise, the alarm is marked GENERIC.
+
+.TP
+.B alarm list
+Displays list of all "marked" alarm types currently defined in dCache code.
 
 .TP
 .B alarm add

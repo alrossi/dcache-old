@@ -63,13 +63,12 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.dcache.alarms.Severity;
+import org.dcache.alarms.AlarmPriority;
 import org.dcache.alarms.dao.LogEntry;
-import org.dcache.webadmin.controller.util.AlarmTableProvider;
 import org.dcache.webadmin.model.dataaccess.ILogEntryDAO;
 
 /**
- * Session data bean, for use with {@link AlarmTableProvider}.
+ * Session data bean, for use with {@link getPriority}.
  *
  * @author arossi
  */
@@ -87,7 +86,7 @@ public class AlarmQueryBean extends AbstractRegexFilterBean<LogEntry> {
      * give this a default value so that the drop-down box displays this instead
      * of the "SELECT ONE" message
      */
-    private String severity = Severity.MODERATE.toString();
+    private String priority = AlarmPriority.CRITICAL.toString();
     private String type;
     private boolean showClosed;
     private Integer from;
@@ -126,8 +125,8 @@ public class AlarmQueryBean extends AbstractRegexFilterBean<LogEntry> {
         return from;
     }
 
-    public String getSeverity() {
-        return severity;
+    public String getPriority() {
+        return priority;
     }
 
     public String getTableTitle() {
@@ -183,8 +182,8 @@ public class AlarmQueryBean extends AbstractRegexFilterBean<LogEntry> {
         this.from = from;
     }
 
-    public void setSeverity(String severity) {
-        this.severity = severity;
+    public void setPriority(String severity) {
+        this.priority = severity;
     }
 
     public void setShowClosed(boolean showClosed) {

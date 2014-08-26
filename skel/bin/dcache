@@ -26,7 +26,8 @@ usage()
     echo "Usage: $(basename $0) [OPTION]... COMMAND"
     echo
     echo "Valid commands are:"
-    echo "   alarm send [-s=<source info uri>] [-l=<log level>] [-t=<alarm type>] <message>"
+    echo "   alarm list"
+    echo "   alarm send [-s=<source info uri>] [-t=<alarm type>] <message>"
     echo "   alarm add    (interactive)"
     echo "   alarm modify (interactive)"
     echo "   alarm remove (interactive)"
@@ -886,6 +887,10 @@ case "$1" in
         . ${lib}/alarm.sh
 
         case "$command" in
+            list)
+                list_alarms
+                ;;
+        
             send)
                 send_alarm $@
                 ;;

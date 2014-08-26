@@ -59,11 +59,20 @@ documents or software obtained from this server.
  */
 package org.dcache.webadmin.controller.impl;
 
-import java.util.Collection;
-import java.util.Date;
+import org.slf4j.LoggerFactory;
 
-import org.dcache.alarms.Severity;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Map;
+
+import diskCacheV111.util.CacheException;
+
+import org.dcache.alarms.AlarmPriority;
 import org.dcache.alarms.dao.LogEntry;
+import org.dcache.cells.CellStub;
+import org.dcache.util.CacheExceptionFactory;
+import org.dcache.vehicles.alarms.AlarmPriorityMapRequestMessage;
 import org.dcache.webadmin.controller.IAlarmDisplayService;
 import org.dcache.webadmin.controller.util.AlarmTableProvider;
 import org.dcache.webadmin.model.dataaccess.DAOFactory;
@@ -86,6 +95,11 @@ public class StandardAlarmDisplayService implements IAlarmDisplayService {
 
     private final AlarmTableProvider alarmTableProvider = new AlarmTableProvider();
     private final ILogEntryDAO access;
+    private CellStub alarmService;
+
+    public void setAlarmService(CellStub alarmService) {
+        this.alarmService = alarmService;
+    }
 
     public StandardAlarmDisplayService(DAOFactory factory) {
         access = checkNotNull(factory.getLogEntryDAO());
@@ -93,13 +107,25 @@ public class StandardAlarmDisplayService implements IAlarmDisplayService {
 
     @Override
     public AlarmTableProvider getDataProvider() {
+        alarmTableProvider.setAlarmPriorityMap(getAlarmPriorityMapping());
         return alarmTableProvider;
     }
 
-
-    @Override
-    public Collection<String> getPredefinedAlarmTypes() {
-        return access.getEntryTypes();
+    private Map<String, AlarmPriority> getAlarmPriorityMapping() {
+        AlarmPriorityMapRequestMessage request;
+        try {
+            request = alarmService.sendAndWait(new AlarmPriorityMapRequestMessage());
+            int code = request.getReturnCode();
+            if (code != 0) {
+                throw CacheExceptionFactory.exceptionOf(code, String.valueOf(request.getErrorObject()));
+            }
+            return request.getMap();
+        } catch (CacheException | InterruptedException t) {
+            LoggerFactory.getLogger(this.getClass())
+                         .error("Could not get alarm priority map: {}",
+                                 t.getMessage());
+        }
+        return Collections.EMPTY_MAP;
     }
 
     public boolean isConnected() {
@@ -121,16 +147,13 @@ public class StandardAlarmDisplayService implements IAlarmDisplayService {
         AlarmTableProvider alarmTableProvider = getDataProvider();
         Date after = alarmTableProvider.getAfter();
         Date before = alarmTableProvider.getBefore();
-        String severityStr = alarmTableProvider.getSeverity();
-        Severity severity = severityStr == null ? null :
-            Severity.valueOf(severityStr);
         String type = alarmTableProvider.getType();
         Boolean alarm = alarmTableProvider.isAlarm();
         Integer rangeStart = alarmTableProvider.getFrom();
         Integer rangeEnd = alarmTableProvider.getTo();
 
         AlarmDAOFilter filter
-            = AlarmJDOUtils.getFilter(after, before, severity, type,
+            = AlarmJDOUtils.getFilter(after, before, type,
                                       alarm, rangeStart, rangeEnd);
         Collection<LogEntry> refreshed = access.get(filter);
         alarmTableProvider.setEntries(refreshed);

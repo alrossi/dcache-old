@@ -59,38 +59,60 @@ documents or software obtained from this server.
  */
 package org.dcache.alarms;
 
-import com.google.common.collect.ImmutableList;
-
-import java.util.List;
-
 /**
- * For marking alarm level.
+ * Convenience interface for properties in common between the wire object and
+ * the storage object for Alarm processing.
  *
  * @author arossi
  */
-public enum Severity {
-    LOW, MODERATE, HIGH, CRITICAL;
-
-    private static final List<String> labels = ImmutableList.of(
-                    LOW.toString(), MODERATE.toString(),
-                    HIGH.toString(), CRITICAL.toString());
-
-    public static List<String> asList() {
-        return labels;
-    }
+public interface AlarmProperties {
+    /*
+     * Shared alarm property/field names
+     */
+    final String KEY_TAG = "key";
+    final String TIMESTAMP_TAG = "timestamp";
+    final String TYPE_TAG = "type";
+    final String HOST_TAG = "host";
+    final String DOMAIN_TAG = "domain";
+    final String SERVICE_TAG = "service";
+    final String MESSAGE_TAG = "message";
+    final String GROUP_TAG = "group";
+    final int GROUP_TAG_LENGTH = GROUP_TAG.length();
 
     /*
-     * It is cleaner to persist the enum as a number; this allows restoration of
-     * the enum from the underlying store.
+     * The base marker; all alarms must carry this marker.
      */
-    public static Severity fromOrdinal(Integer severity) {
-        if (severity != null) {
-            for (Severity value : Severity.values()) {
-                if (severity == value.ordinal()) {
-                    return value;
-                }
-            }
-        }
-        return MODERATE;
-    }
+    final String ALARM_MARKER = "ALARM";
+
+    /*
+     * The type marker; submarker indicates the alarm type.
+     */
+    final String ALARM_MARKER_TYPE = "ALARM_TYPE";
+
+    /*
+     * The key marker; submarker specifies the key properties determining
+     * alarm identity.
+     */
+    final String ALARM_MARKER_KEY = "ALARM_KEY";
+
+    /*
+     * Placeholder for host name which cannot be resolved.
+     */
+    final String UNKNOWN_HOST = "<unknown host>";
+
+    /*
+     * Placeholder for host name which cannot be resolved.
+     */
+    final String UNKNOWN_SERVICE = "<unknown service>";
+
+    /*
+     * Placeholder for host name which cannot be resolved.
+     */
+    final String UNKNOWN_DOMAIN = "<unknown domain>";
+
+    /*
+     * These are defined elsewhere for use in the MDC.
+     */
+    final String CELL = "cells.cell";
+    final String DOMAIN = "cells.domain";
 }

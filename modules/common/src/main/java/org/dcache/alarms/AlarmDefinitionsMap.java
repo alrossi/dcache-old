@@ -59,65 +59,64 @@ documents or software obtained from this server.
  */
 package org.dcache.alarms;
 
-import com.google.common.base.Preconditions;
-import org.slf4j.IMarkerFactory;
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
-
-import java.util.Iterator;
+import java.io.IOException;
+import java.io.Writer;
+import java.util.Collection;
+import java.util.NoSuchElementException;
+import java.util.Properties;
 
 /**
- * Provides internal API for constructing alarm markers.
+ * Defines the component responsible for mapping custom alarm types
+ * to their definitions.
  *
  * @author arossi
  */
-public final class AlarmMarkerFactory {
+public interface AlarmDefinitionsMap<T extends AlarmDefinition> {
 
-    private static final IMarkerFactory factory
-        = MarkerFactory.getIMarkerFactory();
+    String PATH = "alarm-definitions-path";
 
-    public static Marker getMarker() {
-        return getMarker(null, (String[])null);
-    }
+    /**
+     * @param definition of custom alarm.
+     */
+    void add(T definition);
 
-    public static Marker getMarker(PredefinedAlarm type) {
-        return getMarker(type, (String[])null);
-    }
+    /**
+     * @param  type alarm name.
+     * @return definition to which this is mapped.
+     */
+    T getDefinition(String type) throws NoSuchElementException;
 
-    public static Marker getMarker(PredefinedAlarm type,
-                                   String ... keywords) {
-        if (type == null) {
-            type = PredefinedAlarm.GENERIC;
-        }
+    /**
+     * @return an object which can be included in a serializable message.
+     *         The Collection should be unmodifiable.
+     */
+    Collection<T> getDefinitions();
 
-        Marker alarmMarker = factory.getDetachedMarker(AlarmProperties.ALARM_MARKER);
-        Marker typeMarker = factory.getDetachedMarker(AlarmProperties.ALARM_MARKER_TYPE);
-        Marker alarmType = factory.getDetachedMarker(type.toString());
-        typeMarker.add(alarmType);
-        alarmMarker.add(typeMarker);
+    /**
+     * @param writer e.g., string or file
+     *  to which to emit sorted string list of the entire alarms definition map.
+     */
+    void getSortedList(Writer writer) throws IOException;
 
-        if (keywords != null) {
-            Marker keyMarker
-                = factory.getDetachedMarker(AlarmProperties.ALARM_MARKER_KEY);
-            for (String keyword: keywords) {
-                Marker alarmKey = factory.getDetachedMarker(keyword);
-                keyMarker.add(alarmKey);
-            }
-            alarmMarker.add(keyMarker);
-        }
+    /**
+     * Should locate all external alarm types
+     * and load their definitions.
+     *
+     * @param env any special settings which should override current ones.
+     */
+    void load(Properties env) throws Exception;
 
-        return alarmMarker;
-    }
+    /**
+     * @param alarmType type name.
+     * @return definition removed from the map.
+     */
+    T removeDefinition(String alarmType);
 
-    public static Marker getSubmarker(Marker marker, String name) {
-        Preconditions.checkNotNull(marker);
-        Preconditions.checkNotNull(name);
-        for (Iterator<Marker> m = marker.iterator(); m.hasNext();) {
-            Marker next = m.next();
-            if (name.equals(next.getName())) {
-                return next;
-            }
-        }
-        return null;
-    }
+    /**
+     * Should save the current mapping to some form of persistent
+     * storage for future reloading.
+     *
+     * @param env any special settings which should override current ones.
+     */
+    void save(Properties env) throws Exception;
 }

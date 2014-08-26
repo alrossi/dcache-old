@@ -67,7 +67,9 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
+import org.dcache.alarms.AlarmPriority;
 import org.dcache.alarms.dao.LogEntry;
 import org.dcache.webadmin.model.dataaccess.ILogEntryDAO;
 import org.dcache.webadmin.view.beans.AbstractRegexFilterBean;
@@ -85,6 +87,15 @@ public class AlarmTableProvider extends
                 AbstractRegexFilteringProvider<LogEntry, String> {
     private static final long serialVersionUID = 402824287543303781L;
 
+    /**
+     *  Priority mappings.
+     */
+    private Map<String, AlarmPriority> priorityMap;
+
+    public Map<String, AlarmPriority> getAlarmPriorityMap() {
+        return priorityMap;
+    }
+
     public Date getAfter() {
         return getAlarmQueryBean().getAfter();
     }
@@ -101,8 +112,8 @@ public class AlarmTableProvider extends
         return getAlarmQueryBean().getFrom();
     }
 
-    public String getSeverity() {
-        return getAlarmQueryBean().getSeverity();
+    public String getPriority() {
+        return getAlarmQueryBean().getPriority();
     }
 
     public String getTableTitle() {
@@ -149,8 +160,8 @@ public class AlarmTableProvider extends
         getAlarmQueryBean().setFrom(from);
     }
 
-    public void setSeverity(String severity) {
-        getAlarmQueryBean().setSeverity(severity);
+    public void setPriority(String priority) {
+        getAlarmQueryBean().setPriority(priority);
     }
 
     public void setShowClosed(boolean showClosed) {
@@ -182,29 +193,46 @@ public class AlarmTableProvider extends
                     property = sort.getProperty();
                 }
 
+                /*
+                 * sort by priority first
+                 */
+                int priority0 = -1;
+                if (alarm0.isAlarm()) {
+                    priority0 = priorityMap.get(alarm0.getType()).ordinal();
+                }
+
+                int priority1 = -1;
+                if (alarm1.isAlarm()) {
+                    priority1 = priorityMap.get(alarm1.getType()).ordinal();
+                }
+
+                int priority = compare(dir, priority0, priority1);
+                if (priority != 0) {
+                    return priority;
+                }
+
                 switch (property) {
                     case "first":
                         return compare(dir, alarm0.getDateOfFirstArrival(),
-                                        alarm1.getDateOfFirstArrival());
+                                            alarm1.getDateOfFirstArrival());
                     case "last":
                         return compare(dir, alarm0.getDateOfLastUpdate(),
-                                        alarm1.getDateOfLastUpdate());
-                    case "severity":
-                        return compare(dir, alarm0.getSeverity(),
-                                        alarm1.getSeverity());
+                                            alarm1.getDateOfLastUpdate());
                     case "type":
-                        return compare(dir, alarm0.getType(), alarm1.getType());
+                        return compare(dir, alarm0.getType(),
+                                            alarm1.getType());
                     case "count":
                         return compare(dir, alarm0.getReceived(),
-                                        alarm1.getReceived());
+                                            alarm1.getReceived());
                     case "host":
-                        return compare(dir, alarm0.getHost(), alarm1.getHost());
+                        return compare(dir, alarm0.getHost(),
+                                            alarm1.getHost());
                     case "domain":
                         return compare(dir, alarm0.getDomain(),
-                                        alarm1.getDomain());
+                                            alarm1.getDomain());
                     case "service":
                         return compare(dir, alarm0.getService(),
-                                        alarm1.getService());
+                                            alarm1.getService());
                     default:
                         return 0;
                 }
@@ -228,6 +256,10 @@ public class AlarmTableProvider extends
         getAlarmQueryBean().delete(access);
     }
 
+    public void setAlarmPriorityMap(Map<String, AlarmPriority> priorityMap) {
+        this.priorityMap = priorityMap;
+    }
+
     public boolean shouldDelete(LogEntry entry) {
         return getAlarmQueryBean().shouldDelete(entry);
     }
@@ -244,6 +276,7 @@ public class AlarmTableProvider extends
     protected List<LogEntry> getFiltered() {
         List<LogEntry> entries = getRegexBean().getEntries();
         List<LogEntry> filtered = new ArrayList<>(entries);
+        filterOnPriority(filtered);
         filterOnExpression(filtered);
         filterOnClosed(filtered);
         return filtered;
@@ -256,6 +289,23 @@ public class AlarmTableProvider extends
     @Override
     protected AbstractRegexFilterBean<LogEntry> getRegexBean() {
         return WebAdminInterfaceSession.getAlarmQueryBean();
+    }
+
+    /**
+     * @param alarms
+     *            assumed to be a thread-local copy, hence not synchronized.
+     */
+    private void filterOnPriority(List<LogEntry> alarms) {
+        int threshold = AlarmPriority.valueOf(getPriority()).ordinal();
+        for (Iterator<LogEntry> it = alarms.iterator(); it.hasNext();) {
+            LogEntry entry = it.next();
+            if (entry.isAlarm()) {
+                int priority = priorityMap.get(entry.getType()).ordinal();
+                if (priority < threshold) {
+                    it.remove();
+                }
+            }
+        }
     }
 
     /**

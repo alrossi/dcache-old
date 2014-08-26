@@ -59,65 +59,14 @@ documents or software obtained from this server.
  */
 package org.dcache.alarms;
 
-import com.google.common.base.Preconditions;
-import org.slf4j.IMarkerFactory;
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
-
-import java.util.Iterator;
-
 /**
- * Provides internal API for constructing alarm markers.
+ * All alarms must implement this interface.
  *
  * @author arossi
  */
-public final class AlarmMarkerFactory {
-
-    private static final IMarkerFactory factory
-        = MarkerFactory.getIMarkerFactory();
-
-    public static Marker getMarker() {
-        return getMarker(null, (String[])null);
-    }
-
-    public static Marker getMarker(PredefinedAlarm type) {
-        return getMarker(type, (String[])null);
-    }
-
-    public static Marker getMarker(PredefinedAlarm type,
-                                   String ... keywords) {
-        if (type == null) {
-            type = PredefinedAlarm.GENERIC;
-        }
-
-        Marker alarmMarker = factory.getDetachedMarker(AlarmProperties.ALARM_MARKER);
-        Marker typeMarker = factory.getDetachedMarker(AlarmProperties.ALARM_MARKER_TYPE);
-        Marker alarmType = factory.getDetachedMarker(type.toString());
-        typeMarker.add(alarmType);
-        alarmMarker.add(typeMarker);
-
-        if (keywords != null) {
-            Marker keyMarker
-                = factory.getDetachedMarker(AlarmProperties.ALARM_MARKER_KEY);
-            for (String keyword: keywords) {
-                Marker alarmKey = factory.getDetachedMarker(keyword);
-                keyMarker.add(alarmKey);
-            }
-            alarmMarker.add(keyMarker);
-        }
-
-        return alarmMarker;
-    }
-
-    public static Marker getSubmarker(Marker marker, String name) {
-        Preconditions.checkNotNull(marker);
-        Preconditions.checkNotNull(name);
-        for (Iterator<Marker> m = marker.iterator(); m.hasNext();) {
-            Marker next = m.next();
-            if (name.equals(next.getName())) {
-                return next;
-            }
-        }
-        return null;
-    }
+public interface Alarm {
+    /**
+     * @return the name of this type of alarm.
+     */
+    String getType();
 }

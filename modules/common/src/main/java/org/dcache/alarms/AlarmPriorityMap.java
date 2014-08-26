@@ -59,65 +59,77 @@ documents or software obtained from this server.
  */
 package org.dcache.alarms;
 
-import com.google.common.base.Preconditions;
-import org.slf4j.IMarkerFactory;
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
-
-import java.util.Iterator;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Properties;
 
 /**
- * Provides internal API for constructing alarm markers.
+ * Defines the component responsible for mapping alarms or alerts to
+ * a priority level.
  *
  * @author arossi
  */
-public final class AlarmMarkerFactory {
+public interface AlarmPriorityMap {
+    /**
+     * In case the implementation uses a local path
+     */
+    String PATH = "alarm-priorities-path";
 
-    private static final IMarkerFactory factory
-        = MarkerFactory.getIMarkerFactory();
+    /**
+     * @return current default priority.
+     */
+    AlarmPriority getDefaultPriority();
 
-    public static Marker getMarker() {
-        return getMarker(null, (String[])null);
-    }
+    /**
+     * @param  type alarm name.
+     * @return priority to which this is mapped.
+     * @throws NoSuchElementException if there is no current mapping.
+     */
+    AlarmPriority getPriority(String type) throws NoSuchElementException;
 
-    public static Marker getMarker(PredefinedAlarm type) {
-        return getMarker(type, (String[])null);
-    }
+    /**
+     * @return an object which can be included in a serializable message.
+     *         The map should be unmodifiable.
+     */
+    Map<String, AlarmPriority> getPriorityMap();
 
-    public static Marker getMarker(PredefinedAlarm type,
-                                   String ... keywords) {
-        if (type == null) {
-            type = PredefinedAlarm.GENERIC;
-        }
+    /**
+     * @return sorted string list of the entire alarms-to-priority map.
+     */
+    String getSortedList();
 
-        Marker alarmMarker = factory.getDetachedMarker(AlarmProperties.ALARM_MARKER);
-        Marker typeMarker = factory.getDetachedMarker(AlarmProperties.ALARM_MARKER_TYPE);
-        Marker alarmType = factory.getDetachedMarker(type.toString());
-        typeMarker.add(alarmType);
-        alarmMarker.add(typeMarker);
+    /**
+     * Should locate all internal and external alarm types
+     * and load their type names.  It should then override
+     * the default priority with any saved settings.
+     *
+     * @param env any special settings which should override current ones.
+     */
+    void load(Properties env) throws Exception;
 
-        if (keywords != null) {
-            Marker keyMarker
-                = factory.getDetachedMarker(AlarmProperties.ALARM_MARKER_KEY);
-            for (String keyword: keywords) {
-                Marker alarmKey = factory.getDetachedMarker(keyword);
-                keyMarker.add(alarmKey);
-            }
-            alarmMarker.add(keyMarker);
-        }
+    /**
+     * Sets all currently loaded types to the current default.
+     */
+    void restoreAllToDefaultPriority();
 
-        return alarmMarker;
-    }
+    /**
+     * Should save the current mapping to some form of persistent
+     * storage for future reloading.
+     *
+     * @param env any special settings which should override current ones.
+     */
+    void save(Properties env) throws Exception;
 
-    public static Marker getSubmarker(Marker marker, String name) {
-        Preconditions.checkNotNull(marker);
-        Preconditions.checkNotNull(name);
-        for (Iterator<Marker> m = marker.iterator(); m.hasNext();) {
-            Marker next = m.next();
-            if (name.equals(next.getName())) {
-                return next;
-            }
-        }
-        return null;
-    }
+    /**
+     * @param priority to use as default.
+     */
+    void setDefaultPriority(String priority);
+
+    /**
+     * @param alarm defined via custom definition or predefined enum.
+     * @param priority to which this is mapped.
+     * @throws NoSuchElementException if there is no current mapping.
+     */
+    void setPriority(String alarm, AlarmPriority priority) throws NoSuchElementException;
+
 }
