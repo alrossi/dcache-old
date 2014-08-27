@@ -103,8 +103,9 @@ public final class AlarmCommandHandler implements CellCommandListener {
                                    + "definition for future reloading, "
                                    + "use the 'definitions save' command.")
     class DefinitionAddCommand implements Callable<String> {
-        @Argument(required = true,
-                  usage="Name of alarm type.")
+        @Option(name = "type",
+                usage = "Name of alarm type.",
+                required=true)
         String alarmType;
 
         @Option(name = "keyWords",
@@ -154,6 +155,8 @@ public final class AlarmCommandHandler implements CellCommandListener {
                 definition.validate();
             } catch (AlarmDefinitionValidationException e) {
                 return "Invalid definition: " + e.getMessage();
+            } catch (Exception e) {
+                return "Failed to create defintion: " + e.getMessage();
             }
 
             alarmDefinitionsMap.add(definition);
@@ -267,15 +270,18 @@ public final class AlarmCommandHandler implements CellCommandListener {
              description = "To save this definition for future reloading, "
                                    + "use the 'definitions save' command.")
     class DefinitionSetCommand implements Callable<String> {
-        @Argument(required = true,
+        @Argument(index=0,
+                  required = true,
                   usage="Name of alarm type.")
         String alarmType;
 
-        @Argument(required = true,
+        @Argument(index=1,
+                  required = true,
                   usage="Name of alarm attribute.")
         String name;
 
-        @Argument(required = true,
+        @Argument(index=2,
+                  required = true,
                   usage="Value of alarm attribute.")
         String value;
 
@@ -299,12 +305,47 @@ public final class AlarmCommandHandler implements CellCommandListener {
         }
     }
 
+    @Command(name = "definition unset",
+             hint = "Unset the attribute of an existing alarm definition.",
+             description = "To save this definition for future reloading, "
+                                   + "use the 'definitions save' command.")
+    class DefinitionUnsetCommand implements Callable<String> {
+        @Argument(index=0,
+                  required = true,
+                  usage="Name of alarm type.")
+        String alarmType;
+
+        @Argument(index=1,
+                  required = true,
+                  usage="Name of alarm attribute.")
+        String name;
+
+        public String call() throws Exception {
+            AlarmDefinition definition;
+
+            try {
+                definition = alarmDefinitionsMap.getDefinition(alarmType);
+            } catch (NoSuchElementException e) {
+                return e.getMessage();
+            }
+
+            try {
+                definition.validateAndSet(name, AlarmDefinition.RM);
+                definition.validate();
+            } catch (AlarmDefinitionValidationException e) {
+                return "Invalid definition: " + e.getMessage();
+            }
+
+            return "Modified:\n\n" + definition.toString();
+        }
+    }
+
     @Command(name = "priority get default",
              hint = "Get the current default alarm priority value.")
     class PriorityGetDefaultCommand implements Callable<String> {
         public String call() throws Exception {
             return "Current default priority value is "
-                            + alarmPriorityMap.getDefaultPriority();
+                            + alarmPriorityMap.getDefaultPriority() + ".";
         }
     }
 
@@ -325,7 +366,7 @@ public final class AlarmCommandHandler implements CellCommandListener {
 
             try {
                 return "Alarm type " + type + " currently set to "
-                                     + alarmPriorityMap.getPriority(type);
+                                     + alarmPriorityMap.getPriority(type) + ".";
             } catch (NoSuchElementException noSuchDef) {
                 return noSuchDef.getMessage();
             }
@@ -397,12 +438,14 @@ public final class AlarmCommandHandler implements CellCommandListener {
                                     + "this mapping for future reloading, use the "
                                     + "'priority save' command.")
     class PrioritySetCommand implements Callable<String> {
-        @Argument(required = true,
+        @Argument(index=0,
+                  required = true,
                   usage="Name of alarm type (case sensitive); by convention "
                                   + "internal alarm types are in upper case.")
         String type;
 
-        @Argument(required = true,
+        @Argument(index=1,
+                  required = true,
                   usage="New priority level to which to set this alarm.",
                   valueSpec="LOW|MODERATE|HIGH|CRITICAL ")
         String priority;
@@ -428,7 +471,7 @@ public final class AlarmCommandHandler implements CellCommandListener {
 
         public String call() throws Exception {
             alarmPriorityMap.setDefaultPriority(priority);
-            return "Default priority value is now set to " + priority;
+            return "Default priority value is now set to " + priority+ ".";
         }
     }
 
@@ -458,12 +501,15 @@ public final class AlarmCommandHandler implements CellCommandListener {
             List<String> arglist = new ArrayList<>();
 
             if (Strings.emptyToNull(type) != null) {
-                arglist.add(type);
+                arglist.add("-" + AlarmProperties.TYPE_OPT + "=\"" + type + "\"");
             }
 
             if (Strings.emptyToNull(srcUri) != null) {
-                arglist.add(srcUri);
+                arglist.add("-" + AlarmProperties.SOURCE_OPT + "=\"" + srcUri + "\"");
             }
+
+            String dstUri = "dst://" + serverHost + ":" + serverPort;
+            arglist.add("-" + AlarmProperties.DESTINATION_OPT + "=\"" + dstUri + "\"");
 
             arglist.add(message);
 
@@ -477,7 +523,7 @@ public final class AlarmCommandHandler implements CellCommandListener {
     class ServerStartCommand implements Callable<String> {
         public String call() throws Exception {
             server.start();
-            return "Alarm service has been brought on line";
+            return "Alarm service has been brought on line.";
         }
     }
 
@@ -489,7 +535,7 @@ public final class AlarmCommandHandler implements CellCommandListener {
 
         public String call() throws Exception {
             server.stop();
-            return "Alarm service has been taken off line";
+            return "Alarm service has been taken off line.";
         }
     }
 
@@ -498,6 +544,8 @@ public final class AlarmCommandHandler implements CellCommandListener {
     private LogEntryServer server;
     private AlarmPriorityMap alarmPriorityMap;
     private AlarmDefinitionsMap alarmDefinitionsMap;
+    private String serverHost;
+    private Integer serverPort;
 
     public void setAlarmDefinitionsMap(AlarmDefinitionsMap alarmDefinitionsMap) {
         this.alarmDefinitionsMap = alarmDefinitionsMap;
@@ -509,6 +557,14 @@ public final class AlarmCommandHandler implements CellCommandListener {
 
     public void setServer(LogEntryServer server) {
         this.server = server;
+    }
+
+    public void setServerHost(String serverHost) {
+        this.serverHost = serverHost;
+    }
+
+    public void setServerPort(Integer serverPort) {
+        this.serverPort = serverPort;
     }
 
     private String listCustomDefinitions() throws IOException {

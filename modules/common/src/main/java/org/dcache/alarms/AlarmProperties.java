@@ -69,50 +69,57 @@ public interface AlarmProperties {
     /*
      * Shared alarm property/field names
      */
-    final String KEY_TAG = "key";
-    final String TIMESTAMP_TAG = "timestamp";
-    final String TYPE_TAG = "type";
-    final String HOST_TAG = "host";
-    final String DOMAIN_TAG = "domain";
-    final String SERVICE_TAG = "service";
-    final String MESSAGE_TAG = "message";
-    final String GROUP_TAG = "group";
-    final int GROUP_TAG_LENGTH = GROUP_TAG.length();
+    String KEY_TAG = "key";
+    String TIMESTAMP_TAG = "timestamp";
+    String TYPE_TAG = "type";
+    String HOST_TAG = "host";
+    String DOMAIN_TAG = "domain";
+    String SERVICE_TAG = "service";
+    String MESSAGE_TAG = "message";
+    String GROUP_TAG = "group";
+    int GROUP_TAG_LENGTH = GROUP_TAG.length();
 
     /*
      * The base marker; all alarms must carry this marker.
      */
-    final String ALARM_MARKER = "ALARM";
+    String ALARM_MARKER = "ALARM";
 
     /*
      * The type marker; submarker indicates the alarm type.
      */
-    final String ALARM_MARKER_TYPE = "ALARM_TYPE";
+    String ALARM_MARKER_TYPE = "ALARM_TYPE";
 
     /*
      * The key marker; submarker specifies the key properties determining
      * alarm identity.
      */
-    final String ALARM_MARKER_KEY = "ALARM_KEY";
+    String ALARM_MARKER_KEY = "ALARM_KEY";
 
     /*
      * Placeholder for host name which cannot be resolved.
      */
-    final String UNKNOWN_HOST = "<unknown host>";
+    String UNKNOWN_HOST = "<unknown host>";
 
     /*
      * Placeholder for host name which cannot be resolved.
      */
-    final String UNKNOWN_SERVICE = "<unknown service>";
+    String UNKNOWN_SERVICE = "<unknown service>";
 
     /*
      * Placeholder for host name which cannot be resolved.
      */
-    final String UNKNOWN_DOMAIN = "<unknown domain>";
+    String UNKNOWN_DOMAIN = "<unknown domain>";
 
     /*
      * These are defined elsewhere for use in the MDC.
      */
-    final String CELL = "cells.cell";
-    final String DOMAIN = "cells.domain";
+    String CELL = "cells.cell";
+    String DOMAIN = "cells.domain";
+
+    /*
+     * Command-line options for these properties.
+     */
+    String TYPE_OPT = "t";
+    String SOURCE_OPT = "s";
+    String DESTINATION_OPT = "d";
 }

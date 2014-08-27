@@ -119,6 +119,7 @@ public final class FileBackedAlarmPriorityMap
 
     @Override
     public Map<String, AlarmPriority> getPriorityMap() {
+        refreshDefinitions();
         return ImmutableMap.copyOf(internalMap);
     }
 
@@ -148,12 +149,7 @@ public final class FileBackedAlarmPriorityMap
             internalMap.put(alarm.getType(), defaultPriority);
         }
 
-        Collection<AlarmDefinition> custom = definitions.getDefinitions();
-
-        for (Alarm alarm: custom) {
-            internalMap.put(alarm.getType(), defaultPriority);
-        }
-
+        refreshDefinitions();
         overrideFromSavedMappings(env);
     }
 
@@ -230,6 +226,14 @@ public final class FileBackedAlarmPriorityMap
             String key = property.toString();
             String value = properties.getProperty(key);
             internalMap.put(key, AlarmPriority.valueOf(value));
+        }
+    }
+
+    private void refreshDefinitions() {
+        Collection<AlarmDefinition> custom = definitions.getDefinitions();
+
+        for (Alarm alarm: custom) {
+            internalMap.put(alarm.getType(), defaultPriority);
         }
     }
 }

@@ -63,17 +63,11 @@ import org.apache.wicket.util.tester.WicketTester;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.dcache.alarms.dao.LogEntry;
-import org.dcache.alarms.file.FileBackedAlarmPriorityMap;
-import org.dcache.alarms.jdom.XmlBackedAlarmDefinitionsMap;
 import org.dcache.webadmin.controller.IAlarmDisplayService;
-import org.dcache.webadmin.controller.impl.StandardAlarmDisplayService;
-import org.dcache.webadmin.controller.util.AlarmTableProvider;
+import org.dcache.webadmin.controller.impl.TestAlarmDisplayService;
 import org.dcache.webadmin.model.dataaccess.DAOFactory;
 import org.dcache.webadmin.model.dataaccess.impl.DAOFactoryImplHelper;
 import org.dcache.webadmin.view.WebAdminInterface;
-import org.dcache.webadmin.view.beans.AbstractRegexFilterBean;
-import org.dcache.webadmin.view.beans.AlarmQueryBean;
 import org.dcache.webadmin.view.pages.ApplicationFactoryHelper;
 import org.dcache.webadmin.view.pages.login.LogIn;
 
@@ -91,44 +85,7 @@ public class AlarmsPageTest {
         WebAdminInterface authenticatedWebApp =
                 ApplicationFactoryHelper.createSignedInAsAdminApplication();
         DAOFactory daoFactory = new DAOFactoryImplHelper();
-
-        alarmService = new StandardAlarmDisplayService(daoFactory) {
-            private static final long serialVersionUID = -260651971282691608L;
-
-            private AlarmQueryBean alarmQueryBean = new AlarmQueryBean();
-
-            private AlarmTableProvider testProvider = new AlarmTableProvider() {
-                private static final long serialVersionUID = 3077908716332980559L;
-
-                @Override
-                protected AlarmQueryBean getAlarmQueryBean() {
-                    return alarmQueryBean;
-                }
-
-                @Override
-                protected AbstractRegexFilterBean<LogEntry> getRegexBean() {
-                    return alarmQueryBean;
-                }
-            };
-
-            @Override
-            public boolean isConnected() {
-                return true;
-            }
-
-            @Override
-            public AlarmTableProvider getDataProvider() {
-                return testProvider;
-            }
-        };
-
-        AlarmTableProvider provider = alarmService.getDataProvider();
-        FileBackedAlarmPriorityMap pmap = new FileBackedAlarmPriorityMap();
-        XmlBackedAlarmDefinitionsMap dmap = new XmlBackedAlarmDefinitionsMap();
-        pmap.setDefinitions(dmap);
-        pmap.setPropertiesPath("dummy.properties");
-        pmap.initialize();
-        provider.setAlarmPriorityMap(pmap.getPriorityMap());
+        alarmService = new TestAlarmDisplayService(daoFactory);
         authenticatedWebApp.setAlarmDisplayService(alarmService);
         tester = new WicketTester(authenticatedWebApp);
         tester.startPage(AlarmsPage.class);

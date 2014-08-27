@@ -46,7 +46,9 @@ enddefine
 
 define env startService.exe enddefine
   create org.dcache.cells.UniversalSpringCell ${alarms.cell.name} \
-        "classpath:org/dcache/alarms/server/alarms.xml -profiles=${alarms.db.type}"
+        "classpath:org/dcache/alarms/server/alarms.xml \
+        -profiles=${alarms.db.type} \
+        -export=true"
 enddefine
 
 onerror continue

@@ -93,39 +93,20 @@ public class StandardAlarmDisplayService implements IAlarmDisplayService {
 
     private static final long serialVersionUID = 6949169602783225125L;
 
-    private final AlarmTableProvider alarmTableProvider = new AlarmTableProvider();
+    private final AlarmTableProvider alarmTableProvider;
     private final ILogEntryDAO access;
-    private CellStub alarmService;
+    private final CellStub alarmService;
 
-    public void setAlarmService(CellStub alarmService) {
-        this.alarmService = alarmService;
-    }
-
-    public StandardAlarmDisplayService(DAOFactory factory) {
+    public StandardAlarmDisplayService(DAOFactory factory, CellStub alarmService) {
         access = checkNotNull(factory.getLogEntryDAO());
+        this.alarmService = alarmService;
+        alarmTableProvider = new AlarmTableProvider();
     }
 
     @Override
     public AlarmTableProvider getDataProvider() {
-        alarmTableProvider.setAlarmPriorityMap(getAlarmPriorityMapping());
+        alarmTableProvider.setMap(getPriorityMap());
         return alarmTableProvider;
-    }
-
-    private Map<String, AlarmPriority> getAlarmPriorityMapping() {
-        AlarmPriorityMapRequestMessage request;
-        try {
-            request = alarmService.sendAndWait(new AlarmPriorityMapRequestMessage());
-            int code = request.getReturnCode();
-            if (code != 0) {
-                throw CacheExceptionFactory.exceptionOf(code, String.valueOf(request.getErrorObject()));
-            }
-            return request.getMap();
-        } catch (CacheException | InterruptedException t) {
-            LoggerFactory.getLogger(this.getClass())
-                         .error("Could not get alarm priority map: {}",
-                                 t.getMessage());
-        }
-        return Collections.EMPTY_MAP;
     }
 
     public boolean isConnected() {
@@ -144,7 +125,8 @@ public class StandardAlarmDisplayService implements IAlarmDisplayService {
         update();
         delete();
 
-        AlarmTableProvider alarmTableProvider = getDataProvider();
+        getDataProvider();
+
         Date after = alarmTableProvider.getAfter();
         Date before = alarmTableProvider.getBefore();
         String type = alarmTableProvider.getType();
@@ -169,5 +151,23 @@ public class StandardAlarmDisplayService implements IAlarmDisplayService {
 
     private void update() {
         getDataProvider().update(access);
+    }
+
+    protected Map<String, AlarmPriority> getPriorityMap() {
+        AlarmPriorityMapRequestMessage request
+            = new AlarmPriorityMapRequestMessage();
+        try {
+            request = alarmService.sendAndWait(request);
+            int code = request.getReturnCode();
+            if (code != 0) {
+                throw CacheExceptionFactory.exceptionOf(code, String.valueOf(request.getErrorObject()));
+            }
+            return request.getMap();
+        } catch (CacheException | InterruptedException t) {
+            LoggerFactory.getLogger(this.getClass())
+                         .error("Could not get alarm priority map: {}",
+                                 t.getMessage());
+        }
+        return Collections.EMPTY_MAP;
     }
 }

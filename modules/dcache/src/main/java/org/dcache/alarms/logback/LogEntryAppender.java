@@ -59,6 +59,7 @@ documents or software obtained from this server.
  */
 package org.dcache.alarms.logback;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.PatternLayout;
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.net.SMTPAppender;
@@ -87,8 +88,8 @@ import java.util.Properties;
 
 import org.dcache.alarms.AlarmPriority;
 import org.dcache.alarms.AlarmPriorityMap;
-import org.dcache.alarms.dao.LogEntryDAO;
 import org.dcache.alarms.dao.LogEntry;
+import org.dcache.alarms.dao.LogEntryDAO;
 import org.dcache.alarms.dao.impl.DataNucleusLogEntryStore;
 import org.dcache.db.AlarmEnabledDataSource;
 
@@ -115,6 +116,12 @@ public final class LogEntryAppender extends AppenderBase<ILoggingEvent> {
      *  actual alarm definitions.
      */
     private AlarmPriorityMap priorityMap;
+
+    /**
+     *  Root level.  Appender accepts all events with level equal to
+     *  or above this value.
+     */
+    private Level rootLevel;
 
     /**
      * The main configuration for storing alarms through DAO.
@@ -254,6 +261,10 @@ public final class LogEntryAppender extends AppenderBase<ILoggingEvent> {
         this.priorityMap = priorityMap;
     }
 
+    public void setRootLevel(String level) {
+        rootLevel = Level.valueOf(level.toUpperCase());
+    }
+
     public void setSmtpHost(String smtpHost) {
         this.smtpHost = smtpHost;
     }
@@ -334,6 +345,10 @@ public final class LogEntryAppender extends AppenderBase<ILoggingEvent> {
     @Override
     protected void append(ILoggingEvent eventObject) {
         if (isStarted()) {
+            if (eventObject.getLevel().levelInt < rootLevel.levelInt) {
+                return;
+            }
+
             LogEntry entry = converter.createEntryFromEvent(eventObject);
 
             if (entry == LoggingEventConverter.LOCAL_EVENT) {

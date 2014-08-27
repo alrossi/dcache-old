@@ -61,6 +61,7 @@ package org.dcache.alarms.jdom;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import org.jdom.Element;
 import org.jdom.output.Format;
@@ -318,7 +319,7 @@ public final class JDomAlarmDefinition implements AlarmDefinition {
     @Override
     public void validateAndSet(String name, String value)
                     throws AlarmDefinitionValidationException {
-        value = value.trim();
+        value = Strings.nullToEmpty(value).trim();
 
         if (value.length() == 0 || RM.equals(value)) {
             value = null;

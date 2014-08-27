@@ -87,13 +87,18 @@ public class AlarmTableProvider extends
                 AbstractRegexFilteringProvider<LogEntry, String> {
     private static final long serialVersionUID = 402824287543303781L;
 
-    /**
-     *  Priority mappings.
-     */
-    private Map<String, AlarmPriority> priorityMap;
+    private Map<String, AlarmPriority> map;
 
-    public Map<String, AlarmPriority> getAlarmPriorityMap() {
-        return priorityMap;
+    public void addToDeleted(LogEntry toDelete) {
+        getAlarmQueryBean().addToDeleted(toDelete);
+    }
+
+    public void addToUpdated(LogEntry toUpdate) {
+        getAlarmQueryBean().addToUpdated(toUpdate);
+    }
+
+    public void delete(ILogEntryDAO access) {
+        getAlarmQueryBean().delete(access);
     }
 
     public Date getAfter() {
@@ -176,10 +181,21 @@ public class AlarmTableProvider extends
         getAlarmQueryBean().setType(type);
     }
 
+    public boolean shouldDelete(LogEntry entry) {
+        return getAlarmQueryBean().shouldDelete(entry);
+    }
+
+    public void update(ILogEntryDAO access) {
+        getAlarmQueryBean().update(access);
+    }
+
+    protected AlarmQueryBean getAlarmQueryBean() {
+        return WebAdminInterfaceSession.getAlarmQueryBean();
+    }
+
     @Override
     protected Comparator<LogEntry> getComparator() {
         return new Comparator<LogEntry>() {
-
             @Override
             public int compare(LogEntry alarm0, LogEntry alarm1) {
                 SortParam<String> sort = getSort();
@@ -198,12 +214,12 @@ public class AlarmTableProvider extends
                  */
                 int priority0 = -1;
                 if (alarm0.isAlarm()) {
-                    priority0 = priorityMap.get(alarm0.getType()).ordinal();
+                    priority0 = map.get(alarm0.getType()).ordinal();
                 }
 
                 int priority1 = -1;
                 if (alarm1.isAlarm()) {
-                    priority1 = priorityMap.get(alarm1.getType()).ordinal();
+                    priority1 = map.get(alarm1.getType()).ordinal();
                 }
 
                 int priority = compare(dir, priority0, priority1);
@@ -244,30 +260,6 @@ public class AlarmTableProvider extends
         };
     }
 
-    public void addToDeleted(LogEntry toDelete) {
-        getAlarmQueryBean().addToDeleted(toDelete);
-    }
-
-    public void addToUpdated(LogEntry toUpdate) {
-        getAlarmQueryBean().addToUpdated(toUpdate);
-    }
-
-    public void delete(ILogEntryDAO access) {
-        getAlarmQueryBean().delete(access);
-    }
-
-    public void setAlarmPriorityMap(Map<String, AlarmPriority> priorityMap) {
-        this.priorityMap = priorityMap;
-    }
-
-    public boolean shouldDelete(LogEntry entry) {
-        return getAlarmQueryBean().shouldDelete(entry);
-    }
-
-    public void update(ILogEntryDAO access) {
-        getAlarmQueryBean().update(access);
-    }
-
     /**
      * @return a fresh copy of the internal list, filtered for
      *         <code>expression</code> and <code>closed</code>.
@@ -282,30 +274,9 @@ public class AlarmTableProvider extends
         return filtered;
     }
 
-    protected AlarmQueryBean getAlarmQueryBean() {
-        return WebAdminInterfaceSession.getAlarmQueryBean();
-    }
-
     @Override
     protected AbstractRegexFilterBean<LogEntry> getRegexBean() {
         return WebAdminInterfaceSession.getAlarmQueryBean();
-    }
-
-    /**
-     * @param alarms
-     *            assumed to be a thread-local copy, hence not synchronized.
-     */
-    private void filterOnPriority(List<LogEntry> alarms) {
-        int threshold = AlarmPriority.valueOf(getPriority()).ordinal();
-        for (Iterator<LogEntry> it = alarms.iterator(); it.hasNext();) {
-            LogEntry entry = it.next();
-            if (entry.isAlarm()) {
-                int priority = priorityMap.get(entry.getType()).ordinal();
-                if (priority < threshold) {
-                    it.remove();
-                }
-            }
-        }
     }
 
     /**
@@ -321,5 +292,26 @@ public class AlarmTableProvider extends
                 }
             }
         }
+    }
+
+    /**
+     * @param alarms
+     *            assumed to be a thread-local copy, hence not synchronized.
+     */
+    private void filterOnPriority(List<LogEntry> alarms) {
+        int threshold = AlarmPriority.valueOf(getPriority()).ordinal();
+        for (Iterator<LogEntry> it = alarms.iterator(); it.hasNext();) {
+            LogEntry entry = it.next();
+            if (entry.isAlarm()) {
+                int priority = map.get(entry.getType()).ordinal();
+                if (priority < threshold) {
+                    it.remove();
+                }
+            }
+        }
+    }
+
+    public void setMap(Map<String, AlarmPriority> priorityMap) {
+        map = priorityMap;
     }
 }

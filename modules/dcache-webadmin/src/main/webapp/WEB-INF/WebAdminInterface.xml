@@ -28,15 +28,6 @@
         <property name="destination" value="${httpd.service.billing}"/>
         <property name="timeout" value="${httpd.service.billing.timeout}"/>
         <property name="timeoutUnit" value="${httpd.service.billing.timeout.unit}"/>
-        <property name="retryOnNoRouteToCell" value="true"/>
-    </bean>
-
-    <bean id="AlarmsCellStub" class="org.dcache.cells.CellStub">
-        <property name="cellEndpoint" ref="ServiceCellEndpoint"/>
-        <property name="destination" value="${httpd.service.alarms}"/>
-        <property name="timeout" value="${httpd.service.alarms.timeout}"/>
-        <property name="timeoutUnit" value="${httpd.service.alarms.timeout.unit}"/>
-        <property name="retryOnNoRouteToCell" value="true"/>
     </bean>
 
     <bean id="PoolMonitorCollectorCellStub" class="org.dcache.cells.CellStub">
@@ -296,8 +287,16 @@
             <ref bean="DAOFactory"/>
         </constructor-arg>
     </bean>
+    
+    <bean id="AlarmTableProvider" class="">
+        <property name="cellEndpoint" ref="ServiceCellEndpoint"/>
+        <property name="destination" value="${httpd.service.alarms}"/>
+        <property name="timeout" value="${httpd.service.alarms.timeout}"/>
+        <property name="timeoutUnit" value="${httpd.service.alarms.timeout.unit}"/>
+    </bean>
 
-    <bean id="AlarmDisplayService" class="org.dcache.webadmin.controller.impl.StandardAlarmDisplayService" destroy-method="shutDown">
+    <bean id="AlarmDisplayService" class="org.dcache.webadmin.controller.impl.StandardAlarmDisplayService" 
+        destroy-method="shutDown">
         <constructor-arg>
             <ref bean="DAOFactory"/>
         </constructor-arg>

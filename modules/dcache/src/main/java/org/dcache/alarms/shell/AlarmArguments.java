@@ -75,6 +75,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.dcache.alarms.AlarmMarkerFactory;
+import org.dcache.alarms.AlarmProperties;
 import org.dcache.alarms.PredefinedAlarm;
 import org.dcache.util.Args;
 
@@ -92,9 +93,9 @@ final class AlarmArguments {
     private static final String DEFAULT_SOURCE = "src://" + SendAlarm.LOCAL_HOST
                     + DEFAULT_SOURCE_PATH;
     private static final String DEFAULT_PORT = "60001";
-    private static final String TYPE = "t";
-    private static final String SOURCE = "s";
-    private static final String DESTINATION = "d";
+    private static final String TYPE = AlarmProperties.TYPE_OPT;
+    private static final String SOURCE = AlarmProperties.SOURCE_OPT;
+    private static final String DESTINATION = AlarmProperties.DESTINATION_OPT;
 
     static final Map<String, String> HELP_MESSAGES
         = ImmutableMap.of

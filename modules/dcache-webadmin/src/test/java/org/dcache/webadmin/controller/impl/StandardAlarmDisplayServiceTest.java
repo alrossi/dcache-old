@@ -73,14 +73,10 @@ import java.util.concurrent.TimeUnit;
 
 import org.dcache.alarms.AlarmPriority;
 import org.dcache.alarms.dao.LogEntry;
-import org.dcache.alarms.file.FileBackedAlarmPriorityMap;
-import org.dcache.alarms.jdom.XmlBackedAlarmDefinitionsMap;
 import org.dcache.webadmin.controller.util.AlarmTableProvider;
 import org.dcache.webadmin.model.dataaccess.ILogEntryDAO;
 import org.dcache.webadmin.model.dataaccess.impl.DAOFactoryImplHelper;
 import org.dcache.webadmin.model.exceptions.DAOException;
-import org.dcache.webadmin.view.beans.AbstractRegexFilterBean;
-import org.dcache.webadmin.view.beans.AlarmQueryBean;
 
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
@@ -103,43 +99,8 @@ public class StandardAlarmDisplayServiceTest {
     public void setup() throws Exception {
         helper = new DAOFactoryImplHelper();
         mocked = helper.getLogEntryDAO();
-        service = new StandardAlarmDisplayService(helper) {
-            private static final long serialVersionUID = -260651971282691608L;
-
-            private AlarmQueryBean alarmQueryBean = new AlarmQueryBean();
-
-            private AlarmTableProvider testProvider = new AlarmTableProvider() {
-                private static final long serialVersionUID = 3077908716332980559L;
-
-                @Override
-                protected AlarmQueryBean getAlarmQueryBean() {
-                    return alarmQueryBean;
-                }
-
-                @Override
-                protected AbstractRegexFilterBean<LogEntry> getRegexBean() {
-                    return alarmQueryBean;
-                }
-            };
-
-            @Override
-            public boolean isConnected() {
-                return true;
-            }
-
-            @Override
-            public AlarmTableProvider getDataProvider() {
-                return testProvider;
-            }
-        };
-
+        service = new TestAlarmDisplayService(helper);
         provider = service.getDataProvider();
-        FileBackedAlarmPriorityMap pmap = new FileBackedAlarmPriorityMap();
-        XmlBackedAlarmDefinitionsMap dmap = new XmlBackedAlarmDefinitionsMap();
-        pmap.setDefinitions(dmap);
-        pmap.setPropertiesPath("dummy.properties");
-        pmap.initialize();
-        provider.setAlarmPriorityMap(pmap.getPriorityMap());
     }
 
     @Test

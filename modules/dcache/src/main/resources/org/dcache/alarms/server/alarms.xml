@@ -25,6 +25,7 @@
     </bean>
     
     <bean id="logEntryAppender" class="org.dcache.alarms.logback.LogEntryAppender">
+        <property name="rootLevel" value="${alarms.log.root-level}"/>
         <property name="priorityMap" ref="priorityMap"/>
         <property name="converter" ref="logEventConverter"/>
         <property name="xmlPath" value="${alarms.db.xml.path}"/>
@@ -69,6 +70,8 @@
         <property name="alarmDefinitionsMap" ref="definitionsMap"/>
         <property name="alarmPriorityMap" ref="priorityMap"/>
         <property name="server" ref="server"/>
+        <property name="serverHost" value="${alarms.net.host}"/>
+        <property name="serverPort" value="${alarms.net.port}"/>
     </bean>
 
     <beans profile="rdbms">

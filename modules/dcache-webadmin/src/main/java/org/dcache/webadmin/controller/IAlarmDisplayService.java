@@ -60,7 +60,9 @@ documents or software obtained from this server.
 package org.dcache.webadmin.controller;
 
 import java.io.Serializable;
+import java.util.Map;
 
+import org.dcache.alarms.AlarmPriority;
 import org.dcache.webadmin.controller.util.AlarmTableProvider;
 
 /**

@@ -86,7 +86,7 @@ public class AlarmQueryBean extends AbstractRegexFilterBean<LogEntry> {
      * give this a default value so that the drop-down box displays this instead
      * of the "SELECT ONE" message
      */
-    private String priority = AlarmPriority.CRITICAL.toString();
+    private String priority = AlarmPriority.HIGH.toString();
     private String type;
     private boolean showClosed;
     private Integer from;
@@ -182,8 +182,8 @@ public class AlarmQueryBean extends AbstractRegexFilterBean<LogEntry> {
         this.from = from;
     }
 
-    public void setPriority(String severity) {
-        this.priority = severity;
+    public void setPriority(String priority) {
+        this.priority = priority;
     }
 
     public void setShowClosed(boolean showClosed) {

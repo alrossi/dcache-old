@@ -99,7 +99,7 @@ public class QueryPanel extends Panel {
         addAlarmsGroup(provider);
         addDateFields(provider);
         addPriorityChoice(provider);
-        addTypeAutoComplete(parent, provider);
+        addTypeAutoComplete(provider);
         addExpressionFields(provider);
         addShowClosed(provider);
         addRangeFields(provider);
@@ -171,8 +171,7 @@ public class QueryPanel extends Panel {
         });
     }
 
-    private void addTypeAutoComplete(final AlarmsPage parent,
-                                     final AlarmTableProvider provider) {
+    private void addTypeAutoComplete(final AlarmTableProvider provider) {
         IModel<String> filterValue = new PropertyModel<>(provider, "type");
 
         add(new DefaultCssAutoCompleteTextField("typeField", filterValue) {
