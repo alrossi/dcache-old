@@ -26,7 +26,7 @@
     
     <bean id="logEntryAppender" class="org.dcache.alarms.logback.LogEntryAppender">
         <property name="priorityMap" ref="priorityMap"/>
-        <property name="coverter" ref="logEventConverter"/>
+        <property name="converter" ref="logEventConverter"/>
         <property name="xmlPath" value="${alarms.db.xml.path}"/>
         <property name="url" value="${alarms.db.url}"/>
         <property name="user" value="${alarms.db.user}"/>

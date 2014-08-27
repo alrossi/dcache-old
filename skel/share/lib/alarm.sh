@@ -26,6 +26,6 @@ send_alarm() # $@ = [-s=<source-uri>] [-l=<log level>] [-t=<alarm subtype>] mess
 handle_alarm_definition() # $1 = [add, modify, remove]
 {
     local file
-    file=$(getProperty alarms.definitions.path)
+    file=$(getProperty alarms.custom-definitions.path)
     CLASSPATH="$(getProperty dcache.paths.classpath)" quickJava org.dcache.alarms.shell.AlarmDefinitionManager $1 ${file}
 }
