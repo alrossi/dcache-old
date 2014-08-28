@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/context
+                           http://www.springframework.org/schema/context/spring-context.xsd
+                           http://www.springframework.org/schema/util
+                           http://www.springframework.org/schema/util/spring-util.xsd">
+
+  <context:property-placeholder/>
+
+  <bean id="CopyRequests"
+        class="org.dcache.replication.messages.CLIMigrationCopyMessageFactory">
+       <property name="timeout" value="${replicamanager.limits.replication-request-timeout}"/>
+       <property name="timeoutUnit" value="${replicamanager.limits.replication-request-timeout.unit}"/>
+  </bean>
+
+  <bean id="RemoveRequests"
+        class="org.dcache.replication.messages.RepRmRequestMessageFactory">
+       <property name="timeout" value="${replicamanager.limits.reduction-request-timeout}"/>
+       <property name="timeoutUnit" value="${replicamanager.limits.reduction-request-timeout.unit}"/>
+       <property name="hub" ref="Hub"/>
+  </bean>
+
+  <bean id="Registry" 
+        class="org.dcache.replication.util.MapOperationRegistry">
+        <property name="utils" ref="Utils"/>
+  </bean>
+
+  <bean id="Statistics"
+        class="org.dcache.replication.util.RequestCounterReplicationStatistics"/>
+
+  <bean id="Hub"
+        class="org.dcache.replication.util.ReplicationEndpointHub">
+        <constructor-arg index="0">
+            <bean class="org.dcache.cells.CellStub">
+                <property name="destination" value="${replicamanager.service.pnfsmanager}"/>
+                <property name="timeout" value="${replicamanager.limits.pnfsmanager-timeout}"/>
+                <property name="timeoutUnit" value="${replicamanager.limits.pnfsmanager-timeout.unit}"/>
+                <property name="retryOnNoRouteToCell" value="true"/>
+            </bean>
+        </constructor-arg>
+        <constructor-arg index="1">
+            <bean class="org.dcache.cells.CellStub">
+                <property name="destination" value="${replicamanager.service.poolmanager}"/>
+                <property name="timeout" value="${replicamanager.limits.poolmanager-timeout}"/>
+                <property name="timeoutUnit" value="${replicamanager.limits.poolmanager-timeout.unit}"/>
+                <property name="retryOnNoRouteToCell" value="true"/>
+            </bean>
+        </constructor-arg>
+  </bean>
+
+  <bean id="Utils"
+        class="org.dcache.replication.util.ReplicationQueryUtilitiesImpl">
+        <property name="hub" ref="Hub"/>
+        <property name="executor" ref="Executor"/>
+        <property name="useGreedyRequests" value="${replicamanager.requests.use-greedy-limits}"/>
+  </bean>
+
+  <bean id="Receiver"
+        class="org.dcache.replication.messages.SynchronizedMessageReceiver"
+        init-method="initialize">
+       <property name="hub" ref="Hub"/>
+       <property name="map" ref="Registry"/>
+       <property name="executor" ref="Executor"/>
+       <property name="utils" ref="Utils"/>
+       <property name="factory" ref="RemoveRequests"/>
+       <property name="scanner" ref="PeriodicScanner"/>
+       <property name="startScanner" value="${replicamanager.enable.scanner}"/>
+       <property name="statistics" ref="Statistics"/>
+       <property name="initialWait" value="${replicamanager.limits.messages-initial-wait}"/>
+       <property name="initialWaitUnit" value="${replicamanager.limits.messages-initial-wait.unit}"/>
+  </bean>
+
+  <bean id="Executor"
+        class="org.dcache.replication.tasks.ReplicationTaskThreadExecutor"
+        init-method="initialize" destroy-method="shutdown">
+        <property name="hub" ref="Hub"/>
+        <property name="handler" ref="Receiver"/>
+        <property name="map" ref="Registry"/>
+        <property name="reductionFactory" ref="RemoveRequests"/>
+        <property name="replicationFactory" ref="CopyRequests"/>
+        <property name="statistics" ref="Statistics"/>
+        <property name="utils" ref="Utils"/>
+        <property name="replicaWorkers" value="${replicamanager.limits.replica-workers-per-poolgroup}"/>
+        <property name="scanWorkers" value="${replicamanager.limits.scan-workers-per-poolgroup}"/>
+        <property name="verificationWorkers" value="${replicamanager.limits.verification-workers-per-poolgroup}"/>
+  </bean>  
+
+  <bean id="PeriodicScanner"
+        class="org.dcache.replication.runnable.PeriodicScanner"
+        destroy-method="shutdown">
+       <property name="hub" ref="Hub"/>
+       <property name="executor" ref="Executor"/>
+       <property name="utils" ref="Utils"/>
+       <property name="timeout" value="${replicamanager.limits.scan-period}"/>
+       <property name="timeoutUnit" value="${replicamanager.limits.scan-period.unit}"/>
+  </bean>
+
+  <bean id="PollingModule"
+        class="org.dcache.replication.runnable.MigrationJobPollingHandler"
+        init-method="initialize" destroy-method="shutdown">
+       <property name="hub" ref="Hub"/>
+       <property name="handler" ref="Receiver"/>
+       <property name="map" ref="Registry"/>
+       <property name="utils" ref="Utils"/>
+       <property name="timeout" value="${replicamanager.limits.migration-jobs-polling-period}"/>
+       <property name="timeoutUnit" value="${replicamanager.limits.migration-jobs-polling-period.unit}"/>
+  </bean>
+
+  <bean id="CLI" class="org.dcache.replication.admin.AdminCommandHandler"
+        init-method="initialize">
+       <property name="hub" ref="Hub"/>
+       <property name="executor" ref="Executor"/>
+       <property name="handler" ref="Receiver"/>
+       <property name="map" ref="Registry"/>
+       <property name="utils" ref="Utils"/>
+       <property name="scanner" ref="PeriodicScanner"/>
+       <property name="statistics" ref="Statistics"/>
+  </bean>
+  
+  <bean id="chimera-data-source" class="com.zaxxer.hikari.HikariDataSource"
+          destroy-method="shutdown">
+        <description>Database connection pool</description>
+        <constructor-arg>
+            <bean class="com.zaxxer.hikari.HikariConfig">
+                <constructor-arg type="java.util.Properties">
+                    <value>
+                        minimumIdle = ${replicamanager.db.connections.idle}
+                        maximumPoolSize = ${replicamanager.db.connections.max}
+                        autoCommit = true
+                        transactionIsolation = TRANSACTION_READ_COMMITTED
+                    </value>
+                </constructor-arg>
+                <property name="dataSource">
+                    <bean class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+                        <property name="url" value="${replicamanager.db.url}"/>
+                        <property name="username" value="${replicamanager.db.user}"/>
+                        <property name="password" value="#{ T(diskCacheV111.util.Pgpass).getPassword('${replicamanager.db.password.file}', '${replicamanager.db.url}', '${replicamanager.db.user}', '${replicamanager.db.password}') }"/>
+                    </bean>
+                </property>
+            </bean>
+        </constructor-arg>
+  </bean>
+
+  <bean id="liquibase" class="org.dcache.util.SpringLiquibase">
+      <description>Database schema manager</description>
+      <property name="dataSource">
+          <bean class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+              <property name="url" value="${replicamanager.db.url}"/>
+              <property name="username" value="${replicamanager.db.user}"/>
+              <property name="password" value="${replicamanager.db.password}"/>
+          </bean>
+      </property>
+      <property name="changeLog" value="classpath:${replicamanager.db.schema.changelog}"/>
+      <property name="shouldUpdate" value="${replicamanager.db.schema.auto}"/>
+  </bean>
+</beans>

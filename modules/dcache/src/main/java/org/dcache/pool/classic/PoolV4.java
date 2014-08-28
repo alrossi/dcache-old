@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -107,6 +108,7 @@ import org.dcache.util.IoPriority;
 import org.dcache.util.Version;
 import org.dcache.vehicles.FileAttributes;
 import org.dcache.vehicles.PnfsSetFileAttributes;
+import org.dcache.vehicles.replication.PoolCopyIsSystemStickyMessage;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -1332,33 +1334,81 @@ public class PoolV4
         return msg;
     }
 
-    public PoolQueryRepositoryMsg messageArrived(PoolQueryRepositoryMsg msg)
-        throws CacheException, InterruptedException
+    public PoolCopyIsSystemStickyMessage messageArrived(PoolCopyIsSystemStickyMessage msg)
+                    throws CacheException, InterruptedException
     {
-        msg.setReply(new RepositoryCookie(), getRepositoryListing());
-        return msg;
-    }
-
-    private List<CacheRepositoryEntryInfo> getRepositoryListing()
-        throws CacheException, InterruptedException
-    {
-        List<CacheRepositoryEntryInfo> listing = new ArrayList<>();
-        for (PnfsId pnfsid : _repository) {
-            try {
-                switch (_repository.getState(pnfsid)) {
+        try {
+            PnfsId pnfsId = new PnfsId(msg.pnfsid);
+            EntryState state = _repository.getState(pnfsId);
+            msg.setEntryState(state);
+            switch (state) {
                 case PRECIOUS:
                 case CACHED:
                 case BROKEN:
-                    listing.add(new CacheRepositoryEntryInfo(_repository.getEntry(pnfsid)));
+                    CacheEntry entry = _repository.getEntry(pnfsId);
+                    _log.debug("{}, state {}, entry {}", msg.pnfsid, state, entry);
+                    if (entry != null) {
+                        boolean sticky = entry.isSticky();
+                        if (sticky) {
+                            for (StickyRecord record : entry.getStickyRecords()) {
+                                if ("system".equalsIgnoreCase(record.owner())) {
+                                    msg.setSystemSticky(true);
+                                    break;
+                                }
+                            }
+                        }
+                    }
                     break;
                 default:
+                    _log.debug("{}, state {}", msg.pnfsid, state);
                     break;
+            }
+        } catch (FileNotInCacheException e) {
+            _log.debug("{} was not in the repository of {}", msg.pnfsid, _poolName);
+        }
+
+        msg.setReply();
+        return msg;
+    }
+
+    public PoolQueryRepositoryMsg messageArrived(PoolQueryRepositoryMsg msg)
+        throws CacheException, InterruptedException
+    {
+        msg.setReply(new RepositoryCookie(), getRepositoryListing(msg.getPnfsid()));
+        return msg;
+    }
+
+    private List<CacheRepositoryEntryInfo> getRepositoryListing(String pnfsid)
+        throws CacheException, InterruptedException
+    {
+        List<CacheRepositoryEntryInfo> listing = new ArrayList<>();
+        Iterator<PnfsId> iterator;
+        if (pnfsid != null) {
+            List<PnfsId> list = new ArrayList<>();
+            list.add(new PnfsId(pnfsid));
+            iterator = list.iterator();
+        } else {
+            iterator = _repository.iterator();
+        }
+
+        while (iterator.hasNext()) {
+            PnfsId pnfsId = iterator.next();
+            try {
+                switch (_repository.getState(pnfsId)) {
+                    case PRECIOUS:
+                    case CACHED:
+                    case BROKEN:
+                        listing.add(new CacheRepositoryEntryInfo(
+                                        _repository.getEntry(pnfsId)));
+                        break;
+                    default:
+                        break;
                 }
             } catch (FileNotInCacheException e) {
-                /* The file was deleted before we got a chance to add
-                 * it to the list. Since deleted files are not
-                 * supposed to be on the list, the exception is not a
-                 * problem.
+                /*
+                 * The file was deleted before we got a chance to add it to the
+                 * list. Since deleted files are not supposed to be on the list,
+                 * the exception is not a problem.
                  */
             }
         }

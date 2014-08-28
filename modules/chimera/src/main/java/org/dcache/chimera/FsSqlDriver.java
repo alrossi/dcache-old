@@ -16,7 +16,10 @@
  */
 package org.dcache.chimera;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Multimap;
 import com.google.common.io.ByteStreams;
 import com.google.common.primitives.Ints;
 import org.slf4j.Logger;
@@ -1603,6 +1606,111 @@ class FsSqlDriver {
             }
         }
         return tags;
+    }
+
+    private static final String sqlGetLocations_head =
+                 "SELECT t1.ipnfsid, t1.ilocation FROM t_locationinfo t1 "
+                  + "WHERE t1.itype = 1 AND t1.istate = 1 "
+                  + "AND EXISTS "
+                  + "(SELECT t2.ipnfsid FROM t_locationinfo t2 "
+                  + "WHERE t1.ipnfsid = t2.ipnfsid AND t2.ilocation = ?) AND";
+
+    private static final String[] sqlGetLocations_parts =
+                {
+                  " EXISTS "
+                    + "(SELECT t3.ipnfsid, count(*) FROM t_locationinfo t3 "
+                    + "WHERE t1.ipnfsid = t3.ipnfsid AND t3.itype = 1 "
+                    + "AND t3.istate = 1 ",                             // 0
+                  " GROUP BY t3.ipnfsid having count(*)",               // 1
+                  " < ?)",                                              // 2
+                  " > ?)",                                              // 3
+                  " ORDER BY t1.ipnfsid"                                // 4
+                };
+
+    /**
+     *  Added on support of replica manager querying for (pnfsid, ilocation)
+     *  for all pnfsids with ilocation count < minimum, > maximum or both.
+     */
+    public Multimap<String, String> getLocations(Connection dbConnection,
+                                                 String location,
+                                                 ImmutableList<String> excluded,
+                                                 Integer minimum,
+                                                 Integer maximum)
+                throws SQLException {
+        StringBuilder sql = new StringBuilder(sqlGetLocations_head);
+        String excludedLocations = null;
+
+        if (excluded != null) {
+            StringBuilder exclude = new StringBuilder();
+            for (int i = 0; i < excluded.size(); i++) {
+                exclude.append(" AND t3.ilocation != ?");
+            }
+            excludedLocations = exclude.toString();
+        }
+
+        if (minimum != null) {
+            sql.append(sqlGetLocations_parts[0]);
+            if (excludedLocations != null) {
+                sql.append(excludedLocations);
+            }
+            sql.append(sqlGetLocations_parts[1]);
+            sql.append(sqlGetLocations_parts[2]);
+        }
+
+        if (maximum != null) {
+            if (minimum != null) {
+                sql.append(" OR");
+            }
+            sql.append(sqlGetLocations_parts[0]);
+            if (excludedLocations != null) {
+                sql.append(excludedLocations);
+            }
+            sql.append(sqlGetLocations_parts[1]);
+            sql.append(sqlGetLocations_parts[3]);
+        }
+
+        sql.append(sqlGetLocations_parts[4]);
+
+        PreparedStatement stGetAlternateLocations = null;
+        ResultSet getGetAlternateLocationsResultSet = null;
+        Multimap<String, String> result = HashMultimap.create();
+        int index = 1;
+
+        try {
+            stGetAlternateLocations = dbConnection.prepareStatement(sql.toString());
+            stGetAlternateLocations.setString(index, location);
+            if (excluded != null) {
+                for (String exclude : excluded) {
+                    stGetAlternateLocations.setString(++index, exclude);
+                }
+            }
+
+            if (minimum != null) {
+                stGetAlternateLocations.setInt(++index, minimum);
+            }
+
+            if (maximum != null) {
+                if (minimum != null && excluded != null) {
+                    for (String exclude : excluded) {
+                        stGetAlternateLocations.setString(++index, exclude);
+                    }
+                }
+                stGetAlternateLocations.setInt(++index, maximum);
+            }
+
+            getGetAlternateLocationsResultSet = stGetAlternateLocations.executeQuery();
+
+            while (getGetAlternateLocationsResultSet.next()) {
+                String ipnfsid = getGetAlternateLocationsResultSet.getString(1);
+                String ilocation = getGetAlternateLocationsResultSet.getString(2);
+                result.put(ipnfsid, ilocation);
+            }
+        } finally {
+            SqlHelper.tryToClose(getGetAlternateLocationsResultSet);
+            SqlHelper.tryToClose(stGetAlternateLocations);
+        }
+
+        return result;
     }
 
     /**
