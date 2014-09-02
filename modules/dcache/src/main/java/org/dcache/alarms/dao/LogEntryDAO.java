@@ -57,27 +57,23 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.webadmin.controller;
-
-import java.io.Serializable;
-import java.util.Collection;
-
-import org.dcache.webadmin.controller.util.AlarmTableProvider;
+package org.dcache.alarms.dao;
 
 /**
- * Service which handles the model for the Alarms display page.
+ * Interface for the logger to store entries.
  *
  * @author arossi
  */
-public interface IAlarmDisplayService extends Serializable {
-
-    AlarmTableProvider getDataProvider();
-
-    Collection<String> getPredefinedAlarmTypes();
-
-    boolean isConnected();
-
-    void refresh();
-
-    void shutDown();
+public interface LogEntryDAO {
+    /**
+     * As it is unlikely that the log service will be bombarded by error
+     * messages, a collection/batch method is not really necessary; single-insert
+     * should not create a bottleneck.<br>
+     * <br>
+     *
+     * It is the responsibility of the implementation to handle duplicates; in
+     * most cases this will involve a check for key equivalence and a subsequent
+     * update instead of insert.
+     */
+    void put(LogEntry alarm);
 }

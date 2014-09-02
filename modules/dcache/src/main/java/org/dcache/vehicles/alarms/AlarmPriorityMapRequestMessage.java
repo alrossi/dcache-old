@@ -57,26 +57,33 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms.dao;
+package org.dcache.vehicles.alarms;
 
-import org.dcache.services.billing.db.impl.datanucleus.DataNucleusBillingInfo;
+import java.util.Map;
 
-/**
- * Interface for the logger to store entries.
- *
- * @author arossi
- */
-public interface ILogEntryDAO {
-    /**
-     * As it is unlikely that the log service will be bombarded by error
-     * messages, a collection/batch method (such as used by
-     * {@link DataNucleusBillingInfo}) is not really necessary; single-insert
-     * should not create a bottleneck.<br>
-     * <br>
-     *
-     * It is the responsibility of the implementation to handle duplicates; in
-     * most cases this will involve a check for key equivalence and a subsequent
-     * update instead of insert.
-     */
-    void put(LogEntry alarm);
+import diskCacheV111.vehicles.Message;
+
+import org.dcache.alarms.AlarmPriority;
+
+public final class AlarmPriorityMapRequestMessage extends Message {
+    private static final long serialVersionUID = 1L;
+
+    private Map<String, AlarmPriority> map;
+
+    public Map<String, AlarmPriority> getMap() {
+        return map;
+    }
+
+    public void setMap(Map<String, AlarmPriority> map) {
+        this.map = map;
+    }
+
+    @Override
+    public String toString() {
+        return "AlarmPriorityRequestMessage{"
+            + map
+            + "}{"
+            + super.toString()
+            + "}";
+    }
 }

@@ -80,17 +80,31 @@ public abstract class NetworkUtils {
         }
         LOCAL_INET_ADDRESSES = ImmutableList.copyOf(localInetAddress);
 
-        if (LOCAL_INET_ADDRESSES.isEmpty()) {
-            canonicalHostName = "localhost";
-        } else {
+        String hostName = "localhost";
+
+        if (!LOCAL_INET_ADDRESSES.isEmpty()) {
             InetAddress[] addresses
                 = LOCAL_INET_ADDRESSES.toArray(new InetAddress[0]);
             Arrays.sort(addresses, getExternalInternalSorter());
-            canonicalHostName = addresses[0].getCanonicalHostName();
+
+            /*
+             * For legibility, we prefer to see a traditional
+             * ipv4 host name; but if the protocol is not
+             * supported, default to the first address name.
+             */
+            hostName = addresses[0].getCanonicalHostName();
+            for (InetAddress a: addresses) {
+                if (a instanceof Inet4Address) {
+                    hostName = a.getCanonicalHostName();
+                    break;
+                }
+            }
         }
+
+        canonicalHostName = hostName;
     }
 
-    public static String getCanonicalhostname() {
+    public static String getCanonicalHostName() {
         return canonicalHostName;
     }
 

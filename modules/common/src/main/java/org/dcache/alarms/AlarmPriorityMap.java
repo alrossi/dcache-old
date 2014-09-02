@@ -59,70 +59,76 @@ documents or software obtained from this server.
  */
 package org.dcache.alarms;
 
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Properties;
+
 /**
- * Convenience interface for properties in common between the wire object and
- * the storage object for Alarm processing.
+ * Defines the component responsible for mapping alarms or alerts to
+ * a priority level.
  *
  * @author arossi
  */
-public interface IAlarms {
-    /*
-     * Shared alarm property/field names
+public interface AlarmPriorityMap {
+    /**
+     * In case the implementation uses a local path
      */
-    final String KEY_TAG = "key";
-    final String TIMESTAMP_TAG = "timestamp";
-    final String TYPE_TAG = "type";
-    final String SEVERITY_TAG = "severity";
-    final String HOST_TAG = "host";
-    final String DOMAIN_TAG = "domain";
-    final String SERVICE_TAG = "service";
-    final String MESSAGE_TAG = "message";
-    final String GROUP_TAG = "group";
+    String PATH = "alarm-priorities-path";
 
-    /*
-     * The base marker; all alarms must carry this marker.
+    /**
+     * @return current default priority.
      */
-    final String ALARM_MARKER = "ALARM";
+    AlarmPriority getDefaultPriority();
 
-    /*
-     * The severity marker; submarker indicates the level.
+    /**
+     * @param  type alarm name.
+     * @return priority to which this is mapped.
+     * @throws NoSuchElementException if there is no current mapping.
      */
-    final String ALARM_MARKER_SEVERITY = "ALARM_SEVERITY";
+    AlarmPriority getPriority(String type) throws NoSuchElementException;
 
-    /*
-     * The type marker; submarker indicates the alarm type.
+    /**
+     * @return an object which can be included in a serializable message.
+     *         The map should be unmodifiable.
      */
-    final String ALARM_MARKER_TYPE = "ALARM_TYPE";
+    Map<String, AlarmPriority> getPriorityMap();
 
-    /*
-     * Default alarm type.
+    /**
+     * @return sorted string list of the entire alarms-to-priority map.
      */
-    final String ALARM_MARKER_TYPE_GENERIC = "GENERIC";
+    String getSortedList();
 
-    /*
-     * The key marker; submarker specifies the key properties determining
-     * alarm identity.
+    /**
+     * Should locate all internal and external alarm types
+     * and load their type names.  It should then override
+     * the default priority with any saved settings.
+     *
+     * @param env any special settings which should override current ones.
      */
-    final String ALARM_MARKER_KEY = "ALARM_KEY";
+    void load(Properties env) throws Exception;
 
-    /*
-     * Placeholder for host name which cannot be resolved.
+    /**
+     * Sets all currently loaded types to the current default.
      */
-    final String UNKNOWN_HOST = "<unknown host>";
+    void restoreAllToDefaultPriority();
 
-    /*
-     * Placeholder for host name which cannot be resolved.
+    /**
+     * Should save the current mapping to some form of persistent
+     * storage for future reloading.
+     *
+     * @param env any special settings which should override current ones.
      */
-    final String UNKNOWN_SERVICE = "<unknown service>";
+    void save(Properties env) throws Exception;
 
-    /*
-     * Placeholder for host name which cannot be resolved.
+    /**
+     * @param priority to use as default.
      */
-    final String UNKNOWN_DOMAIN = "<unknown domain>";
+    void setDefaultPriority(String priority);
 
-    /*
-     * These are defined elsewhere for use in the MDC.
+    /**
+     * @param alarm defined via custom definition or predefined enum.
+     * @param priority to which this is mapped.
+     * @throws NoSuchElementException if there is no current mapping.
      */
-    final String CELL = "cells.cell";
-    final String DOMAIN = "cells.domain";
+    void setPriority(String alarm, AlarmPriority priority) throws NoSuchElementException;
 }

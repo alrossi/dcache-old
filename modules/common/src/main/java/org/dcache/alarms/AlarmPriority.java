@@ -57,32 +57,13 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms.logback;
-
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.filter.Filter;
-import ch.qos.logback.core.spi.FilterReply;
-import org.slf4j.Marker;
-
-import org.dcache.alarms.IAlarms;
+package org.dcache.alarms;
 
 /**
- * This filter can be added to the appender responsible for receiving
- * log messages. It will accept all events with any Marker containing
- * the parent "ALARM".  <br>
- * <br>
- * Note that there is no level requirement here.
+ * For marking alert level.
  *
  * @author arossi
  */
-public class AlarmMarkerFilter extends Filter<ILoggingEvent> {
-
-    @Override
-    public FilterReply decide(ILoggingEvent event) {
-        Marker marker = event.getMarker();
-        if (marker.contains(IAlarms.ALARM_MARKER)) {
-            return FilterReply.ACCEPT;
-        }
-        return FilterReply.DENY;
-    }
+public enum AlarmPriority {
+    LOW, MODERATE, HIGH, CRITICAL;
 }

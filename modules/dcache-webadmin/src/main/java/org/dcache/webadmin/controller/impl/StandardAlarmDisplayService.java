@@ -59,15 +59,24 @@ documents or software obtained from this server.
  */
 package org.dcache.webadmin.controller.impl;
 
-import java.util.Collection;
-import java.util.Date;
+import org.slf4j.LoggerFactory;
 
-import org.dcache.alarms.Severity;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Map;
+
+import diskCacheV111.util.CacheException;
+
+import org.dcache.alarms.AlarmPriority;
 import org.dcache.alarms.dao.LogEntry;
-import org.dcache.webadmin.controller.IAlarmDisplayService;
+import org.dcache.cells.CellStub;
+import org.dcache.util.CacheExceptionFactory;
+import org.dcache.vehicles.alarms.AlarmPriorityMapRequestMessage;
+import org.dcache.webadmin.controller.AlarmDisplayService;
 import org.dcache.webadmin.controller.util.AlarmTableProvider;
 import org.dcache.webadmin.model.dataaccess.DAOFactory;
-import org.dcache.webadmin.model.dataaccess.ILogEntryDAO;
+import org.dcache.webadmin.model.dataaccess.LogEntryDAO;
 import org.dcache.webadmin.model.util.AlarmJDOUtils;
 import org.dcache.webadmin.model.util.AlarmJDOUtils.AlarmDAOFilter;
 
@@ -80,26 +89,31 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * @author arossi
  */
-public class StandardAlarmDisplayService implements IAlarmDisplayService {
+public class StandardAlarmDisplayService implements AlarmDisplayService {
 
     private static final long serialVersionUID = 6949169602783225125L;
 
-    private final AlarmTableProvider alarmTableProvider = new AlarmTableProvider();
-    private final ILogEntryDAO access;
+    private final AlarmTableProvider alarmTableProvider;
+    private final LogEntryDAO access;
+    private final CellStub alarmService;
 
-    public StandardAlarmDisplayService(DAOFactory factory) {
+    public StandardAlarmDisplayService(DAOFactory factory, CellStub alarmService) {
         access = checkNotNull(factory.getLogEntryDAO());
+        this.alarmService = alarmService;
+        alarmTableProvider = new AlarmTableProvider();
+    }
+
+    public StandardAlarmDisplayService(DAOFactory factory,
+                                       CellStub alarmService,
+                                       AlarmTableProvider provider) {
+        access = checkNotNull(factory.getLogEntryDAO());
+        this.alarmService = alarmService;
+        alarmTableProvider = provider;
     }
 
     @Override
     public AlarmTableProvider getDataProvider() {
         return alarmTableProvider;
-    }
-
-
-    @Override
-    public Collection<String> getPredefinedAlarmTypes() {
-        return access.getEntryTypes();
     }
 
     public boolean isConnected() {
@@ -115,24 +129,22 @@ public class StandardAlarmDisplayService implements IAlarmDisplayService {
             return;
         }
 
-        update();
-        delete();
+        alarmTableProvider.update(access);
+        alarmTableProvider.delete(access);
 
-        AlarmTableProvider alarmTableProvider = getDataProvider();
         Date after = alarmTableProvider.getAfter();
         Date before = alarmTableProvider.getBefore();
-        String severityStr = alarmTableProvider.getSeverity();
-        Severity severity = severityStr == null ? null :
-            Severity.valueOf(severityStr);
         String type = alarmTableProvider.getType();
         Boolean alarm = alarmTableProvider.isAlarm();
         Integer rangeStart = alarmTableProvider.getFrom();
         Integer rangeEnd = alarmTableProvider.getTo();
 
         AlarmDAOFilter filter
-            = AlarmJDOUtils.getFilter(after, before, severity, type,
+            = AlarmJDOUtils.getFilter(after, before, type,
                                       alarm, rangeStart, rangeEnd);
         Collection<LogEntry> refreshed = access.get(filter);
+
+        alarmTableProvider.setMap(getPriorityMap());
         alarmTableProvider.setEntries(refreshed);
     }
 
@@ -140,11 +152,22 @@ public class StandardAlarmDisplayService implements IAlarmDisplayService {
         access.shutDown();
     }
 
-    private void delete() {
-        getDataProvider().delete(access);
-    }
-
-    private void update() {
-        getDataProvider().update(access);
+    protected Map<String, AlarmPriority> getPriorityMap() {
+        AlarmPriorityMapRequestMessage request
+            = new AlarmPriorityMapRequestMessage();
+        try {
+            request = alarmService.sendAndWait(request);
+            int code = request.getReturnCode();
+            if (code != 0) {
+                throw CacheExceptionFactory.exceptionOf(code,
+                                String.valueOf(request.getErrorObject()));
+            }
+            return request.getMap();
+        } catch (CacheException | InterruptedException t) {
+            LoggerFactory.getLogger(this.getClass())
+                         .error("Could not get alarm priority map: {}",
+                                 t.getMessage());
+        }
+        return Collections.EMPTY_MAP;
     }
 }

@@ -72,56 +72,48 @@ import java.util.Iterator;
  * @author arossi
  */
 public final class AlarmMarkerFactory {
+    /**
+     * The base marker; all alarms must carry this marker.
+     */
+    private static final String ALARM_MARKER = "ALARM";
+
+    /**
+     * The type marker; submarker indicates the alarm type.
+     */
+    private static final String ALARM_MARKER_TYPE = "ALARM_TYPE";
+
+    /**
+     * The key marker; submarker specifies the key properties determining
+     * alarm identity.
+     */
+    private static final String ALARM_MARKER_KEY = "ALARM_KEY";
 
     private static final IMarkerFactory factory
         = MarkerFactory.getIMarkerFactory();
 
     public static Marker getMarker() {
-        return getMarker((String)null, null);
+        return getMarker(null, (String[])null);
     }
 
-    public static Marker getMarker(String severity,
-                                   String type) {
-        return getMarker(severity, type, (String[])null);
+    public static Marker getMarker(PredefinedAlarm type) {
+        return getMarker(type, (String[])null);
     }
 
-    public static Marker getMarker(String severity,
-                                   String type,
+    public static Marker getMarker(PredefinedAlarm type,
                                    String ... keywords) {
-        if (severity == null) {
-            return getMarker((Severity)null, type, keywords);
-        }
-
-        return getMarker(Severity.valueOf(severity), type, keywords);
-    }
-
-    public static Marker getMarker(Severity severity,
-                                   String type,
-                                   String ... keywords) {
-        if (severity == null) {
-            severity = Severity.HIGH;
-        }
-
+        Marker alarmMarker = factory.getDetachedMarker(ALARM_MARKER);
         if (type == null) {
-            type = IAlarms.ALARM_MARKER_TYPE_GENERIC;
+            return alarmMarker;
         }
 
-        Marker alarmMarker = factory.getDetachedMarker(IAlarms.ALARM_MARKER);
-
-        Marker severityMarker
-            = factory.getDetachedMarker(IAlarms.ALARM_MARKER_SEVERITY);
-        Marker alarmSeverity = factory.getDetachedMarker(severity.toString());
-        severityMarker.add(alarmSeverity);
-        alarmMarker.add(severityMarker);
-
-        Marker typeMarker = factory.getDetachedMarker(IAlarms.ALARM_MARKER_TYPE);
-        Marker alarmType = factory.getDetachedMarker(type);
+        Marker typeMarker = factory.getDetachedMarker(ALARM_MARKER_TYPE);
+        Marker alarmType = factory.getDetachedMarker(type.toString());
         typeMarker.add(alarmType);
         alarmMarker.add(typeMarker);
 
         if (keywords != null) {
             Marker keyMarker
-                = factory.getDetachedMarker(IAlarms.ALARM_MARKER_KEY);
+                = factory.getDetachedMarker(ALARM_MARKER_KEY);
             for (String keyword: keywords) {
                 Marker alarmKey = factory.getDetachedMarker(keyword);
                 keyMarker.add(alarmKey);
@@ -132,7 +124,19 @@ public final class AlarmMarkerFactory {
         return alarmMarker;
     }
 
-    public static Marker getSubmarker(Marker marker, String name) {
+    public static boolean containsAlarmMarker(Marker marker) {
+        return marker != null && marker.contains(ALARM_MARKER);
+    }
+
+    public static Marker getKeySubmarker(Marker marker) {
+        return getSubmarker(marker, ALARM_MARKER_KEY);
+    }
+
+    public static Marker getTypeSubmarker(Marker marker) {
+        return getSubmarker(marker, ALARM_MARKER_TYPE);
+    }
+
+    private static Marker getSubmarker(Marker marker, String name) {
         Preconditions.checkNotNull(marker);
         Preconditions.checkNotNull(name);
         for (Iterator<Marker> m = marker.iterator(); m.hasNext();) {
