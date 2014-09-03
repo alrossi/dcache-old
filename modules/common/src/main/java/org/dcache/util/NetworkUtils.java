@@ -80,17 +80,10 @@ public abstract class NetworkUtils {
         }
         LOCAL_INET_ADDRESSES = ImmutableList.copyOf(localInetAddress);
 
-        if (LOCAL_INET_ADDRESSES.isEmpty()) {
-            canonicalHostName = "localhost";
-        } else {
-            InetAddress[] addresses
-                = LOCAL_INET_ADDRESSES.toArray(new InetAddress[0]);
-            Arrays.sort(addresses, getExternalInternalSorter());
-            canonicalHostName = addresses[0].getCanonicalHostName();
-        }
+        canonicalHostName = getPreferredHostName();
     }
 
-    public static String getCanonicalhostname() {
+    public static String getCanonicalHostName() {
         return canonicalHostName;
     }
 
@@ -231,5 +224,37 @@ public abstract class NetworkUtils {
             return StandardProtocolFamily.INET6;
         }
         throw new IllegalArgumentException("Unknown protocol family: " + address);
+    }
+
+
+    private static String getPreferredHostName() {
+        String hostName = "localhost";
+
+        if (!LOCAL_INET_ADDRESSES.isEmpty()) {
+            InetAddress[] addresses
+                = LOCAL_INET_ADDRESSES.toArray(new InetAddress[0]);
+            Arrays.sort(addresses, getExternalInternalSorter());
+
+            boolean found = false;
+
+            /*
+             * For legibility, we prefer to see a traditional
+             * ipv4 host name; but if the protocol is not
+             * supported, default to the first address name.
+             */
+            for (InetAddress a: addresses) {
+                if (a instanceof Inet4Address) {
+                    hostName = a.getCanonicalHostName();
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                hostName = addresses[0].getCanonicalHostName();
+            }
+        }
+
+        return hostName;
     }
 }
