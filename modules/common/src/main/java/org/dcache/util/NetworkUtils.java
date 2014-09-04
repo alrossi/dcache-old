@@ -243,18 +243,7 @@ public abstract class NetworkUtils {
              * use the first address.
              */
             for (InetAddress a: addresses) {
-                hostName = a.getCanonicalHostName();
-
-                /*
-                 * Workaround for bug in Guava, which should not
-                 * return the scoping portion of the address.  There
-                 * is a patch for this, but it has not yet been
-                 * applied our current library version.
-                 */
-                if (a instanceof Inet6Address &&
-                                hostName.contains("%")) {
-                    hostName = hostName.substring(0, hostName.indexOf("%"));
-                }
+                hostName = stripScope(a.getCanonicalHostName());
 
                 if (!InetAddresses.isInetAddress(hostName)) {
                     found = true;
@@ -267,6 +256,19 @@ public abstract class NetworkUtils {
             }
         }
 
+        return hostName;
+    }
+
+    /*
+     * Workaround for bug in Guava, which should not
+     * return the scoping portion of the address.  There
+     * is a patch for this, but it has not yet been
+     * applied our current library version.
+     */
+    private static String stripScope(String hostName) {
+        if (hostName.contains("%")) {
+            hostName = hostName.substring(0, hostName.indexOf("%"));
+        }
         return hostName;
     }
 }
