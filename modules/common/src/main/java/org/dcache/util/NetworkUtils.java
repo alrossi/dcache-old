@@ -266,8 +266,9 @@ public abstract class NetworkUtils {
      * applied our current library version.
      */
     private static String stripScope(String hostName) {
-        if (hostName.contains("%")) {
-            hostName = hostName.substring(0, hostName.indexOf("%"));
+        int i = hostName.indexOf("%");
+        if (i > 0) {
+            return hostName.substring(0, i);
         }
         return hostName;
     }
