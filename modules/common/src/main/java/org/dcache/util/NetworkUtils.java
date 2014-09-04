@@ -239,12 +239,24 @@ public abstract class NetworkUtils {
 
             /*
              * For legibility, we prefer to see a traditional
-             * ipv4 host name; but if the protocol is not
-             * supported, default to the first address name.
+             * DNS host name; but if there is no mapping,
+             * use the first address.
              */
             for (InetAddress a: addresses) {
-                if (a instanceof Inet4Address) {
-                    hostName = a.getCanonicalHostName();
+                hostName = a.getCanonicalHostName();
+
+                /*
+                 * Workaround for bug in Guava, which should not
+                 * return the scoping portion of the address.  There
+                 * is a patch for this, but it has not yet been
+                 * applied our current library version.
+                 */
+                if (a instanceof Inet6Address &&
+                                hostName.contains("%")) {
+                    hostName = hostName.substring(0, hostName.indexOf("%"));
+                }
+
+                if (!InetAddresses.isInetAddress(hostName)) {
                     found = true;
                     break;
                 }
