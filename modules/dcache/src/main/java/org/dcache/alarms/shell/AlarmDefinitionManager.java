@@ -188,6 +188,8 @@ public final class AlarmDefinitionManager {
                 /*
                  * a bug, shouldn't happen
                  */
+                System.err.println("This is a bug; please report it "
+                                    + "to the dCache team.");
                 t.printStackTrace();
             } else {
                 System.err.println(t.getMessage());

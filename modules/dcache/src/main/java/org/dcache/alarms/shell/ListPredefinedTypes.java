@@ -65,6 +65,8 @@ COPYRIGHT STATUS:
  */
 package org.dcache.alarms.shell;
 
+import com.google.common.base.Joiner;
+
 import java.util.Arrays;
 
 import org.dcache.alarms.PredefinedAlarm;
@@ -94,13 +96,9 @@ public final class ListPredefinedTypes {
         for (int i = 0; i < types.length; i++) {
             names[i] = types[i].toString();
         }
+
         Arrays.sort(names);
 
-        StringBuilder nameList = new StringBuilder();
-        for (String name: names) {
-            nameList.append(name).append("\n");
-        }
-
-        return nameList.toString();
+        return Joiner.on('\n').join(names);
     }
 }

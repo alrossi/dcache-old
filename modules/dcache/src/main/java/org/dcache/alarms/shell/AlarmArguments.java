@@ -65,11 +65,11 @@ COPYRIGHT STATUS:
  */
 package org.dcache.alarms.shell;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import org.slf4j.Marker;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -126,13 +126,7 @@ public final class AlarmArguments {
         List<String> arguments = parsed.getArguments();
         checkArgument(arguments.size() > 0,
                         "Please provide a non-zero-length alarm message.");
-
-        Iterator<String> it = arguments.iterator();
-        StringBuilder msg = new StringBuilder(it.next());
-        while (it.hasNext()) {
-           msg.append(" ").append(it.next());
-        }
-        message = msg.toString();
+        message = Joiner.on(" ").join(arguments);
 
         destinationHost = checkNotNull(parsed.getOption(DST_HOST_OPT));
 

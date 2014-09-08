@@ -154,7 +154,6 @@ public final class AlarmCommandHandler implements CellCommandListener {
             } catch (AlarmDefinitionValidationException e) {
                 return "Invalid definition: " + e.getMessage();
             } catch (Exception e) {
-                e.printStackTrace();
                 return "Failed to create defintion: " + e.getMessage();
             }
 
