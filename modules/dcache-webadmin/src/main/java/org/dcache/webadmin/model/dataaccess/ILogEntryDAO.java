@@ -72,17 +72,12 @@ import org.dcache.webadmin.model.util.AlarmJDOUtils.AlarmDAOFilter;
  *
  * @author arossi
  */
-public interface ILogEntryDAO {
+public interface LogEntryDAO {
     /**
      * It is assumed that any filtering beyond what the DAO filter takes
      * will be done in memory.
      */
     Collection<LogEntry> get(AlarmDAOFilter filter);
-
-    /**
-     * @return collection of unique entry types.
-     */
-    Collection<String> getEntryTypes();
 
     /**
      * @return number of entries removed
