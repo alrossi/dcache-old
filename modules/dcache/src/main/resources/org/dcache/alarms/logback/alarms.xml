@@ -56,13 +56,9 @@
         <property name="historyMinIndex" value="${alarms.history.min-index}"/>
     </bean>
 
-    <bean id="serverSocketReceiver" class="ch.qos.logback.classic.net.server.ServerSocketReceiver">
-        <property name="port" value="${alarms.net.port}"/>
-    </bean>
-
     <bean id="server" class="org.dcache.alarms.logback.LogEntryServer"
         init-method="start" destroy-method="stop">
-        <property name="receiver" ref="serverSocketReceiver"/>
+        <property name="port" value="${alarms.net.port}"/>
         <property name="appender" ref="logEntryAppender"/>
     </bean>
 
