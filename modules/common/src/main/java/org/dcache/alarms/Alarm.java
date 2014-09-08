@@ -60,27 +60,20 @@ documents or software obtained from this server.
 package org.dcache.alarms;
 
 /**
- * Used mainly during interactive sessions (shell and admin interface)
- * when creating a new definition.
+ * All alarms must implement this interface.
  *
  * @author arossi
  */
-public class AlarmDefinitionValidationException extends Exception
-{
-    private static final long serialVersionUID = -5160138147230131675L;
+public interface Alarm {
+    /**
+     * Required additional MDC properties when sending alarms.
+     */
+    String HOST_TAG = "host";
+    String DOMAIN_TAG = "domain";
+    String SERVICE_TAG = "service";
 
-    public AlarmDefinitionValidationException() {
-    }
-
-    public AlarmDefinitionValidationException(String message) {
-        super(message);
-    }
-
-    public AlarmDefinitionValidationException(Throwable cause) {
-        super(cause);
-    }
-
-    public AlarmDefinitionValidationException(String message, Throwable cause) {
-        super(message, cause);
-    }
+    /**
+     * @return the name of this type of alarm.
+     */
+    String getType();
 }

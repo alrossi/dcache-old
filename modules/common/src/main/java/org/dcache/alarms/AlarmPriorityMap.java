@@ -59,28 +59,85 @@ documents or software obtained from this server.
  */
 package org.dcache.alarms;
 
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Properties;
+
 /**
- * Used mainly during interactive sessions (shell and admin interface)
- * when creating a new definition.
+ * Defines the component responsible for mapping alarms or alerts to a priority
+ * level.
  *
  * @author arossi
  */
-public class AlarmDefinitionValidationException extends Exception
-{
-    private static final long serialVersionUID = -5160138147230131675L;
+public interface AlarmPriorityMap {
+    /**
+     * In case the implementation uses a local path
+     */
+    String PATH = "alarm-priorities-path";
 
-    public AlarmDefinitionValidationException() {
-    }
+    /**
+     * @return current default priority.
+     */
+    AlarmPriority getDefaultPriority();
 
-    public AlarmDefinitionValidationException(String message) {
-        super(message);
-    }
+    /**
+     * @param type
+     *            alarm name.
+     * @return priority to which this is mapped.
+     * @throws NoSuchElementException
+     *             if there is no current mapping.
+     */
+    AlarmPriority getPriority(String type) throws NoSuchElementException;
 
-    public AlarmDefinitionValidationException(Throwable cause) {
-        super(cause);
-    }
+    /**
+     * @return an object which can be included in a serializable message. The
+     *         map should be unmodifiable.
+     */
+    Map<String, AlarmPriority> getPriorityMap();
 
-    public AlarmDefinitionValidationException(String message, Throwable cause) {
-        super(message, cause);
-    }
+    /**
+     * @return sorted string list of the entire alarms-to-priority map.
+     */
+    String getSortedList();
+
+    /**
+     * Should locate all internal and external alarm types and load their type
+     * names. It should then override the default priority with any saved
+     * settings.
+     *
+     * @param env
+     *            any special settings which should override current ones.
+     */
+    void load(Properties env) throws Exception;
+
+    /**
+     * Sets all currently loaded types to the current default.
+     */
+    void restoreAllToDefaultPriority();
+
+    /**
+     * Should save the current mapping to some form of persistent storage for
+     * future reloading.
+     *
+     * @param env
+     *            any special settings which should override current ones.
+     */
+    void save(Properties env) throws Exception;
+
+    /**
+     * @param priority
+     *            to use as default.
+     */
+    void setDefaultPriority(String priority);
+
+    /**
+     * @param alarm
+     *            defined via custom definition or predefined enum.
+     * @param priority
+     *            to which this is mapped.
+     * @throws NoSuchElementException
+     *             if there is no current mapping.
+     */
+    void setPriority(String alarm, AlarmPriority priority)
+                    throws NoSuchElementException;
 }

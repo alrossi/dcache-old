@@ -60,27 +60,10 @@ documents or software obtained from this server.
 package org.dcache.alarms;
 
 /**
- * Used mainly during interactive sessions (shell and admin interface)
- * when creating a new definition.
+ * For marking alert level.
  *
  * @author arossi
  */
-public class AlarmDefinitionValidationException extends Exception
-{
-    private static final long serialVersionUID = -5160138147230131675L;
-
-    public AlarmDefinitionValidationException() {
-    }
-
-    public AlarmDefinitionValidationException(String message) {
-        super(message);
-    }
-
-    public AlarmDefinitionValidationException(Throwable cause) {
-        super(cause);
-    }
-
-    public AlarmDefinitionValidationException(String message, Throwable cause) {
-        super(message, cause);
-    }
+public enum AlarmPriority {
+    LOW, MODERATE, HIGH, CRITICAL;
 }

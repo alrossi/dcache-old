@@ -60,27 +60,27 @@ documents or software obtained from this server.
 package org.dcache.alarms;
 
 /**
- * Used mainly during interactive sessions (shell and admin interface)
- * when creating a new definition.
+ * All internally marked alarm types must be defined via this enum.
  *
  * @author arossi
  */
-public class AlarmDefinitionValidationException extends Exception
-{
-    private static final long serialVersionUID = -5160138147230131675L;
+public enum PredefinedAlarm implements Alarm {
+   GENERIC,
+   FATAL_JVM_ERROR,
+   DOMAIN_STARTUP_FAILURE,
+   OUT_OF_FILE_DESCRIPTORS,
+   LOCATION_MANAGER_FAILURE,
+   DB_CONNECTION_FAILURE,
+   HSM_SCRIPT_FAILURE,
+   POOL_DOWN,
+   POOL_DISABLED,
+   POOL_SIZE,
+   POOL_FREE_SPACE,
+   BROKEN_FILE,
+   CHECKSUM;
 
-    public AlarmDefinitionValidationException() {
-    }
-
-    public AlarmDefinitionValidationException(String message) {
-        super(message);
-    }
-
-    public AlarmDefinitionValidationException(Throwable cause) {
-        super(cause);
-    }
-
-    public AlarmDefinitionValidationException(String message, Throwable cause) {
-        super(message, cause);
+   @Override
+   public String getType() {
+       return toString();
     }
 }

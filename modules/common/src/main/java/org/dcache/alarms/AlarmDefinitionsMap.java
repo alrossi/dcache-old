@@ -59,28 +59,69 @@ documents or software obtained from this server.
  */
 package org.dcache.alarms;
 
+import java.io.Writer;
+import java.util.Collection;
+import java.util.NoSuchElementException;
+import java.util.Properties;
+import java.util.Set;
+
 /**
- * Used mainly during interactive sessions (shell and admin interface)
- * when creating a new definition.
+ * Defines the component responsible for mapping custom alarm types
+ * to their definitions.
  *
  * @author arossi
  */
-public class AlarmDefinitionValidationException extends Exception
-{
-    private static final long serialVersionUID = -5160138147230131675L;
+public interface AlarmDefinitionsMap<T extends AlarmDefinition> {
 
-    public AlarmDefinitionValidationException() {
-    }
+    String PATH = "alarm-definitions-path";
 
-    public AlarmDefinitionValidationException(String message) {
-        super(message);
-    }
+    /**
+     * @param definition of custom alarm.
+     */
+    void add(T definition);
 
-    public AlarmDefinitionValidationException(Throwable cause) {
-        super(cause);
-    }
+    /**
+     * @param  type alarm name.
+     * @return definition to which this is mapped.
+     */
+    T getDefinition(String type) throws NoSuchElementException;
 
-    public AlarmDefinitionValidationException(String message, Throwable cause) {
-        super(message, cause);
-    }
+    /**
+     * @return copy of the the collection of definitions.
+     */
+    Collection<T> getDefinitions();
+
+    /**
+     * @param writer e.g., string or file
+     *  to which to emit sorted string list of the entire alarms definition map.
+     * @throws Exception
+     */
+    void getSortedList(Writer writer) throws Exception;
+
+    /**
+     * @return a copy of the set of names of all defined alarm types.
+     */
+    Set<String> getTypes();
+
+    /**
+     * Should locate all external alarm types
+     * and load their definitions.
+     *
+     * @param env any special settings which should override current ones.
+     */
+    void load(Properties env) throws Exception;
+
+    /**
+     * @param alarmType type name.
+     * @return definition removed from the map.
+     */
+    T removeDefinition(String alarmType);
+
+    /**
+     * Should save the current mapping to some form of persistent
+     * storage for future reloading.
+     *
+     * @param env any special settings which should override current ones.
+     */
+    void save(Properties env) throws Exception;
 }
