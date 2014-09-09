@@ -97,7 +97,7 @@ public class LogEntry implements Comparable<LogEntry>, IRegexFilterable {
     /*
      *  No longer used, but maintained for backward compatibility.
      *  All newly created entries now default to 4, which was
-     *  the previous "CRITICAL" default.
+     *  the previous "CRITICAL" value.
      */
     private Integer severity = 4;
 
