@@ -94,6 +94,13 @@ public class LogEntry implements Comparable<LogEntry>, IRegexFilterable {
     private Boolean alarm = false;
     private Integer received = 1;
 
+    /*
+     *  No longer used, but maintained for backward compatibility.
+     *  All newly created entries now default to 4, which was
+     *  the previous "CRITICAL" default.
+     */
+    private Integer severity = 4;
+
     @Override
     public int compareTo(LogEntry o) {
         Preconditions.checkNotNull(o, "alarm entry parameter was null");
@@ -158,6 +165,10 @@ public class LogEntry implements Comparable<LogEntry>, IRegexFilterable {
 
     public String getService() {
         return service;
+    }
+
+    public Integer getSeverity() {
+        return severity;
     }
 
     public String getType() {
@@ -227,6 +238,10 @@ public class LogEntry implements Comparable<LogEntry>, IRegexFilterable {
 
     public void setService(String service) {
         this.service = service;
+    }
+
+    public void setSeverity(Integer severity) {
+        this.severity = severity;
     }
 
     public void setType(String type) {
