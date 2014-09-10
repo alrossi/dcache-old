@@ -134,6 +134,8 @@ public final class XmlBackedAlarmDefinitionsMap
     }
 
     public void load(Properties env) throws JDOMException, IOException {
+        internalMap.clear();
+
         File xmlDefinitions
             = new File(env.getProperty(AlarmDefinitionsMap.PATH,
                                        xmlDefinitionsPath));
@@ -147,7 +149,6 @@ public final class XmlBackedAlarmDefinitionsMap
         Element rootNode = document.getRootElement();
         List<Element> list = rootNode.getChildren(AlarmDefinition.ALARM_TAG);
         if (!list.isEmpty()) {
-            internalMap.clear();
             for (Element node : list) {
                 add(new JDomAlarmDefinition(node));
             }
