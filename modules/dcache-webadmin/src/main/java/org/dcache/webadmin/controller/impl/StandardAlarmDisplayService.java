@@ -150,7 +150,6 @@ public class StandardAlarmDisplayService implements AlarmDisplayService {
     }
 
     public void shutDown() {
-        access.shutDown();
     }
 
     protected Map<String, AlarmPriority> getPriorityMap() {

@@ -295,8 +295,7 @@
         </constructor-arg>
     </bean>
 
-    <bean id="AlarmDisplayService" class="org.dcache.webadmin.controller.impl.StandardAlarmDisplayService" 
-        destroy-method="shutDown">
+    <bean id="AlarmDisplayService" class="org.dcache.webadmin.controller.impl.StandardAlarmDisplayService">
         <constructor-arg>
             <ref bean="DAOFactory"/>
         </constructor-arg>
