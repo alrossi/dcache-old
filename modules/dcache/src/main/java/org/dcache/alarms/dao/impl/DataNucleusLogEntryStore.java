@@ -104,8 +104,8 @@ public final class DataNucleusLogEntryStore implements LogEntryDAO, Runnable {
     public void initialize() {
         if (cleanerEnabled) {
             if (cleanerThread != null && cleanerThread.isAlive()) {
-		return;
-	    }
+                return;
+            }
             checkArgument(cleanerSleepInterval > 0);
             checkArgument(cleanerDeleteThreshold > 0);
             cleanerThread = new Thread(this, "alarm-cleanup-daemon");
