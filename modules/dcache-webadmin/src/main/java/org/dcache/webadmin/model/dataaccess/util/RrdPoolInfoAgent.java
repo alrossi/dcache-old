@@ -209,8 +209,7 @@ public class RrdPoolInfoAgent implements Runnable {
 
         long heartbeat = (long) (settings.stepInSeconds * settings.heartbeatFactor);
         for (RrdHistogram h : RrdHistogram.values()) {
-            rrdDef.addDatasource(RrdHistogram.getSourceName(h), GAUGE,
-                            heartbeat, 0, Double.NaN);
+            rrdDef.addDatasource(h.toString(), GAUGE, heartbeat, 0, Double.NaN);
         }
 
         rrdDef.addArchive(LAST, 0.5, 1, settings.numSteps);
@@ -250,17 +249,15 @@ public class RrdPoolInfoAgent implements Runnable {
 
         RrdHistogram[] values = RrdHistogram.values();
         RrdHistogram h = values[0];
-        String srcName = RrdHistogram.getSourceName(h);
+        String srcName = h.toString();
         gDef.datasource(srcName, rrdPath, srcName, LAST);
-        gDef.area(RrdHistogram.getSourceName(h), RrdHistogram.getColor(h),
-                  RrdHistogram.getGraphLabel(h));
+        gDef.area(srcName, RrdHistogram.getColor(h), RrdHistogram.getGraphLabel(h));
 
         for (int i = 1; i < values.length; i++) {
             h = values[i];
-            srcName = RrdHistogram.getSourceName(h);
+            srcName = h.toString();
             gDef.datasource(srcName, rrdPath, srcName, LAST);
-            gDef.stack(RrdHistogram.getSourceName(h), RrdHistogram.getColor(h),
-                       RrdHistogram.getGraphLabel(h));
+            gDef.stack(srcName, RrdHistogram.getColor(h), RrdHistogram.getGraphLabel(h));
         }
 
         gDef.setImageInfo("<img src='%s' width='%d' height = '%d'>");
@@ -325,8 +322,8 @@ public class RrdPoolInfoAgent implements Runnable {
                 Map<String, Double> values = data.data();
 
                 for (RrdHistogram h : RrdHistogram.values()) {
-                    sample.setValue(RrdHistogram.getSourceName(h),
-                                    values.get(h.toString()));
+                    String srcName = h.toString();
+                    sample.setValue(srcName, values.get(srcName));
                 }
 
                 logger.debug("{}\t{}", new Date(TimeUnit.SECONDS.toMillis(now)),

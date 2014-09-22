@@ -71,6 +71,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import diskCacheV111.pools.PoolCostInfo;
+import diskCacheV111.pools.PoolCostInfo.NamedPoolQueueInfo;
 import diskCacheV111.pools.PoolCostInfo.PoolQueueInfo;
 
 /**
@@ -128,10 +129,6 @@ public class PoolQueuePlotData {
             }
             throw new IllegalArgumentException( "unknown histogram type " + h);
         }
-
-        public static String getSourceName(RrdHistogram h) {
-            return getGraphLabel(h).replaceAll(" ", "_");
-        }
     }
 
     private String poolName;
@@ -157,15 +154,16 @@ public class PoolQueuePlotData {
     }
 
     public void addValues(PoolCostInfo costInfo) {
-        PoolQueueInfo queueInfo = costInfo.getMoverQueue();
-        activeMovers += queueInfo.getActive();
-        queuedMovers += queueInfo.getQueued();
-        queueInfo = costInfo.getStoreQueue();
-        activeStores += queueInfo.getActive();
-        queuedStores += queueInfo.getQueued();
-        queueInfo = costInfo.getRestoreQueue();
-        activeRestores += queueInfo.getActive();
-        queuedRestores += queueInfo.getQueued();
+        Map<String, NamedPoolQueueInfo> queues = costInfo.getMoverQueues();
+        NamedPoolQueueInfo info = queues.get("Movers");
+        activeMovers += info.getActive();
+        queuedMovers += info.getQueued();
+        info = queues.get("Stores");
+        activeStores += info.getActive();
+        queuedStores += info.getQueued();
+        info = queues.get("Restores");
+        activeRestores += info.getActive();
+        queuedRestores += info.getQueued();
     }
 
     public Map<String, Double> data() {
