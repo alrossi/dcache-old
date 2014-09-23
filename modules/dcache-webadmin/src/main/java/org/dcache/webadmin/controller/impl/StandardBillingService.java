@@ -59,6 +59,8 @@ documents or software obtained from this server.
  */
 package org.dcache.webadmin.controller.impl;
 
+import org.apache.wicket.util.lang.Exceptions;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,6 +78,8 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import diskCacheV111.util.ServiceUnavailableException;
+
+import dmg.cells.nucleus.NoRouteToCellException;
 
 import org.dcache.cells.CellStub;
 import org.dcache.services.billing.histograms.ITimeFrameHistogramFactory;
@@ -303,29 +307,34 @@ public final class StandardBillingService implements IBillingService, Runnable {
 
     @Override
     public void run() {
-        try {
-            while (true) {
+        while (true) {
+            try {
                 refresh();
                 Thread.sleep(timeout);
-            }
-        } catch (InterruptedException interrupted) {
-            logger.trace("{} interrupted; exiting ...", refresher);
-        } catch (UndeclaredThrowableException ute) {
-            Throwable cause = ute.getCause();
-            if (cause instanceof ServiceUnavailableException) {
-                logger.error("The billing database has been disabled."
+            } catch (InterruptedException interrupted) {
+                logger.trace("{} interrupted; exiting ...", refresher);
+            } catch (UndeclaredThrowableException ute) {
+                if (null != Exceptions.findCause(ute, ServiceUnavailableException.class)) {
+                    logger.error("The billing database has been disabled."
                                 + "  To generate plots, please restart the service when"
                                 + " the billing database is once again available");
-            } else if (cause instanceof Error) {
-                throw ute;
+                    break;
+                } else if (null != Exceptions.findCause(ute, NoRouteToCellException.class)) {
+                    logger.warn("No route to the billing service yet; "
+                                    + "will retry after short wait");
+                    try {
+                       Thread.sleep(TimeUnit.MINUTES.toMillis(1));
+                    } catch (InterruptedException interrupted2) {
+                        logger.trace("{} retry wait interrupted", refresher);
+                    }
+                } else if (null != Exceptions.findCause(ute, Error.class)) {
+                    throw ute;
+                }
+                logger.error("Fatal billing request exception {}; exiting loop ...",
+                                ute.getMessage());
+                logger.debug("Refresh failure", ute);
+                break;
             }
-            /*
-             * if the service can't handle the client's requests, then we
-             * back out here because there is nothing we can do
-             */
-            logger.error("fatal billing request exception; "
-                            + "client loop is exiting");
-            logger.debug("refresh", ute);
         }
     }
 
