@@ -322,7 +322,7 @@ public final class StandardBillingService implements IBillingService, Runnable {
                     break;
                 } else if (null != Exceptions.findCause(ute, NoRouteToCellException.class)) {
                     logger.warn("No route to the billing service yet; "
-                                    + "will retry after short wait");
+                                    + "will retry after {} minutes", wait);
                     try {
                        Thread.sleep(TimeUnit.MINUTES.toMillis(wait));
                     } catch (InterruptedException interrupted2) {
