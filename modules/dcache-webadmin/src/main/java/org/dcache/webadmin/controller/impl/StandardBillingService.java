@@ -327,17 +327,21 @@ public final class StandardBillingService implements IBillingService, Runnable {
                     try {
                        Thread.sleep(TimeUnit.MINUTES.toMillis(wait));
                     } catch (InterruptedException interrupted2) {
-                        logger.trace("{} retry wait interrupted", refresher);
+                        logger.trace("{} retry wait interrupted; exiting ...",
+                                        refresher);
+                        break;
                     }
+
                     if (wait < 16) {
                         wait*=2;
                     }
                 } else if (null != Exceptions.findCause(ute, Error.class)) {
                     throw ute;
                 }
+
                 logger.error("Fatal billing request exception {}; exiting loop ...",
                                 ute.getMessage());
-                logger.debug("Refresh failure", ute);
+                logger.debug("Fatal exception in run()", ute);
                 break;
             }
         }
