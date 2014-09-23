@@ -314,6 +314,7 @@ public final class StandardBillingService implements IBillingService, Runnable {
                 Thread.sleep(timeout);
             } catch (InterruptedException interrupted) {
                 logger.trace("{} interrupted; exiting ...", refresher);
+                break;
             } catch (UndeclaredThrowableException ute) {
                 if (null != Exceptions.findCause(ute, ServiceUnavailableException.class)) {
                     logger.error("The billing database has been disabled."
