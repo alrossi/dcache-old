@@ -307,7 +307,6 @@ public final class StandardBillingService implements IBillingService, Runnable {
 
     @Override
     public void run() {
-        int wait = 1;
         while (true) {
             try {
                 refresh();
@@ -323,17 +322,13 @@ public final class StandardBillingService implements IBillingService, Runnable {
                     break;
                 } else if (null != Exceptions.findCause(ute, NoRouteToCellException.class)) {
                     logger.warn("No route to the billing service yet; "
-                                    + "will retry after {} minutes", wait);
+                                    + "will retry after 2 minutes");
                     try {
-                       Thread.sleep(TimeUnit.MINUTES.toMillis(wait));
+                       Thread.sleep(TimeUnit.MINUTES.toMillis(2));
                     } catch (InterruptedException interrupted2) {
                         logger.trace("{} retry wait interrupted; exiting ...",
                                         refresher);
                         break;
-                    }
-
-                    if (wait < 16) {
-                        wait*=2;
                     }
                 } else if (null != Exceptions.findCause(ute, Error.class)) {
                     throw ute;
