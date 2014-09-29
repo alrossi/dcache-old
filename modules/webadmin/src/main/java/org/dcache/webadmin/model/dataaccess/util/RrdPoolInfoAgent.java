@@ -320,10 +320,12 @@ public class RrdPoolInfoAgent implements Runnable {
                 Sample sample = rrdDb.createSample();
                 sample.setTime(now);
                 Map<String, Double> values = data.data();
-
+                System.out.println("store to RRD -- " + pool + ": DATA = " + values);
                 for (RrdHistogram h : RrdHistogram.values()) {
-                    sample.setValue(RrdHistogram.getSourceName(h),
-                                    values.get(h.toString()));
+                    String src = RrdHistogram.getSourceName(h);
+                    Double value =  values.get(h.toString());
+                    System.out.println("store to RRD -- " + pool + ": " + src + ", " + value);
+                    sample.setValue(src, value);
                 }
 
                 logger.debug("{}\t{}", new Date(TimeUnit.SECONDS.toMillis(now)),

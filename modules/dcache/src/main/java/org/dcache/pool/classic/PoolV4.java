@@ -1527,6 +1527,9 @@ public class PoolV4
                            _storageHandler.getStoreScheduler().getActiveJobs(),
                            _suppressHsmLoad ? 0 : _storageHandler.getStoreScheduler().getMaxActiveJobs(),
                            _storageHandler.getStoreScheduler().getQueueSize());
+
+        System.out.println("_storageHandler.getFetchScheduler().getActiveJobs() = " + _storageHandler.getFetchScheduler().getActiveJobs());
+        System.out.println("_storageHandler.getStoreScheduler().getActiveJobs() = " + _storageHandler.getStoreScheduler().getActiveJobs());
         return info;
     }
 

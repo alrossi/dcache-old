@@ -166,6 +166,7 @@ public class PoolQueuePlotData {
         queueInfo = costInfo.getRestoreQueue();
         activeRestores += queueInfo.getActive();
         queuedRestores += queueInfo.getQueued();
+        System.out.println(poolName + " - addValues, activeStores " + activeStores + ", activeRestores " + activeRestores);
     }
 
     public Map<String, Double> data() {
