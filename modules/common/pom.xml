@@ -26,7 +26,10 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
     </dependency>
-
+    <dependency>
+        <groupId>javax.jdo</groupId>
+        <artifactId>jdo-api</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.jglobus</groupId>
       <artifactId>axisg</artifactId>

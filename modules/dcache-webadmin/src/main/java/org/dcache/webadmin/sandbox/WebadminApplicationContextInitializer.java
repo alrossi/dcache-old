@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.dcache.webadmin;
+package org.dcache.webadmin.sandbox;
 
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -30,6 +30,9 @@ public class WebadminApplicationContextInitializer
     @Override
     public void initialize(ConfigurableApplicationContext applicationContext) {
         ConfigurableEnvironment environment = applicationContext.getEnvironment();
-        environment.setActiveProfiles("alarms-" + environment.getProperty("httpd.alarms.db.type"));
+        environment.setActiveProfiles("alarms-" + environment.getProperty("httpd.alarms.db.type"),
+                                      "autenticated-" + environment.getProperty("httpd.enable.authn"),
+                                      "billing-plots-" + environment.getProperty("httpd.enable.plots.billing"),
+                                      "pool-plots-" + environment.getProperty("httpd.enable.plots.pool-queue"));
     }
 }

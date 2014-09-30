@@ -1,4 +1,4 @@
-package org.dcache.webadmin.view.pages;
+package org.dcache.webadmin.sandbox.view;
 
 public interface AuthenticatedWebPage {
 }

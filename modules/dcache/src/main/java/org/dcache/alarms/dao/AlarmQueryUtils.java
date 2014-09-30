@@ -60,19 +60,20 @@ documents or software obtained from this server.
 package org.dcache.alarms.dao;
 
 import com.google.common.base.Preconditions;
+
 import com.google.common.base.Strings;
 
-import javax.jdo.FetchPlan;
 import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
-import javax.jdo.Transaction;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+
+import org.dcache.db.JDOQueryFilter;
+import org.dcache.db.JDOQueryUtils;
 
 /**
  * Convenience methods for generating JDO queries from {@link LogEntry}
@@ -80,101 +81,7 @@ import java.util.List;
  *
  * @author arossi
  */
-public class AlarmJDOUtils {
-    private static final int MAXIMUM_QUERY_RESULTS = 10000;
-
-    public static class AlarmDAOFilter {
-        private String filter;
-        private String parameters;
-        private Object[] values;
-        private Integer rangeStart;
-        private Integer rangeEnd;
-
-        @Override
-        public String toString() {
-            return filter + ", " + parameters
-                    + (values == null ? null : ", " + Arrays.asList(values));
-        }
-
-        public String getFilter() {
-            return filter;
-        }
-
-        public Integer getRangeStart() {
-            return rangeStart;
-        }
-
-        public String getParameters() {
-            return parameters;
-        }
-
-        public Integer getRangeEnd() {
-            return rangeEnd;
-        }
-
-        public Object[] getValues() {
-            if (values == null) {
-                return null;
-            }
-            return Arrays.asList(values).toArray();
-        }
-
-        private void normalizeRange() {
-            if (rangeStart != null) {
-                if (rangeEnd == null) {
-                    rangeEnd = Integer.MAX_VALUE;
-                }
-            } else if (rangeEnd != null) {
-                if (rangeStart == null) {
-                    rangeStart = 0;
-                }
-            }
-        }
-    }
-
-    public static long delete(PersistenceManager pm, AlarmDAOFilter filter) {
-        Query query = AlarmJDOUtils.createQuery(pm, filter);
-        return filter.values == null ? query.deletePersistentAll()
-                        : query.deletePersistentAll(filter.values);
-    }
-
-    public static Collection<LogEntry> execute(PersistenceManager pm,
-                    AlarmDAOFilter filter) {
-        Query query = AlarmJDOUtils.createQuery(pm, filter);
-
-        /*
-         * 2013/12/11 -- added a range limit guard.  This can be hard-coded
-         * as effectively the capacity to hold more than 10000 entries in
-         * memory should not be required.  One can always adjust the numbers or
-         * refine the query.
-         */
-        Integer from = filter.rangeStart == null ? 0
-                        : filter.rangeStart;
-        int limit = from + MAXIMUM_QUERY_RESULTS;
-        Integer to = filter.rangeEnd == null ? limit
-                        : Math.min(filter.rangeEnd, limit);
-        query.setRange(from, to);
-
-        /*
-         * evidently required by DataNucleus 3.1.3+ to get most recent
-         * updates from other JVMs
-         */
-        query.setIgnoreCache(true);
-        return (Collection<LogEntry>) (filter.values == null ? query.execute()
-                        : query.executeWithArray(filter.values));
-    }
-
-    /**
-     * Construct filter based on values for the before and closed (AND'd).
-     */
-    public static AlarmDAOFilter getDeleteBeforeFilter(Long before) {
-        Preconditions.checkNotNull(before);
-        AlarmDAOFilter filter = new AlarmDAOFilter();
-        filter.filter = "lastUpdate<=b && closed==t";
-        filter.parameters = "java.lang.Long b, java.lang.Boolean t";
-        filter.values = new Object[] { before, true };
-        return filter;
-    }
+public class AlarmQueryUtils {
 
     /**
      * Construct filter based on values for the parameter fields (AND'd).
@@ -197,7 +104,7 @@ public class AlarmJDOUtils {
      *            range ending
      *            may be <code>null</code>.
      */
-    public static AlarmDAOFilter getFilter(Date after,
+    public static JDOQueryFilter getFilter(Date after,
                                            Date before,
                                            String type,
                                            Boolean isAlarm,
@@ -243,19 +150,17 @@ public class AlarmJDOUtils {
             values.add(isAlarm);
         }
 
-        AlarmDAOFilter filter = new AlarmDAOFilter();
-        filter.filter = trimToNull(f);
-        filter.parameters = trimToNull(p);
-        filter.values = emptyListToNull(values);
-        filter.rangeStart = rangeStart;
-        filter.rangeEnd = rangeEnd;
-        return filter;
+        return new JDOQueryFilter(Strings.emptyToNull(f.toString().trim()),
+                                  Strings.emptyToNull(f.toString().trim()),
+                                  JDOQueryUtils.emptyListToNull(values),
+                                  rangeStart,
+                                  rangeEnd);
     }
 
     /**
      * Construct filter from multiple alarm entry keys (OR'd).
      */
-    public static AlarmDAOFilter getIdFilter(Collection<LogEntry> selected) {
+    public static JDOQueryFilter getIdFilter(Collection<LogEntry> selected) {
         StringBuilder f = new StringBuilder();
         StringBuilder p = new StringBuilder();
         List<Object> values = new ArrayList<>();
@@ -277,48 +182,28 @@ public class AlarmJDOUtils {
             values.add(i.next().getKey());
         }
 
-        AlarmDAOFilter filter = new AlarmDAOFilter();
-        filter.filter = Strings.emptyToNull(f.toString());
-        filter.parameters = Strings.emptyToNull(p.toString());
-        filter.values = emptyListToNull(values);
-        return filter;
+        return new JDOQueryFilter(Strings.emptyToNull(f.toString().trim()),
+                                  Strings.emptyToNull(p.toString().trim()),
+                                  JDOQueryUtils.emptyListToNull(values));
     }
 
-    public static void rollbackIfActive(Transaction tx) {
-        if (tx.isActive()) {
-            tx.rollback();
-        }
+    public static Query getTypeQuery(PersistenceManager pm) {
+        return pm.newQuery("JPQL", "SELECT DISTINCT e.type "
+                                 + "FROM "
+                                 + LogEntry.class.getName()
+                                 + " e ORDER BY e.type");
     }
 
     /**
-     * Construct an actual JDO query from the filter.
+     * Construct filter based on values for the before and closed (AND'd).
      */
-    private static Query createQuery(PersistenceManager pm,
-                                     AlarmDAOFilter filter) {
-        filter.normalizeRange();
-
-        Query query = pm.newQuery(LogEntry.class);
-        query.setFilter(filter.filter);
-        query.declareParameters(filter.parameters);
-        query.addExtension("datanucleus.query.resultCacheType", "none");
-        query.addExtension("datanucleus.rdbms.query.resultSetType",
-                           "scroll-insensitive");
-        query.getFetchPlan().setFetchSize(FetchPlan.FETCH_SIZE_OPTIMAL);
-        return query;
+    public static JDOQueryFilter getDeleteBeforeFilter(Long before) {
+        Preconditions.checkNotNull(before);
+        return new JDOQueryFilter("lastUpdate<=b && closed==t",
+                                  "java.lang.Long b, java.lang.Boolean t",
+                                  new Object[] { before, true });
     }
 
-    private static Object[] emptyListToNull(List<Object> values) {
-        return values.isEmpty() ? null : values.toArray();
-    }
-
-    private static String trimToNull(StringBuilder buffer) {
-        String trimmed = buffer.toString().trim();
-        if (trimmed.length() == 0) {
-            return null;
-        }
-        return trimmed;
-    }
-
-    private AlarmJDOUtils() {
+    private AlarmQueryUtils() {
     }
 }

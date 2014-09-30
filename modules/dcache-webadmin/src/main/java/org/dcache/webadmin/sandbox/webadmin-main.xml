@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+       xmlns:jee="http://www.springframework.org/schema/jee"
+       xmlns:context="http://www.springframework.org/schema/context" 
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/jee
+                           http://www.springframework.org/schema/jee/spring-jee.xsd
+                           http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/context
+                           http://www.springframework.org/schema/context/spring-context.xsd 
+                           http://www.springframework.org/schema/util 
+                           http://www.springframework.org/schema/util/spring-util.xsd">
+
+    <context:property-placeholder/>
+    <context:annotation-config/>
+
+    <jee:jndi-lookup id="ServiceCellEndpoint" jndi-name="java:comp/env/serviceCellEndpoint"/>
+    
+    <import resource="alarm-service.xml"/>
+    <import resource="info-services.xml"/>
+    <import resource="login-service.xml"/>
+    <import resource="plotting-services.xml"/>
+    <import resource="pool-services.xml"/>
+    <import resource="transfer-services.xml"/>
+ 
+    <beans profile="authenticated-true">
+        <bean id="MainApp" class="org.dcache.webadmin.view.WebadminApplication" 
+                           destroy-method="shutdown">
+            <property name="dcacheName" value="${httpd.html.dcache-instance-name}"/>
+            <property name="httpPort" value="${httpd.net.port}"/>
+            <property name="httpsPort" value="${httpd.net.https-port}"/>
+            <property name="loginService" ref="LoginService"/>
+            <property name="authzStrategies">
+                <list>
+                    <ref bean="SimpleLoginStrategy"/>
+                    <ref bean="RoleBasedLoginStrategy"/>
+                </list>
+            </property>
+            <property name="adminPages">
+                <set>
+                    <value>org.dcache.webadmin.sandbox.view.pages.Alarms</value>
+                    <value>org.dcache.webadmin.sandbox.view.pages.CellAdmin</value>
+                    <value>org.dcache.webadmin.sandbox.view.pages.PoolAdmin</value>
+                </set>
+            </property>
+            <property name="linkNames">
+                <map>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.Alarms" value="Alarms"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.Billing" value="Billing Plots"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.PoolPlots" value="Pool Queue Plots"/>
+                </map>
+            </property>
+            <property name="paths">
+                <map>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.Billing" value="billingplots"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.PoolPlots" value="poolqueueplots"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.Alarms" value="alarms"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.Info" value="info"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.CellServices" value="cellinfo"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.PoolList" value="usageinfo"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.PoolGroupView" value="poolgroups"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.PoolAdmin" value="pooladmin"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.CellAdmin" value="celladmin"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.InfoXml" value="infoxml"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.ActiveTransfers" value="transfers"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.PoolSelectionSetup" value="poolinfo"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.TapeTransferQueue" value="tapetransfers"/>       
+                </map>
+            </property>
+            <property name="services">
+                <map>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.Billing" value-ref="BillingPlotsService"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.PoolPlots" value-ref="PoolPlotsService"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.Alarms" value-ref="AlarmService"/>
+                </map>
+            </property>  
+        </bean>
+    </beans>
+
+    <beans profile="authenticated-false">
+        <bean id="MainApp" class="org.dcache.webadmin.view.WebadminApplication"
+                           destroy-method="shutdown">
+            <property name="dcacheName" value="${httpd.html.dcache-instance-name}"/>
+            <property name="httpPort" value="${httpd.net.port}"/>
+            <property name="linkNames">
+                <map>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.Billing" value="Billing Plots"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.PoolPlots" value="Pool Queue Plots"/>
+                </map>
+            </property>
+            <property name="paths">
+                <map>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.Billing" value="billingplots"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.PoolPlots" value="poolqueueplots"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.Info" value="info"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.CellServices" value="cellinfo"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.PoolList" value="usageinfo"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.PoolGroupView" value="poolgroups"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.InfoXml" value="infoxml"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.ActiveTransfers" value="transfers"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.PoolSelectionSetup" value="poolinfo"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.TapeTransferQueue" value="tapetransfers"/>       
+                </map>
+            </property>
+            <property name="services">
+                <map>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.Billing" value-ref="BillingPlotsService"/>
+                    <entry key="org.dcache.webadmin.sandbox.view.pages.PoolPlots" value-ref="PoolPlotsService"/>
+                </map>
+            </property>
+        </bean>
+    </beans>
+</beans>

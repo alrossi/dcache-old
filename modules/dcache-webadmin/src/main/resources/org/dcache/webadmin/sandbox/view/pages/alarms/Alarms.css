@@ -1,0 +1,10 @@
+@CHARSET "UTF-8";
+
+h3 {
+    text-align: left;
+}
+
+table.display {
+    margin-left: auto;
+    margin-right: auto;
+}

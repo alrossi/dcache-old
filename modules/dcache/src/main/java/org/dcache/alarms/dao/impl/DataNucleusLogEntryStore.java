@@ -72,10 +72,11 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
-import org.dcache.alarms.dao.AlarmJDOUtils;
-import org.dcache.alarms.dao.AlarmJDOUtils.AlarmDAOFilter;
+import org.dcache.alarms.dao.AlarmQueryUtils;
 import org.dcache.alarms.dao.LogEntry;
 import org.dcache.alarms.dao.LogEntryDAO;
+import org.dcache.db.JDOQueryFilter;
+import org.dcache.db.JDOQueryUtils;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -234,16 +235,18 @@ public final class DataNucleusLogEntryStore implements LogEntryDAO, Runnable {
         }
 
         Transaction tx = deleteManager.currentTransaction();
-        AlarmDAOFilter filter = AlarmJDOUtils.getDeleteBeforeFilter(threshold);
+        JDOQueryFilter filter = AlarmQueryUtils.getDeleteBeforeFilter(threshold);
         try {
             tx.begin();
-            long removed = AlarmJDOUtils.delete(deleteManager, filter);
+            long removed = JDOQueryUtils.delete(deleteManager,
+                                                filter,
+                                                LogEntry.class);
             tx.commit();
             logger.debug("successfully removed {} entries", removed);
             return removed;
         } finally {
             try {
-                AlarmJDOUtils.rollbackIfActive(tx);
+                JDOQueryUtils.rollbackIfActive(tx);
             } finally {
                 deleteManager.close();
             }
