@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+       xmlns:jee="http://www.springframework.org/schema/jee"
+       xmlns:context="http://www.springframework.org/schema/context" 
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/jee
+                           http://www.springframework.org/schema/jee/spring-jee.xsd
+                           http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/context
+                           http://www.springframework.org/schema/context/spring-context.xsd 
+                           http://www.springframework.org/schema/util 
+                           http://www.springframework.org/schema/util/spring-util.xsd">
+
+    <context:property-placeholder/>
+    <context:annotation-config/>
+
+    <jee:jndi-lookup id="ServiceCellEndpoint" jndi-name="java:comp/env/serviceCellEndpoint"/>
+
+    <beans profile="billing-plots-true">
+        <bean id="BillingCellStub" class="org.dcache.cells.CellStub">
+            <property name="cellEndpoint" ref="ServiceCellEndpoint"/>
+            <property name="destination" value="${httpd.service.billing}"/>
+            <property name="timeout" value="${httpd.service.billing.timeout}"/>
+            <property name="timeoutUnit" value="${httpd.service.billing.timeout.unit}"/>
+        </bean>
+        
+        <bean id="BillingPlotsService" class="org.dcache.webadmin.sandbox.controller.services.NOPService"/>
+    </beans>
+    
+    <beans profile="billing-plots-false">
+        <bean id="BillingPlotsService" class="org.dcache.webadmin.sandbox.controller.services.NOPService"/>
+    </beans>
+
+    <beans profile="pool-plots-true">
+        <bean id="PoolPlotsService" class="org.dcache.webadmin.sandbox.controller.services.NOPService"/>
+    </beans>
+    
+    <beans profile="pool-plots-false">
+        <bean id="PoolPlotsService" class="org.dcache.webadmin.sandbox.controller.services.NOPService"/>
+    </beans>
+</beans>
