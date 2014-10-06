@@ -60,6 +60,8 @@ documents or software obtained from this server.
 package org.dcache.webadmin.model.dataaccess.util;
 
 import org.rrd4j.graph.RrdGraphConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
@@ -136,6 +138,23 @@ public class RrdSettings {
         spanInSeconds = TimeUnit.MILLISECONDS.toSeconds(spanInMillis);
         numSteps = (int) (spanInSeconds / stepInSeconds);
         rightMarginInSeconds = rightMarginInSteps * stepInSeconds;
+
+        /*
+         * Check that there enough pixels to accommodate the steps.
+         */
+        double totalSteps = (double)(numSteps+rightMarginInSteps);
+        double stepRatio = ((double)imgWidth)/totalSteps;
+
+        if (stepRatio < 1) {
+            int newWidth = (int)((double)imgWidth/stepRatio);
+            Logger logger = LoggerFactory.getLogger(this.getClass());
+            logger.warn("The number of time steps ({}) "
+                       + "exceeds the width in pixels ({}); "
+                       + "adjusting width to fit: ({}).",
+                       totalSteps, imgWidth, newWidth);
+            imgWidth = newWidth;
+            logger.warn(toString());
+        }
     }
 
     public String toString() {

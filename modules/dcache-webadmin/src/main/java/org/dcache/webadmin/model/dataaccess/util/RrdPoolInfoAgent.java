@@ -59,6 +59,8 @@ documents or software obtained from this server.
  */
 package org.dcache.webadmin.model.dataaccess.util;
 
+import com.google.common.base.Preconditions;
+
 import org.rrd4j.core.RrdDb;
 import org.rrd4j.core.RrdDef;
 import org.rrd4j.core.Sample;
@@ -115,6 +117,11 @@ public class RrdPoolInfoAgent implements Runnable {
     private CostModule costModule;
     private long lastRefresh;
     private Thread refresher;
+
+    public void initialize() {
+        Preconditions.checkNotNull(settings).initialize();
+        refreshInterval = Math.min(refreshInterval, settings.stepInMillis);
+    }
 
     public void notify(PoolMonitor monitor) {
         long now = System.currentTimeMillis();
