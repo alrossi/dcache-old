@@ -146,7 +146,8 @@ public class RrdSettings {
         double stepRatio = ((double)imgWidth)/totalSteps;
 
         /*
-         * normalize to integer > 2X
+         * Normalize width/steps so that there are at least 2 pixels
+         * per step and the width is an integral multiple of total steps.
          */
         double normalRatio = Math.max(2.0, Math.floor(stepRatio));
         double delta = normalRatio/stepRatio;
@@ -158,7 +159,8 @@ public class RrdSettings {
                         + "delta ({}); "
                         + "original width in pixels ({}); "
                         + "normalized width: ({}).",
-                        totalSteps, stepRatio, normalRatio, delta, imgWidth, newWidth);
+                        totalSteps, stepRatio, normalRatio,
+                        delta, imgWidth, newWidth);
         imgWidth = newWidth;
     }
 

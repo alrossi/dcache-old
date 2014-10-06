@@ -256,18 +256,28 @@ public class RrdPoolInfoAgent implements Runnable {
                         settings.labelSpan, settings.simpleDateFormat);
 
         RrdHistogram[] values = RrdHistogram.values();
-        RrdHistogram h = values[0];
-        String srcName = h.toString();
-        gDef.datasource(srcName, rrdPath, srcName, LAST);
-        gDef.area(srcName, RrdHistogram.getColor(h),
-                           RrdHistogram.getGraphLabel(h));
-
-        for (int i = 1; i < values.length; i++) {
+        int i = 0;
+        RrdHistogram h;
+        String srcName;
+        for (; i < values.length; i++) {
             h = values[i];
             srcName = h.toString();
-            gDef.datasource(srcName, rrdPath, srcName, LAST);
-            gDef.stack(srcName, RrdHistogram.getColor(h),
+            if (0.0 < rrdDb.getDatasource(srcName).getLastValue()) {
+                gDef.datasource(srcName, rrdPath, srcName, LAST);
+                gDef.area(srcName, RrdHistogram.getColor(h),
+                                   RrdHistogram.getGraphLabel(h));
+                break;
+            }
+        }
+
+        for (; i < values.length; i++) {
+            h = values[i];
+            srcName = h.toString();
+            if (0.0 < rrdDb.getDatasource(srcName).getLastValue()) {
+                gDef.datasource(srcName, rrdPath, srcName, LAST);
+                gDef.stack(srcName, RrdHistogram.getColor(h),
                                 RrdHistogram.getGraphLabel(h));
+            }
         }
 
         gDef.setImageInfo("<img src='%s' width='%d' height = '%d'>");
