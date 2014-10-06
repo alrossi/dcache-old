@@ -259,10 +259,12 @@ public class RrdPoolInfoAgent implements Runnable {
         int i = 0;
         RrdHistogram h;
         String srcName;
+        double last;
         for (; i < values.length; i++) {
             h = values[i];
             srcName = h.toString();
-            if (0.0 < rrdDb.getDatasource(srcName).getLastValue()) {
+            last = rrdDb.getDatasource(srcName).getLastValue();
+            if (!Double.isNaN(last) && last > 0.0) {
                 gDef.datasource(srcName, rrdPath, srcName, LAST);
                 gDef.area(srcName, RrdHistogram.getColor(h),
                                    RrdHistogram.getGraphLabel(h));
@@ -273,7 +275,8 @@ public class RrdPoolInfoAgent implements Runnable {
         for (; i < values.length; i++) {
             h = values[i];
             srcName = h.toString();
-            if (0.0 < rrdDb.getDatasource(srcName).getLastValue()) {
+            last = rrdDb.getDatasource(srcName).getLastValue();
+            if (!Double.isNaN(last) && last > 0.0) {
                 gDef.datasource(srcName, rrdPath, srcName, LAST);
                 gDef.stack(srcName, RrdHistogram.getColor(h),
                                 RrdHistogram.getGraphLabel(h));
