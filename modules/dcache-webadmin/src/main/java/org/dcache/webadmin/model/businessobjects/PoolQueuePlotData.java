@@ -85,7 +85,7 @@ public class PoolQueuePlotData {
     private static final Color DARK_GREEN = new Color(0,102,0);
 
     public enum RrdHistogram {
-        QSTORE, QRESTORE, QMOVER, ASTORE, ARESTORE, AMOVER;
+        AMOVER, QMOVER, ASTORE, QSTORE, ARESTORE, QRESTORE;
 
         public static Color getColor(RrdHistogram h) {
             if (ASTORE == h) {
