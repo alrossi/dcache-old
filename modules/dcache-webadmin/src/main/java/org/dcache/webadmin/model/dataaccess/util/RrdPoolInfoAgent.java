@@ -260,15 +260,15 @@ public class RrdPoolInfoAgent implements Runnable {
         RrdHistogram h = values[0];
         String srcName = RrdHistogram.getSourceName(h);
         gDef.datasource(srcName, rrdPath, srcName, LAST);
-        gDef.area(RrdHistogram.getSourceName(h), RrdHistogram.getColor(h),
-                  RrdHistogram.getGraphLabel(h));
+        gDef.area(srcName, RrdHistogram.getColor(h),
+                           RrdHistogram.getGraphLabel(h));
 
         for (int i = 1; i < values.length; i++) {
             h = values[i];
             srcName = RrdHistogram.getSourceName(h);
             gDef.datasource(srcName, rrdPath, srcName, LAST);
-            gDef.stack(RrdHistogram.getSourceName(h), RrdHistogram.getColor(h),
-                       RrdHistogram.getGraphLabel(h));
+            gDef.stack(srcName, RrdHistogram.getColor(h),
+                                RrdHistogram.getGraphLabel(h));
         }
 
         gDef.setImageInfo("<img src='%s' width='%d' height = '%d'>");
