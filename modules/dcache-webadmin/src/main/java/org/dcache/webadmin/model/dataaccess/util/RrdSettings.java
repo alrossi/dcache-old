@@ -145,15 +145,16 @@ public class RrdSettings {
         double totalSteps = (double)(numSteps+rightMarginInSteps);
         double stepRatio = ((double)imgWidth)/totalSteps;
 
-        if (stepRatio < 1) {
-            int newWidth = (int)((double)imgWidth/stepRatio);
-            Logger logger = LoggerFactory.getLogger(this.getClass());
-            logger.warn("The number of time steps ({}) "
-                       + "exceeds the width in pixels ({}); "
-                       + "adjusting width to fit: ({}).",
-                       totalSteps, imgWidth, newWidth);
-            imgWidth = newWidth;
-        }
+        /*
+         * normalize to 2X
+         */
+        int newWidth = (int) Math.ceil(2.0 * (double) imgWidth / stepRatio);
+        Logger logger = LoggerFactory.getLogger(this.getClass());
+        logger.error("Number of time steps ({}); "
+                        + "original width in pixels ({}); "
+                        + "normalized width: ({}).",
+                        totalSteps, imgWidth, newWidth);
+        imgWidth = newWidth;
     }
 
     public String toString() {
