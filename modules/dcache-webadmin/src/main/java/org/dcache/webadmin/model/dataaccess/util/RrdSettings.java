@@ -153,7 +153,6 @@ public class RrdSettings {
                        + "adjusting width to fit: ({}).",
                        totalSteps, imgWidth, newWidth);
             imgWidth = newWidth;
-            logger.warn(toString());
         }
     }
 

@@ -109,7 +109,7 @@ public class ThumbnailPanelBean implements IRegexFilterable,
     public ThumbnailPanelBean(File file, int height, int width) {
         String name = file.getName();
         int end = name.indexOf(RrdSettings.FILE_SUFFIX);
-        this.name = name.substring(0, end).toUpperCase();
+        this.name = name.substring(0, end);
         IResource resource = new ResourceStreamResource(new FileResourceStream(
                         file));
         Image image = new Image("thumbnail", resource);
