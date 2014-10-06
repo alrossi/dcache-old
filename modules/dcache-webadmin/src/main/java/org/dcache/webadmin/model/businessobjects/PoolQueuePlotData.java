@@ -81,28 +81,31 @@ import diskCacheV111.pools.PoolCostInfo.PoolQueueInfo;
  * @author arossi
  */
 public class PoolQueuePlotData {
+    private static final Color DARK_RED = new Color(102,0,0);
+    private static final Color DARK_BLUE = new Color(0,0,102);
+    private static final Color DARK_GREEN = new Color(0,102,0);
 
     public enum RrdHistogram {
         QSTORE, QRESTORE, QMOVER, ASTORE, ARESTORE, AMOVER;
 
         public static Color getColor(RrdHistogram h) {
-            if (QSTORE == h) {
-                return Color.BLUE;
-            }
-            if (QRESTORE == h) {
-                return Color.RED;
-            }
-            if (QMOVER == h) {
-                return Color.DARK_GRAY;
-            }
             if (ASTORE == h) {
-                return Color.CYAN;
+                return Color.GREEN;
+            }
+            if (QSTORE == h) {
+                return DARK_GREEN;
             }
             if (ARESTORE == h) {
-                return Color.MAGENTA;
+                return Color.RED;
+            }
+            if (QRESTORE == h) {
+                return DARK_RED;
             }
             if (AMOVER == h) {
-                return Color.GREEN;
+                return Color.BLUE;
+            }
+            if (QMOVER == h) {
+                return DARK_BLUE;
             }
             return Color.WHITE;
         }
