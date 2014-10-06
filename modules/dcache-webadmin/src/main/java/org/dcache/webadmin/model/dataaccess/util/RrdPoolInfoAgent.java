@@ -336,11 +336,11 @@ public class RrdPoolInfoAgent implements Runnable {
                     sample.setValue(src, values.get(src));
                 }
 
-                logger.error("{}\t{}", new Date(TimeUnit.SECONDS.toMillis(now)),
+                logger.debug("{}\t{}", new Date(TimeUnit.SECONDS.toMillis(now)),
                                 sample.dump());
 
                 sample.update();
-                logger.debug(rrdDb.dump());
+                logger.trace(rrdDb.dump());
             }
         } catch (IOException t) {
             logger.error("problem writing data to RrdDb: {}", t.getMessage());

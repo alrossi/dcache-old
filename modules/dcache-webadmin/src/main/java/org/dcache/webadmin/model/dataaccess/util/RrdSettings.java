@@ -152,7 +152,7 @@ public class RrdSettings {
         double delta = normalRatio/stepRatio;
         int newWidth = (int)(imgWidth*delta);
         Logger logger = LoggerFactory.getLogger(this.getClass());
-        logger.error("Number of time steps ({}); "
+        logger.warn("Number of time steps ({}); "
                         + "stepRatio ({}); "
                         + "normalizedRatio ({}); "
                         + "delta ({}); "

@@ -95,16 +95,16 @@ public class PoolQueuePlotData {
                 return DARK_GREEN;
             }
             if (ARESTORE == h) {
-                return Color.RED;
-            }
-            if (QRESTORE == h) {
-                return DARK_RED;
-            }
-            if (AMOVER == h) {
                 return Color.CYAN;
             }
-            if (QMOVER == h) {
+            if (QRESTORE == h) {
                 return Color.BLUE;
+            }
+            if (AMOVER == h) {
+                return Color.RED;
+            }
+            if (QMOVER == h) {
+                return DARK_RED;
             }
             return Color.WHITE;
         }
