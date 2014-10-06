@@ -130,10 +130,6 @@ public class PoolQueuePlotData {
             }
             throw new IllegalArgumentException( "unknown histogram type " + h);
         }
-
-        public static String getSourceName(RrdHistogram h) {
-            return getGraphLabel(h).replaceAll(" ", "_");
-        }
     }
 
     private String poolName;

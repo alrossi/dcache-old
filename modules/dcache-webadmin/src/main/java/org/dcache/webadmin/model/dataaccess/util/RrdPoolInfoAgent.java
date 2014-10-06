@@ -217,8 +217,7 @@ public class RrdPoolInfoAgent implements Runnable {
 
         long heartbeat = (long) (settings.stepInSeconds * settings.heartbeatFactor);
         for (RrdHistogram h : RrdHistogram.values()) {
-            rrdDef.addDatasource(RrdHistogram.getSourceName(h), GAUGE,
-                            heartbeat, 0, Double.NaN);
+            rrdDef.addDatasource(h.toString(), GAUGE, heartbeat, 0, Double.NaN);
         }
 
         rrdDef.addArchive(LAST, 0.5, 1, settings.numSteps);
@@ -258,14 +257,14 @@ public class RrdPoolInfoAgent implements Runnable {
 
         RrdHistogram[] values = RrdHistogram.values();
         RrdHistogram h = values[0];
-        String srcName = RrdHistogram.getSourceName(h);
+        String srcName = h.toString();
         gDef.datasource(srcName, rrdPath, srcName, LAST);
         gDef.area(srcName, RrdHistogram.getColor(h),
                            RrdHistogram.getGraphLabel(h));
 
         for (int i = 1; i < values.length; i++) {
             h = values[i];
-            srcName = RrdHistogram.getSourceName(h);
+            srcName = h.toString();
             gDef.datasource(srcName, rrdPath, srcName, LAST);
             gDef.stack(srcName, RrdHistogram.getColor(h),
                                 RrdHistogram.getGraphLabel(h));
@@ -333,8 +332,8 @@ public class RrdPoolInfoAgent implements Runnable {
                 Map<String, Double> values = data.data();
 
                 for (RrdHistogram h : RrdHistogram.values()) {
-                    sample.setValue(RrdHistogram.getSourceName(h),
-                                    values.get(h.toString()));
+                    String src = h.toString();
+                    sample.setValue(src, values.get(src));
                 }
 
                 logger.error("{}\t{}", new Date(TimeUnit.SECONDS.toMillis(now)),
