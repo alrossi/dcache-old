@@ -121,7 +121,7 @@ public class RrdPoolInfoAgent implements Runnable {
     public void initialize() {
         Preconditions.checkNotNull(settings).initialize();
         refreshInterval = Math.min(refreshInterval, settings.stepInMillis);
-        logger.error(settings.toString());
+        logger.info(settings.toString());
     }
 
     public void notify(PoolMonitor monitor) {

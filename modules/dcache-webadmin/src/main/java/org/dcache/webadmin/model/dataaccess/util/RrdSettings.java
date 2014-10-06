@@ -149,13 +149,16 @@ public class RrdSettings {
          * normalize to integer > 2X
          */
         double normalRatio = Math.max(2.0, Math.floor(stepRatio));
-        double delta = stepRatio-normalRatio;
-        int newWidth = (int)(imgWidth + (imgWidth*delta));
+        double delta = normalRatio/stepRatio;
+        int newWidth = (int)(imgWidth*delta);
         Logger logger = LoggerFactory.getLogger(this.getClass());
         logger.error("Number of time steps ({}); "
+                        + "stepRatio ({}); "
+                        + "normalizedRatio ({}); "
+                        + "delta ({}); "
                         + "original width in pixels ({}); "
                         + "normalized width: ({}).",
-                        totalSteps, imgWidth, newWidth);
+                        totalSteps, stepRatio, normalRatio, delta, imgWidth, newWidth);
         imgWidth = newWidth;
     }
 
