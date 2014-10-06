@@ -82,7 +82,6 @@ import diskCacheV111.pools.PoolCostInfo.PoolQueueInfo;
  */
 public class PoolQueuePlotData {
     private static final Color DARK_RED = new Color(102,0,0);
-    private static final Color DARK_BLUE = new Color(0,0,102);
     private static final Color DARK_GREEN = new Color(0,102,0);
 
     public enum RrdHistogram {
@@ -102,10 +101,10 @@ public class PoolQueuePlotData {
                 return DARK_RED;
             }
             if (AMOVER == h) {
-                return Color.BLUE;
+                return Color.CYAN;
             }
             if (QMOVER == h) {
-                return DARK_BLUE;
+                return Color.BLUE;
             }
             return Color.WHITE;
         }

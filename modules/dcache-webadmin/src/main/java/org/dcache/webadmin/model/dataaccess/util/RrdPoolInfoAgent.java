@@ -337,7 +337,7 @@ public class RrdPoolInfoAgent implements Runnable {
                                     values.get(h.toString()));
                 }
 
-                logger.debug("{}\t{}", new Date(TimeUnit.SECONDS.toMillis(now)),
+                logger.error("{}\t{}", new Date(TimeUnit.SECONDS.toMillis(now)),
                                 sample.dump());
 
                 sample.update();
