@@ -59,8 +59,9 @@ documents or software obtained from this server.
  */
 package org.dcache.webadmin.controller.impl;
 
-import org.apache.wicket.util.lang.Exceptions;
+import com.google.common.base.Throwables;
 
+import org.apache.wicket.util.lang.Exceptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -307,38 +308,31 @@ public final class StandardBillingService implements IBillingService, Runnable {
 
     @Override
     public void run() {
-        while (true) {
-            try {
-                refresh();
-                Thread.sleep(timeout);
-            } catch (InterruptedException interrupted) {
-                logger.trace("{} interrupted; exiting ...", refresher);
-                break;
-            } catch (UndeclaredThrowableException ute) {
-                if (null != Exceptions.findCause(ute, ServiceUnavailableException.class)) {
-                    logger.error("The billing database has been disabled."
-                                + "  To generate plots, please restart the service when"
-                                + " the billing database is once again available");
-                    break;
-                } else if (null != Exceptions.findCause(ute, NoRouteToCellException.class)) {
-                    logger.warn("No route to the billing service yet; "
-                                    + "will retry after 2 minutes");
-                    try {
-                       Thread.sleep(TimeUnit.MINUTES.toMillis(2));
-                    } catch (InterruptedException interrupted2) {
-                        logger.trace("{} retry wait interrupted; exiting ...",
-                                        refresher);
+        try {
+            while (true) {
+                try {
+                    refresh();
+                    Thread.sleep(timeout);
+                } catch (UndeclaredThrowableException ute) {
+                    if (null != Exceptions.findCause(ute, ServiceUnavailableException.class)) {
+                        logger.error("The billing database has been disabled."
+                                        + "  To generate plots, please restart the service when"
+                                        + " the billing database is once again available");
                         break;
+                    } else if (null != Exceptions.findCause(ute, NoRouteToCellException.class)) {
+                        logger.warn("No route to the billing service yet; "
+                                        + "will retry after 2 minutes");
+                        Thread.sleep(TimeUnit.MINUTES.toMillis(2));
                     }
-                } else if (null != Exceptions.findCause(ute, Error.class)) {
-                    throw ute;
-                }
 
-                logger.error("Fatal billing request exception {}; exiting loop ...",
-                                ute.getMessage());
-                logger.debug("Fatal exception in run()", ute);
-                break;
+                    Throwables.propagateIfPossible(ute.getCause());
+                    throw new RuntimeException("Unexpected error: "
+                                    + "this is probably a bug. Please report "
+                                    + "to the dcache team.", ute.getCause());
+                }
             }
+        } catch (InterruptedException interrupted) {
+            logger.trace("{} interrupted; exiting ...", refresher);
         }
     }
 
