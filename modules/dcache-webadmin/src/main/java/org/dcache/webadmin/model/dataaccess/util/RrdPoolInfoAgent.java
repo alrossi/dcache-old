@@ -59,6 +59,8 @@ documents or software obtained from this server.
  */
 package org.dcache.webadmin.model.dataaccess.util;
 
+import com.google.common.base.Preconditions;
+
 import org.rrd4j.core.RrdDb;
 import org.rrd4j.core.RrdDef;
 import org.rrd4j.core.Sample;
@@ -105,8 +107,6 @@ public class RrdPoolInfoAgent implements Runnable {
      * injected
      */
     private RrdSettings settings;
-    private long refreshInterval;
-    private TimeUnit timeUnit;
 
     /**
      * state
@@ -116,10 +116,15 @@ public class RrdPoolInfoAgent implements Runnable {
     private long lastRefresh;
     private Thread refresher;
 
+    public void initialize() {
+        Preconditions.checkNotNull(settings).initialize();
+        logger.info(settings.toString());
+    }
+
     public void notify(PoolMonitor monitor) {
         long now = System.currentTimeMillis();
         synchronized (this) {
-            if (now - lastRefresh >= timeUnit.toMillis(refreshInterval)) {
+            if (now - lastRefresh >= settings.stepInMillis) {
                 if (refresher == null || !refresher.isAlive()) {
                     pools = monitor.getPoolSelectionUnit()
                                    .getAllDefinedPools(false);
@@ -164,16 +169,8 @@ public class RrdPoolInfoAgent implements Runnable {
         }
     }
 
-    public void setRefreshInterval(long refreshInterval) {
-        this.refreshInterval = refreshInterval;
-    }
-
     public void setSettings(RrdSettings settings) {
         this.settings = settings;
-    }
-
-    public void setTimeUnit(TimeUnit timeUnit) {
-        this.timeUnit = timeUnit;
     }
 
     /**
@@ -183,9 +180,8 @@ public class RrdPoolInfoAgent implements Runnable {
      * endpoint which is aligned modulo step-size.
      */
     private long getAlignedCurrentTimeInSecs() {
-        long now = System.currentTimeMillis();
-        return Util.normalize(TimeUnit.MILLISECONDS.toSeconds(now),
-                        settings.stepInSeconds);
+        return Util.normalize(TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()),
+                              settings.stepInSeconds);
     }
 
     /**
@@ -209,8 +205,11 @@ public class RrdPoolInfoAgent implements Runnable {
 
         long heartbeat = (long) (settings.stepInSeconds * settings.heartbeatFactor);
         for (RrdHistogram h : RrdHistogram.values()) {
-            rrdDef.addDatasource(RrdHistogram.getSourceName(h), GAUGE,
-                            heartbeat, 0, Double.NaN);
+            rrdDef.addDatasource(h.getSourceName(),
+                                 GAUGE,
+                                 heartbeat,
+                                 0,
+                                 Double.MAX_VALUE);
         }
 
         rrdDef.addArchive(LAST, 0.5, 1, settings.numSteps);
@@ -250,22 +249,20 @@ public class RrdPoolInfoAgent implements Runnable {
 
         RrdHistogram[] values = RrdHistogram.values();
         RrdHistogram h = values[0];
-        String srcName = RrdHistogram.getSourceName(h);
+        String srcName = h.getSourceName();
         gDef.datasource(srcName, rrdPath, srcName, LAST);
-        gDef.area(RrdHistogram.getSourceName(h), RrdHistogram.getColor(h),
-                  RrdHistogram.getGraphLabel(h));
+        gDef.area(srcName, h.getColor(), h.getLabel());
 
         for (int i = 1; i < values.length; i++) {
             h = values[i];
-            srcName = RrdHistogram.getSourceName(h);
+            srcName = h.getSourceName();
             gDef.datasource(srcName, rrdPath, srcName, LAST);
-            gDef.stack(RrdHistogram.getSourceName(h), RrdHistogram.getColor(h),
-                       RrdHistogram.getGraphLabel(h));
+            gDef.stack(srcName, h.getColor(), h.getLabel());
         }
 
         gDef.setImageInfo("<img src='%s' width='%d' height = '%d'>");
         gDef.setPoolUsed(false);
-        gDef.setImageFormat("png");
+        gDef.setImageFormat(settings.imgType);
 
         logger.debug("got graph definition for {}", pool);
         rrdDb.close();
@@ -325,15 +322,15 @@ public class RrdPoolInfoAgent implements Runnable {
                 Map<String, Double> values = data.data();
 
                 for (RrdHistogram h : RrdHistogram.values()) {
-                    sample.setValue(RrdHistogram.getSourceName(h),
-                                    values.get(h.toString()));
+                    String src = h.getSourceName();
+                    sample.setValue(src, values.get(src));
                 }
 
                 logger.debug("{}\t{}", new Date(TimeUnit.SECONDS.toMillis(now)),
                                 sample.dump());
 
                 sample.update();
-                logger.debug(rrdDb.dump());
+                logger.trace(rrdDb.dump());
             }
         } catch (IOException t) {
             logger.error("problem writing data to RrdDb: {}", t.getMessage());

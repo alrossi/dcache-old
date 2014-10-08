@@ -81,56 +81,91 @@ import diskCacheV111.pools.PoolCostInfo.PoolQueueInfo;
  * @author arossi
  */
 public class PoolQueuePlotData {
+    private static final Color DARK_RED = new Color(102,0,0);
+    private static final Color DARK_GREEN = new Color(0,102,0);
 
-    public enum RrdHistogram {
-        QSTORE, QRESTORE, QMOVER, ASTORE, ARESTORE, AMOVER;
+    public enum RrdHistogram implements RrdDatasource {
+        AMOVER {
+            public String getSourceName() {
+                return getSourceName(this);
+            }
 
-        public static Color getColor(RrdHistogram h) {
-            if (QSTORE == h) {
-                return Color.BLUE;
-            }
-            if (QRESTORE == h) {
-                return Color.RED;
-            }
-            if (QMOVER == h) {
-                return Color.CYAN;
-            }
-            if (ASTORE == h) {
-                return Color.MAGENTA;
-            }
-            if (ARESTORE == h) {
-                return Color.GREEN;
-            }
-            if (AMOVER == h) {
-                return Color.ORANGE;
-            }
-            return Color.WHITE;
-        }
-
-        public static String getGraphLabel(RrdHistogram h) {
-            if (QSTORE == h) {
-                return "queued store";
-            }
-            if (QRESTORE == h) {
-                return "queued restore";
-            }
-            if (QMOVER == h) {
-                return "queued mover";
-            }
-            if (ASTORE == h) {
-                return "active store";
-            }
-            if (ARESTORE == h) {
-                return "active restore";
-            }
-            if (AMOVER == h) {
+            public String getLabel() {
                 return "active mover";
             }
-            throw new IllegalArgumentException( "unknown histogram type " + h);
-        }
 
-        public static String getSourceName(RrdHistogram h) {
-            return getGraphLabel(h).replaceAll(" ", "_");
+            public Color getColor() {
+                return Color.CYAN;
+            }
+        },
+        QMOVER {
+            public String getSourceName() {
+                return getSourceName(this);
+            }
+
+            public String getLabel() {
+                return "queued mover";
+            }
+
+            public Color getColor() {
+                return Color.BLUE;
+            }
+        },
+        ASTORE {
+            public String getSourceName() {
+                return getSourceName(this);
+            }
+
+            public String getLabel() {
+                return "active store";
+            }
+
+            public Color getColor() {
+                return Color.GREEN;
+            }
+        },
+        QSTORE {
+            public String getSourceName() {
+                return getSourceName(this);
+            }
+
+            public String getLabel() {
+                return "queued store";
+            }
+
+            public Color getColor() {
+                return DARK_GREEN;
+            }
+        },
+        ARESTORE {
+            public String getSourceName() {
+                return getSourceName(this);
+            }
+
+            public String getLabel() {
+                return "active restore";
+            }
+
+            public Color getColor() {
+                return Color.RED;
+            }
+        },
+        QRESTORE {
+            public String getSourceName() {
+                return getSourceName(this);
+            }
+
+            public String getLabel() {
+                return "queued restore";
+            }
+
+            public Color getColor() {
+                return DARK_RED;
+            }
+        };
+
+        private static String getSourceName(RrdHistogram histogram) {
+            return histogram.toString() + "!";
         }
     }
 
@@ -170,12 +205,12 @@ public class PoolQueuePlotData {
 
     public Map<String, Double> data() {
         Map<String, Double> data = new HashMap<String, Double>();
-        data.put(RrdHistogram.AMOVER.toString(), (double) activeMovers);
-        data.put(RrdHistogram.QMOVER.toString(), (double) queuedMovers);
-        data.put(RrdHistogram.ASTORE.toString(), (double) activeStores);
-        data.put(RrdHistogram.QSTORE.toString(), (double) queuedStores);
-        data.put(RrdHistogram.ARESTORE.toString(), (double) activeRestores);
-        data.put(RrdHistogram.QRESTORE.toString(), (double) queuedRestores);
+        data.put(RrdHistogram.AMOVER.getSourceName(), (double)activeMovers);
+        data.put(RrdHistogram.QMOVER.getSourceName(), (double)queuedMovers);
+        data.put(RrdHistogram.ASTORE.getSourceName(), (double)activeStores);
+        data.put(RrdHistogram.QSTORE.getSourceName(), (double)queuedStores);
+        data.put(RrdHistogram.ARESTORE.getSourceName(), (double)activeRestores);
+        data.put(RrdHistogram.QRESTORE.getSourceName(), (double)queuedRestores);
         return data;
     }
 
