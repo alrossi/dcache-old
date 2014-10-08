@@ -74,7 +74,7 @@ import diskCacheV111.util.PnfsId;
 import diskCacheV111.vehicles.PnfsModifyCacheLocationMessage;
 
 import org.dcache.alarms.AlarmMarkerFactory;
-import org.dcache.alarms.Severity;
+import org.dcache.alarms.PredefinedAlarm;
 import org.dcache.replication.api.ReplicationOperationMode;
 import org.dcache.replication.api.ReplicationOperationRegistry;
 import org.dcache.replication.api.ReplicationQueryUtilities;
@@ -265,8 +265,7 @@ public final class MapOperationRegistry implements ReplicationOperationRegistry 
 
                         if (source == null) {
                             registry.remove(key);
-                            LOGGER.error(AlarmMarkerFactory.getMarker(Severity.HIGH,
-                                                                      PnfsIdMetadata.ALARM_INACCESSIBLE,
+                            LOGGER.error(AlarmMarkerFactory.getMarker(PredefinedAlarm.INACCESSIBLE_FILE,
                                                                       opData.pnfsId.toString()),
                                             "{} is corrupted an alternate source"
                                             + " pool cannot be located; "

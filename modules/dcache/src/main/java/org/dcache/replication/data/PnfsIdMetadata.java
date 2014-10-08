@@ -81,8 +81,6 @@ import org.dcache.replication.api.ReplicationQueryUtilities;
  * @author arossi
  */
 public final class PnfsIdMetadata {
-    public static final String ALARM_INACCESSIBLE = "INACCESSIBLE_FILE";
-
     public final PnfsId pnfsId;
     public final String poolName;
     public final PoolGroupMetadata poolGroupData;

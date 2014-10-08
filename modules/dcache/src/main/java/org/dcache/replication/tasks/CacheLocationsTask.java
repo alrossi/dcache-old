@@ -73,12 +73,11 @@ import diskCacheV111.util.PnfsId;
 import diskCacheV111.vehicles.PnfsModifyCacheLocationMessage;
 
 import org.dcache.alarms.AlarmMarkerFactory;
-import org.dcache.alarms.Severity;
+import org.dcache.alarms.PredefinedAlarm;
 import org.dcache.replication.api.ReplicationEndpoints;
 import org.dcache.replication.api.ReplicationMessageReceiver;
 import org.dcache.replication.api.ReplicationQueryUtilities;
 import org.dcache.replication.api.ReplicationScanType;
-import org.dcache.replication.data.PnfsIdMetadata;
 import org.dcache.replication.data.PoolMetadata;
 import org.dcache.vehicles.replication.ListPnfsidsForPoolMessage;
 import org.dcache.vehicles.replication.PnfsScannedCacheLocationsMessage;
@@ -219,8 +218,7 @@ public abstract class CacheLocationsTask extends BaseReplicationTask
             }
 
             if (alarms > 0) {
-                LOGGER.error(AlarmMarkerFactory.getMarker(Severity.HIGH,
-                                                          PnfsIdMetadata.ALARM_INACCESSIBLE,
+                LOGGER.error(AlarmMarkerFactory.getMarker(PredefinedAlarm.INACCESSIBLE_FILE,
                                                           poolData.pool),
                             "Pool {} is DOWN and contains {} inaccessible files; "
                             + "run the replica manager admin command "

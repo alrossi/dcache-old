@@ -68,7 +68,7 @@ import java.util.List;
 import diskCacheV111.util.PnfsId;
 
 import org.dcache.alarms.AlarmMarkerFactory;
-import org.dcache.alarms.Severity;
+import org.dcache.alarms.PredefinedAlarm;
 import org.dcache.cells.CellStub;
 import org.dcache.replication.api.PnfsCacheMessageType;
 import org.dcache.replication.api.ReplicationCopyMessageFactory;
@@ -113,8 +113,8 @@ public final class ReplicatePnfsIdTask extends PnfsIdRequestTask {
         }
 
         if (sourcePool == null) {
-            LOGGER.error(AlarmMarkerFactory.getMarker(Severity.HIGH,
-                                                      PnfsIdMetadata.ALARM_INACCESSIBLE,
+            LOGGER.error(AlarmMarkerFactory.getMarker(PredefinedAlarm.INACCESSIBLE_FILE,
+                                                      opData.pnfsId.toString(),
                                                       opData.poolName),
                             "The only copy of {} has been removed from {}; "
                             + "this file must be recovered manually.",
