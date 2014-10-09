@@ -126,26 +126,12 @@ public final class VerifyPnfsIdTask extends PnfsIdTask {
              * figure out which queue it goes on
              */
             if (opData.poolGroupData.constraints.getMinimum() > 1) {
-                List<String> replicas = verifyReplicas();
-                opData.addReplicaPools(replicas);
-
-                int numberOfReplicas = replicas.size();
-                opData.setOriginalCount(numberOfReplicas);
-
-                int maximum = opData.poolGroupData.constraints.getMaximum();
-                int minimum = opData.poolGroupData.constraints.getMinimum();
-
-                int delta
-                    = utils.isUseGreedyRequests() ? numberOfReplicas - maximum :
-                                                    numberOfReplicas - minimum;
-                opData.setReplicaDelta(delta);
-
-                LOGGER.debug(" MODE {}, greedy {}, current {}, min {}, max {}",
+                verifyReplicas();
+                LOGGER.debug(" MODE {}, greedy {}, current {}, required {}",
                                 opData.getMode().toString(),
                                 utils.isUseGreedyRequests(),
-                                numberOfReplicas,
-                                minimum,
-                                maximum);
+                                opData.getReplicaPools().size(),
+                                opData.getReplicaDelta());
 
                 switch (opData.getMode()) {
                     case REPLICATE:
@@ -182,7 +168,7 @@ public final class VerifyPnfsIdTask extends PnfsIdTask {
      * gets the cache locations and returns only those for active pools
      * containing cached+system-sticky copies.
      */
-    private List<String> verifyReplicas() throws InterruptedException,
+    private void verifyReplicas() throws InterruptedException,
                                                  CacheException {
         SelectionPoolGroup poolGroup = opData.poolGroupData.poolGroup;
         PnfsId pnfsId = opData.pnfsId;
@@ -218,6 +204,7 @@ public final class VerifyPnfsIdTask extends PnfsIdTask {
                         activePools,
                         cacheLocations);
 
-        return cacheLocations;
+        opData.addReplicaPools(cacheLocations);
+        opData.computeDelta(utils);
     }
 }

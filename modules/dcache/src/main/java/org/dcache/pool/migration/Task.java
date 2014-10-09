@@ -1,6 +1,5 @@
 package org.dcache.pool.migration;
 
-import com.google.common.collect.Lists;
 import statemap.TransitionUndefinedException;
 
 import java.io.PrintWriter;

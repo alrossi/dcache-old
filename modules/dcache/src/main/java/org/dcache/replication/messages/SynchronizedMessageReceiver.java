@@ -294,9 +294,6 @@ public final class SynchronizedMessageReceiver implements ReplicationMessageRece
         }
     }
 
-    /**
-     *  XXX (Emulated currently by the polling module, but this is only temporary.)
-     */
     public synchronized void messageArrived(ReplicationStatusMessage message) {
         if (!acceptMessage("Replication Job Status", message)) {
             return;

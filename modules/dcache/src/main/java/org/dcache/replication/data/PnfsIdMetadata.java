@@ -70,6 +70,7 @@ import diskCacheV111.poolManager.PoolSelectionUnit;
 import diskCacheV111.util.CacheException;
 import diskCacheV111.util.PnfsId;
 
+import org.dcache.pool.repository.CacheEntry;
 import org.dcache.replication.api.PnfsCacheMessageType;
 import org.dcache.replication.api.ReplicationOperationMode;
 import org.dcache.replication.api.ReplicationQueryUtilities;
@@ -84,6 +85,7 @@ public final class PnfsIdMetadata {
     public final PnfsId pnfsId;
     public final String poolName;
     public final PoolGroupMetadata poolGroupData;
+
 
     /**
      * Acks from ReplicationStatusMessage.
@@ -136,6 +138,32 @@ public final class PnfsIdMetadata {
              poolName,
              sourceType,
              new PoolGroupMetadata(poolName, psu, utils));
+    }
+
+    public void computeDelta(ReplicationQueryUtilities utils) {
+        int numberOfReplicas = replicaPools.size();
+        int maximum = poolGroupData.constraints.getMaximum();
+        int minimum = poolGroupData.constraints.getMinimum();
+
+        /*
+         * The deficiency delta is expressed by
+         * a negative number and the redundancy by a positive;
+         * hence the former indicates the need for REPLICATE,
+         * the latter for REDUCE.
+         */
+        replicaDelta
+            = utils.isUseGreedyRequests() ? numberOfReplicas - maximum :
+                                            numberOfReplicas - minimum;
+
+        if (replicaDelta < 0) {
+            mode = ReplicationOperationMode.REPLICATE;
+        } else if (replicaDelta > 0) {
+            mode = ReplicationOperationMode.REDUCE;
+        } else {
+            mode = ReplicationOperationMode.NONE;
+        }
+
+        originalCount = numberOfReplicas;
     }
 
     public synchronized void addReplicaPool(String pool) {
@@ -222,27 +250,6 @@ public final class PnfsIdMetadata {
 
     public synchronized void removeReplicaPool(String pool) {
         replicaPools.remove(pool);
-    }
-
-    public synchronized void setOriginalCount(int originalCount) {
-        this.originalCount = originalCount;
-    }
-
-    /**
-     * The deficiency delta is expressed by
-     * a negative number and the redundancy by a positive;
-     * hence the former indicates the need for REPLICATE,
-     * the latter for REDUCE.
-     */
-    public void setReplicaDelta(int replicaDelta) {
-        this.replicaDelta = replicaDelta;
-        if (replicaDelta < 0) {
-            mode = ReplicationOperationMode.REPLICATE;
-        } else if (replicaDelta > 0) {
-            mode = ReplicationOperationMode.REDUCE;
-        } else {
-            mode = ReplicationOperationMode.NONE;
-        }
     }
 
     public void setSourceType(PnfsCacheMessageType sourceType) {

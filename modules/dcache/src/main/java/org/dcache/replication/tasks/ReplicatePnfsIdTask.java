@@ -59,52 +59,104 @@ documents or software obtained from this server.
  */
 package org.dcache.replication.tasks;
 
-import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 
-import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ScheduledExecutorService;
 
+import diskCacheV111.util.AccessLatency;
 import diskCacheV111.util.PnfsId;
 
 import org.dcache.alarms.AlarmMarkerFactory;
 import org.dcache.alarms.PredefinedAlarm;
 import org.dcache.cells.CellStub;
+import org.dcache.pool.migration.CacheEntryMode;
+import org.dcache.pool.migration.JobDefinition;
+import org.dcache.pool.migration.Task;
+import org.dcache.pool.migration.TaskCompletionHandler;
+import org.dcache.pool.repository.CacheEntry;
+import org.dcache.pool.repository.EntryState;
+import org.dcache.pool.repository.StickyRecord;
 import org.dcache.replication.api.PnfsCacheMessageType;
-import org.dcache.replication.api.ReplicationCopyMessageFactory;
 import org.dcache.replication.api.ReplicationEndpoints;
 import org.dcache.replication.api.ReplicationOperationRegistry;
 import org.dcache.replication.api.ReplicationQueryUtilities;
 import org.dcache.replication.api.ReplicationStatistics;
 import org.dcache.replication.api.ReplicationTaskExecutor;
 import org.dcache.replication.data.PnfsIdMetadata;
+import org.dcache.replication.data.ReplicaJobDefinition;
+import org.dcache.vehicles.FileAttributes;
 
 /**
- * Calls out to the pool migration module with a request for the additional
- * copies.
- *
- * XXX This module will be modified to accommodate the changes to the
- *     migration module once they are in place. XXX
+ * Calls out to the pool migration module by executing a migration Task.
+ * Acts as the completion handler for the migration task, registering
+ * the result with the map.
  *
  * @author arossi
  */
-public final class ReplicatePnfsIdTask extends PnfsIdRequestTask {
-    private final ReplicationCopyMessageFactory factory;
+public final class ReplicatePnfsIdTask extends PnfsIdRequestTask
+                                       implements TaskCompletionHandler {
+    private static final List<StickyRecord> SYSTEM_STICKY
+        = ImmutableList.of(new StickyRecord("system", StickyRecord.NON_EXPIRING));
+
+    class SourceCacheEntry implements CacheEntry {
+        private final PnfsId pnfsId;
+        private final FileAttributes attributes;
+
+        SourceCacheEntry(PnfsId pnfsId, List<String> locations) {
+            this.pnfsId = pnfsId;
+            attributes = new FileAttributes();
+            attributes.setAccessLatency(AccessLatency.ONLINE);
+            attributes.setLocations(locations);
+        }
+
+        public PnfsId getPnfsId() {
+            return pnfsId;
+        }
+
+        public long getReplicaSize() {
+            return 0;
+        }
+
+        public FileAttributes getFileAttributes() {
+            return attributes;
+        }
+
+        public EntryState getState() {
+            return EntryState.CACHED;
+        }
+
+        public long getCreationTime() {
+            return 0;
+        }
+
+        public long getLastAccessTime() {
+            return 0;
+        }
+
+        public int getLinkCount() {
+            return 0;
+        }
+
+        public boolean isSticky() {
+            return true;
+        }
+
+        public Collection<StickyRecord> getStickyRecords() {
+            return SYSTEM_STICKY;
+        }
+    }
 
     public ReplicatePnfsIdTask(PnfsIdMetadata opData,
                                ReplicationEndpoints hub,
                                ReplicationQueryUtilities utils,
                                ReplicationOperationRegistry map,
-                               ReplicationStatistics statistics,
-                               ReplicationCopyMessageFactory factory) {
+                               ReplicationStatistics statistics) {
         super(opData, hub, utils, map, statistics);
-        this.factory = Preconditions.checkNotNull(factory);
     }
 
     public Void call() throws Exception {
-        List<String> jobs = new ArrayList<>();
-        int limit = opData.getAbsoluteDelta();
-
         String sourcePool;
         if (opData.getSourceType().equals(PnfsCacheMessageType.CLEAR)) {
             sourcePool = utils.removeRandomEntry(opData.getReplicaPools());
@@ -124,77 +176,59 @@ public final class ReplicatePnfsIdTask extends PnfsIdRequestTask {
             return null;
         }
 
-        String pnfsid = opData.pnfsId.toString();
-        String poolGroup = opData.poolGroupData.poolGroup.getName();
-        boolean sameHostOK = opData.poolGroupData.constraints.isSameHostOK();
+        CacheEntryMode mode
+            = new CacheEntryMode(CacheEntryMode.State.CACHED, SYSTEM_STICKY);
 
-        /*
-         * XXX The loop will hopefully disappear when the migration module
-         * is modified to support multiple copy requests for a single pnfsid
-         * processed by a permanent migration job.
-         */
-        for (int copy = 0; copy < limit; ++copy) {
-            String jobId = requestCopies(opData.pnfsId,
-                                         sourcePool,
-                                         poolGroup,
-                                         1, // for now, singletons
-                                         sameHostOK);
-            if (jobId != null) {
-                jobs.add(jobId);
-                statistics.increment(ReplicationTaskExecutor.TASKS,
-                                     ReplicationTaskExecutor.REPLICATE);
-            }
-        }
+        JobDefinition mjobDefinition
+            = new ReplicaJobDefinition(sourcePool,
+                                       opData.poolGroupData.poolGroup.getName(),
+                                       hub,
+                                       mode,
+                                       opData.getAbsoluteDelta(),
+                                       opData.poolGroupData.constraints.isSameHostOK());
 
-        if (jobs.isEmpty()) {
-            LOGGER.info("pnfsid {}, no replicas requested at this time", pnfsid);
-            map.unregister(opData);
-        } else {
-            /*
-             * XXX Purely for informational purposes.  As migration copy gets
-             * modified, the job id will always be the same, so this
-             * part of the code will also disappear.
-             */
-            LOGGER.info("pnfsid {}, replica request mapped to {}", pnfsid,
-                                                                   jobs);
-        }
+        CellStub stub = new CellStub();
+        stub.setCellEndpoint(hub.getEndpoint());
+
+        ScheduledExecutorService executor = null;
+
+        new Task(this,
+                 stub,
+                 hub.getPnfsManager(),
+                 null,
+                 executor,
+                 sourcePool,
+                 new SourceCacheEntry(opData.pnfsId,
+                                      opData.getReplicaPools()),
+                 mjobDefinition).run();
+
+        statistics.increment(ReplicationTaskExecutor.TASKS,
+                             ReplicationTaskExecutor.REPLICATE,
+                             opData.getAbsoluteDelta());
+
+        LOGGER.info("pnfsid {}, replica task running for {} on {}",
+                     opData.pnfsId, opData.getAbsoluteDelta(), sourcePool);
 
         return null;
     }
 
-    /**
-     * <ol><li>Request the copy from the target.</li>
-     *     <li>Wait for reply.</li>
-     *     <li>Extract id from reply.</li></ol>
-     */
-    private String requestCopies(PnfsId pnfsId,
-                                 String pool,
-                                 String poolGroup,
-                                 int numCopies,
-                                 boolean sameHostOK) {
-        CellStub stub = factory.getTargetStub(pool);
-        stub.setCellEndpoint(hub.getEndpoint());
-        Serializable message = factory.createReplicateRequestMessage(pnfsId,
-                                                                     poolGroup,
-                                                                     numCopies,
-                                                                     sameHostOK);
-        Object reply;
-        try {
-            reply = stub.sendAndWait(message, factory.getMessageClass());
-            if( reply == null ) {
-                LOGGER.warn("Copy request {} timed out.", message);
-                statistics.incrementFailed(ReplicationTaskExecutor.TASKS,
-                                           ReplicationTaskExecutor.REPLICATE);
-                return null;
-            }
-        } catch (Exception ce ) {
-            statistics.incrementFailed(ReplicationTaskExecutor.TASKS,
-                                       ReplicationTaskExecutor.REPLICATE);
-            factory.handleException(ce, message);
-            return null;
-        }
+    public void taskCancelled(Task task) {
+        // TODO Auto-generated method stub
 
-        message = (Serializable)reply;
-        return factory.extractRequestIdFromReply(message);
+    }
+
+    public void taskFailed(Task task, String msg) {
+        // TODO Auto-generated method stub
+
+    }
+
+    public void taskFailedPermanently(Task task, String msg) {
+        // TODO Auto-generated method stub
+
+    }
+
+    public void taskCompleted(Task task) {
+        // TODO Auto-generated method stub
+
     }
 }

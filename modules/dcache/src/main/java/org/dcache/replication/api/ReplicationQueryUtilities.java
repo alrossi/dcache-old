@@ -69,6 +69,7 @@ import diskCacheV111.util.PnfsId;
 
 import dmg.cells.nucleus.CellEndpoint;
 
+import org.dcache.pool.repository.CacheEntry;
 import org.dcache.replication.data.PoolMetadata;
 import org.dcache.vehicles.replication.ListPnfsidsForPoolMessage;
 
@@ -156,7 +157,9 @@ public interface ReplicationQueryUtilities {
      * @return true if the system sticky bit is on. Note that precious files are
      *         included here, provided they have this sticky bit set as well.
      */
-    boolean isSystemSticky(String pnfsid, String pool, CellEndpoint endpoint)
+    boolean isSystemSticky(String pnfsid,
+                           String pool,
+                           CellEndpoint endpoint)
                     throws InterruptedException;
 
     /**

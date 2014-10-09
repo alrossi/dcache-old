@@ -13,12 +13,6 @@
 
   <context:property-placeholder/>
 
-  <bean id="CopyRequests"
-        class="org.dcache.replication.messages.CLIMigrationCopyMessageFactory">
-       <property name="timeout" value="${replicamanager.limits.replication-request-timeout}"/>
-       <property name="timeoutUnit" value="${replicamanager.limits.replication-request-timeout.unit}"/>
-  </bean>
-
   <bean id="RemoveRequests"
         class="org.dcache.replication.messages.RepRmRequestMessageFactory">
        <property name="timeout" value="${replicamanager.limits.reduction-request-timeout}"/>
@@ -83,7 +77,6 @@
         <property name="handler" ref="Receiver"/>
         <property name="map" ref="Registry"/>
         <property name="reductionFactory" ref="RemoveRequests"/>
-        <property name="replicationFactory" ref="CopyRequests"/>
         <property name="statistics" ref="Statistics"/>
         <property name="utils" ref="Utils"/>
         <property name="replicaWorkers" value="${replicamanager.limits.replica-workers-per-poolgroup}"/>

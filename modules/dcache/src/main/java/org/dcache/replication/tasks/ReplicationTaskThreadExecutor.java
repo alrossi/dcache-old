@@ -73,7 +73,6 @@ import java.util.concurrent.FutureTask;
 import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPoolGroup;
 import diskCacheV111.util.CacheException;
 
-import org.dcache.replication.api.ReplicationCopyMessageFactory;
 import org.dcache.replication.api.ReplicationEndpoints;
 import org.dcache.replication.api.ReplicationMessageReceiver;
 import org.dcache.replication.api.ReplicationOperationRegistry;
@@ -108,7 +107,6 @@ public final class ReplicationTaskThreadExecutor implements ReplicationTaskExecu
     private ReplicationEndpoints hub;
     private ReplicationMessageReceiver handler;
     private ReplicationOperationRegistry map;
-    private ReplicationCopyMessageFactory replicationMessageFactory;
     private ReplicationRemoveMessageFactory reductionMessageFactory;
     private ReplicationStatistics statistics;
     private ReplicationQueryUtilities utils;
@@ -139,10 +137,6 @@ public final class ReplicationTaskThreadExecutor implements ReplicationTaskExecu
 
     public void setReductionFactory(ReplicationRemoveMessageFactory messageFactory) {
         this.reductionMessageFactory = checkNotNull(messageFactory);
-    }
-
-    public void setReplicationFactory(ReplicationCopyMessageFactory messageFactory) {
-        this.replicationMessageFactory = checkNotNull(messageFactory);
     }
 
     public void setReplicaWorkers(int replicaWorkers) {
@@ -227,8 +221,7 @@ public final class ReplicationTaskThreadExecutor implements ReplicationTaskExecu
                                                            hub,
                                                            utils,
                                                            map,
-                                                           statistics,
-                                                           replicationMessageFactory);
+                                                           statistics);
         submitRequestTask(task,
                           opData.poolGroupData.poolGroup.getName(),
                           REPLICATE);
