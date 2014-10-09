@@ -324,12 +324,13 @@ public final class StandardBillingService implements IBillingService, Runnable {
                                         + "will retry after 2 minutes");
                         Thread.sleep(TimeUnit.MINUTES.toMillis(2));
                     } else {
-                    	Throwables.propagateIfPossible(ute.getCause());
-                    	throw new RuntimeException("Unexpected error: "
-                                    + "this is probably a bug. Please report "
-                                    + "to the dcache team.", ute.getCause());
+                        Throwables.propagateIfPossible(ute.getCause());
+                        throw new RuntimeException("Unexpected error: "
+                                        + "this is probably a bug. Please report "
+                                        + "to the dCache team.",
+                                        ute.getCause());
                     }
-		}
+                }
             }
         } catch (InterruptedException interrupted) {
             logger.trace("{} interrupted; exiting ...", refresher);
