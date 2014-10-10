@@ -228,7 +228,6 @@ public final class ReplicatePnfsIdTask extends PnfsIdRequestTask
     }
 
     public void taskCompleted(Task task) {
-        // TODO Auto-generated method stub
 
     }
 }
