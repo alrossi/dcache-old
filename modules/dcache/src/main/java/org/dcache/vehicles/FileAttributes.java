@@ -393,10 +393,6 @@ public class FileAttributes implements Serializable {
         _pnfsId = pnfsId;
     }
 
-    public void setReplica()
-    {
-    }
-
     public void setStorageInfo(StorageInfo storageInfo)
     {
         define(STORAGEINFO);
