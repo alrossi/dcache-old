@@ -353,7 +353,7 @@ public class FileAttributes implements Serializable {
         _owner = owner;
     }
 
-    public void setReplica(Boolean isReplica) {
+    public void setReplica() {
         define(REPLICA);
     }
 
