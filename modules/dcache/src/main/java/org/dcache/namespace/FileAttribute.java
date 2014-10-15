@@ -28,5 +28,6 @@ public enum FileAttribute {
     STORAGEINFO,
     TYPE,
     SIMPLE_TYPE,
-    PNFSID;
+    PNFSID,
+    REPLICA;     // From 2.11, in support of replica manager
 }

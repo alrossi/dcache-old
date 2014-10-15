@@ -18,6 +18,7 @@ import diskCacheV111.util.PnfsId;
 
 import org.dcache.alarms.AlarmMarkerFactory;
 import org.dcache.alarms.PredefinedAlarm;
+import org.dcache.namespace.FileAttribute;
 import org.dcache.pool.repository.Allocator;
 import org.dcache.pool.repository.EntryState;
 import org.dcache.pool.repository.MetaDataRecord;
@@ -30,7 +31,6 @@ import org.dcache.vehicles.FileAttributes;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Iterables.*;
-import java.util.Collections;
 import static java.util.Collections.singleton;
 import static org.dcache.namespace.FileAttribute.*;
 
@@ -288,6 +288,14 @@ class WriteHandleImpl implements ReplicaDescriptor
                 attributesToUpdate.setSize(_fileAttributes.getSize());
             }
         }
+
+        /*
+         * In support of new replica manager, 2.11+.
+         */
+        if (_fileAttributes.isDefined(FileAttribute.REPLICA)) {
+            attributesToUpdate.setReplica();
+        }
+
         attributesToUpdate.setLocations(singleton(_repository.getPoolName()));
 
         _pnfs.setFileAttributes(_entry.getPnfsId(), attributesToUpdate);

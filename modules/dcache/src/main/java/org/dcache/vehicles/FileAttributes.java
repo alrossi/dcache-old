@@ -1,7 +1,6 @@
 package org.dcache.vehicles;
 
 import com.google.common.base.Objects;
-import com.google.common.base.Objects.ToStringHelper;
 import com.google.common.base.Optional;
 
 import java.io.Serializable;
@@ -354,6 +353,10 @@ public class FileAttributes implements Serializable {
         _owner = owner;
     }
 
+    public void setReplica(Boolean isReplica) {
+        define(REPLICA);
+    }
+
     public void setRetentionPolicy(RetentionPolicy retentionPolicy) {
         define(RETENTION_POLICY);
         _retentionPolicy = retentionPolicy;
@@ -390,6 +393,10 @@ public class FileAttributes implements Serializable {
         _pnfsId = pnfsId;
     }
 
+    public void setReplica()
+    {
+    }
+
     public void setStorageInfo(StorageInfo storageInfo)
     {
         define(STORAGEINFO);
@@ -418,6 +425,7 @@ public class FileAttributes implements Serializable {
                 .add("flags", _flags)
                 .add("pnfsId", _pnfsId)
                 .add("storageInfo", _storageInfo)
+                .add("replica", isDefined(REPLICA))
                 .omitNullValues()
                 .toString();
     }
