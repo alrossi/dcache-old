@@ -200,17 +200,17 @@ public final class StandardBillingService implements IBillingService, Runnable {
         } catch (UndeclaredThrowableException ute) {
             Throwable cause
                 = Exceptions.findCause(ute, ServiceUnavailableException.class);
-            if (cause == null) {
-                cause = Exceptions.findCause(ute, NoRouteToCellException.class);
-            }
             if (cause != null) {
-                Throwables.propagateIfPossible(cause);
-            } else {
-                throw new RuntimeException("Unexpected error: "
+                throw (ServiceUnavailableException)cause;
+            }
+            cause = Exceptions.findCause(ute, NoRouteToCellException.class);
+            if (cause != null) {
+                throw (NoRouteToCellException)cause;
+            }
+            throw new RuntimeException("Unexpected error: "
                                         + "this is probably a bug. Please report "
                                         + "to the dCache team.",
                                         ute.getCause());
-            }
         }
         return histograms;
     }
