@@ -60,6 +60,7 @@ documents or software obtained from this server.
 package org.dcache.webadmin.controller.impl;
 
 import com.google.common.base.Throwables;
+import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,6 +110,7 @@ import org.dcache.webadmin.controller.IBillingService;
  */
 public final class StandardBillingService implements IBillingService, Runnable {
     private static final Logger logger = LoggerFactory.getLogger(StandardBillingService.class);
+    private static final double ERRORS_PER_SECOND = 1.0 / 120.0;
 
     /**
      * injected
@@ -138,6 +140,8 @@ public final class StandardBillingService implements IBillingService, Runnable {
      * refreshing can be done periodically by the daemon, or forced
      * through the web interface directly
      */
+    private final RateLimiter rate = RateLimiter.create(ERRORS_PER_SECOND);
+
     private long timeout;
     private int popupWidth;
     private int popupHeight;
@@ -337,9 +341,11 @@ public final class StandardBillingService implements IBillingService, Runnable {
                                     + " the billing database is once again available");
                     break;
                 } catch (NoRouteToCellException e) {
-                    logger.warn("No route to the billing service yet; "
-                                    + "will retry after 2 minutes");
-                    Thread.sleep(TimeUnit.MINUTES.toMillis(2));
+                    if (rate.tryAcquire()) {
+                        logger.warn("No route to the billing service yet; "
+                                        + "retrying every 10 seconds");
+                    }
+                    Thread.sleep(TimeUnit.SECONDS.toMillis(10));
                 }
             }
         } catch (InterruptedException interrupted) {
