@@ -61,6 +61,7 @@ package org.dcache.webadmin.controller.impl;
 
 import com.google.common.base.Throwables;
 import com.google.common.util.concurrent.RateLimiter;
+import org.apache.wicket.util.lang.Exceptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -197,9 +198,16 @@ public final class StandardBillingService implements IBillingService, Runnable {
                     break;
             }
         } catch (UndeclaredThrowableException ute) {
-          Throwable cause = ute.getCause();
-          Throwables.propagateIfPossible(cause);
-          throw new RuntimeException("Unexpected error: "
+            Throwable cause
+                = Exceptions.findCause(ute, ServiceUnavailableException.class);
+            if (cause == null) {
+                cause = Exceptions.findCause(ute, NoRouteToCellException.class);
+            }
+            if (cause == null) {
+                cause = ute.getCause();
+            }
+            Throwables.propagateIfPossible(cause);
+            throw new RuntimeException("Unexpected error: "
                                         + "this is probably a bug. Please report "
                                         + "to the dCache team.",
                                         cause);
