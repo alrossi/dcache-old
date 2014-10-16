@@ -207,10 +207,12 @@ public final class StandardBillingService implements IBillingService, Runnable {
             if (cause != null) {
                 throw (NoRouteToCellException)cause;
             }
+            cause = ute.getCause();
+            Throwables.propagateIfPossible(cause);
             throw new RuntimeException("Unexpected error: "
                                         + "this is probably a bug. Please report "
                                         + "to the dCache team.",
-                                        ute.getCause());
+                                        cause);
         }
         return histograms;
     }
