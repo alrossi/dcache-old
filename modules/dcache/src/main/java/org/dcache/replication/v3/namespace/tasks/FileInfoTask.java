@@ -26,13 +26,16 @@ public class FileInfoTask implements Runnable {
     class CacheEntryResultListener implements Runnable {
         public void run() {
             CacheEntryInfoMessage message = null;
+
             try {
                 message = future.get();
             } catch (InterruptedException | ExecutionException t) {
                 handler.taskFailed(message, t);
+                return;
             }
+
             if (future.isCancelled()) {
-                handler.taskFailed(message, "Future task was cancelled");
+                handler.taskCancelled(message, "Future task was cancelled");
             } else {
                 handler.taskCompleted(message);
             }
