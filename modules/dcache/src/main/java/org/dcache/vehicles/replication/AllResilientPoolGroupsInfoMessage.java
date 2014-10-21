@@ -6,7 +6,7 @@ import java.util.List;
 
 import diskCacheV111.vehicles.Message;
 
-import org.dcache.replication.v3.vehicles.ResilientPoolInfo;
+import org.dcache.replication.v3.namespace.data.ResilientPoolGroupInfo;
 
 /**
  * @author arossi
@@ -14,13 +14,13 @@ import org.dcache.replication.v3.vehicles.ResilientPoolInfo;
 public class AllResilientPoolGroupsInfoMessage extends Message {
     private static final long serialVersionUID = 1L;
 
-    private final List<ResilientPoolInfo> allPools = new ArrayList<>();
+    private final List<ResilientPoolGroupInfo> allPools = new ArrayList<>();
 
-    public void addPoolInfo(ResilientPoolInfo message) {
+    public void addPoolInfo(ResilientPoolGroupInfo message) {
         allPools.add(message);
     }
 
-    public Iterator<ResilientPoolInfo> pools() {
+    public Iterator<ResilientPoolGroupInfo> pools() {
         return allPools.iterator();
     }
 }

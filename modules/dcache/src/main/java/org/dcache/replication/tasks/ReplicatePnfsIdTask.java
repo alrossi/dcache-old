@@ -85,7 +85,7 @@ import org.dcache.replication.api.ReplicationQueryUtilities;
 import org.dcache.replication.api.ReplicationStatistics;
 import org.dcache.replication.api.ReplicationTaskExecutor;
 import org.dcache.replication.data.PnfsIdMetadata;
-import org.dcache.replication.data.ReplicaJobDefinition;
+import org.dcache.replication.v3.namespace.data.ReplicaJobDefinition;
 import org.dcache.vehicles.FileAttributes;
 
 /**

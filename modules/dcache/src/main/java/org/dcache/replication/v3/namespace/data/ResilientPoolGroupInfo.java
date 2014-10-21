@@ -1,6 +1,4 @@
-package org.dcache.replication.v3.vehicles;
-
-import javax.security.auth.Subject;
+package org.dcache.replication.v3.namespace.data;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -12,24 +10,13 @@ import diskCacheV111.poolManager.StorageUnit;
 /**
  * @author arossi
  */
-public class ResilientPoolInfo {
-    public final String poolName;
-    public final Subject subject;
-
+public class ResilientPoolGroupInfo {
     private final Map<String, StorageUnit> storageUnits;
+
     private SelectionPoolGroup poolGroup;
 
-    public ResilientPoolInfo(String poolName, Subject subject) {
-        this.poolName = poolName;
-        this.subject = subject;
+    public ResilientPoolGroupInfo() {
         storageUnits = new HashMap<>();
-    }
-
-    public ResilientPoolInfo(ResilientPoolInfo info) {
-        poolName = info.poolName;
-        subject = info.subject;
-        storageUnits = info.storageUnits;
-        poolGroup = info.poolGroup;
     }
 
     public void addStorageUnit(StorageUnit storageUnit) {

@@ -3,50 +3,49 @@ package org.dcache.replication.v3.pool.tasks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.MissingResourceException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 import diskCacheV111.util.CacheException;
 import diskCacheV111.util.FileNotInCacheException;
 import diskCacheV111.util.PnfsId;
 
-import org.dcache.cells.CellStub;
+import dmg.util.command.DelayedCommand;
+
 import org.dcache.pool.repository.CacheEntry;
 import org.dcache.pool.repository.EntryState;
 import org.dcache.pool.repository.Repository;
 import org.dcache.pool.repository.StickyRecord;
-import org.dcache.replication.v3.vehicles.ResilientFileInfoMessage;
+import org.dcache.replication.v3.vehicles.CacheEntryInfoMessage;
 
 /**
  * @author arossi
  */
-public class CacheEntryInfoTask implements Runnable {
+public class CacheEntryInfoTask extends DelayedCommand {
+    private static final long serialVersionUID = -7672056030995563547L;
+
     private static final Logger LOGGER
         = LoggerFactory.getLogger(CacheEntryInfoTask.class);
 
-    private final ResilientFileInfoMessage message;
-    private final CellStub namespace;
+    private final CacheEntryInfoMessage message;
     private final Repository repository;
 
-    public CacheEntryInfoTask(ResilientFileInfoMessage message,
+    public CacheEntryInfoTask(CacheEntryInfoMessage message,
                               Repository repository,
-                              CellStub namespace) {
+                              Executor executor) {
+        super(executor);
         this.message = message;
-        this.namespace = namespace;
         this.repository = repository;
     }
 
-    public void run() {
-        try {
-            if (isSystemSticky(message.pnfsId)) {
-                message.setSystemSticky(true);
-            }
-        } catch (CacheException | InterruptedException t) {
-            throw new RuntimeException(t);
+    @Override
+    protected Serializable execute() throws Exception {
+        if (isSystemSticky(message.pnfsId)) {
+            message.setSystemSticky(true);
         }
-
-        message.setReply();
-        namespace.send(message);
+        return message;
     }
 
     private boolean isSystemSticky(PnfsId pnfsId) throws CacheException,
@@ -59,6 +58,7 @@ public class CacheEntryInfoTask implements Runnable {
                     CacheEntry entry = repository.getEntry(pnfsId);
                     LOGGER.debug("{}, state {}, entry {}", pnfsId, state, entry);
                     if (entry != null) {
+                        message.setEntry(entry);
                         boolean sticky = entry.isSticky();
                         if (sticky) {
                             for (StickyRecord record : entry.getStickyRecords()) {
@@ -108,14 +108,19 @@ public class CacheEntryInfoTask implements Runnable {
                         } catch (InterruptedException ie) {
                             LOGGER.debug("waiting for cache entry for {} on {}"
                                             + " interrupted during try no {}",
-                                            pnfsId, repository.getPoolName(), attempt);
+                                            pnfsId,
+                                            repository.getPoolName(),
+                                            attempt);
                         }
                     }
                     ++attempt;
             }
 
-            LOGGER.debug("attempt {}, {}, {}, state {}", attempt, pnfsId,
-                            repository.getPoolName(), state);
+            LOGGER.debug("attempt {}, {}, {}, state {}",
+                            attempt,
+                            pnfsId,
+                            repository.getPoolName(),
+                            state);
 
         } while (!ready);
         return state;

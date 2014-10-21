@@ -57,7 +57,7 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.replication.v3.namespace.tasks;
+package org.dcache.replication.v3.namespace.data;
 
 import com.google.common.collect.ImmutableList;
 
@@ -75,7 +75,6 @@ import org.dcache.pool.migration.PoolListByNames;
 import org.dcache.pool.migration.PoolListByPoolGroup;
 import org.dcache.pool.migration.ProportionalPoolSelectionStrategy;
 import org.dcache.pool.repository.StickyRecord;
-import org.dcache.replication.v3.vehicles.ResilientPoolInfo;
 import org.dcache.vehicles.FileAttributes;
 
 public class ReplicaJobDefinition extends JobDefinition {
@@ -113,10 +112,15 @@ public class ReplicaJobDefinition extends JobDefinition {
               false);
     }
 
-    public static ReplicaJobDefinition create(ResilientPoolInfo message,
+    public static ReplicaJobDefinition create(ResilientPoolGroupInfo message,
                                               FileAttributes fileAttributes,
+                                              String pool,
                                               boolean greedy,
                                               CellStub poolManager) {
+        /*
+         * First determine replication contraints (number of copies required,
+         * and whether replicas can be in different pools on the same host).
+         */
         SelectionPoolGroup group = message.getPoolGroup();
         int minimum = group.getMinReplicas();
         int maximum = group.getMaxReplicas();
@@ -148,11 +152,11 @@ public class ReplicaJobDefinition extends JobDefinition {
 
         int replicas = greedy ? maximum : minimum;
 
-        return new ReplicaJobDefinition(ImmutableList.of(message.poolName),
-                        ImmutableList.of(group.getName()),
-                        poolManager,
-                        REPLICA_CACHE_ENTRY_MODE,
-                        replicas,
-                        isSameHostOK);
+        return new ReplicaJobDefinition(ImmutableList.of(pool),
+                                        ImmutableList.of(group.getName()),
+                                        poolManager,
+                                        REPLICA_CACHE_ENTRY_MODE,
+                                        replicas,
+                                        isSameHostOK);
     }
 }
