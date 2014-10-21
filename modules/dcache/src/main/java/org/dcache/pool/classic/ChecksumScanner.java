@@ -22,15 +22,17 @@ import diskCacheV111.util.CacheException;
 import diskCacheV111.util.FileCorruptedCacheException;
 import diskCacheV111.util.FileNotInCacheException;
 import diskCacheV111.util.NotInTrashCacheException;
-import diskCacheV111.util.PnfsHandler;
 import diskCacheV111.util.PnfsId;
 import diskCacheV111.util.TimeoutCacheException;
 
 import dmg.cells.nucleus.CellCommandListener;
 import dmg.cells.nucleus.CellLifeCycleAware;
+import dmg.cells.nucleus.NoRouteToCellException;
+import dmg.cells.nucleus.SerializationException;
 
 import org.dcache.alarms.AlarmMarkerFactory;
 import org.dcache.alarms.PredefinedAlarm;
+import org.dcache.cells.CellStub;
 import org.dcache.pool.repository.EntryState;
 import org.dcache.pool.repository.IllegalTransitionException;
 import org.dcache.pool.repository.ReplicaDescriptor;
@@ -38,6 +40,7 @@ import org.dcache.pool.repository.Repository;
 import org.dcache.pool.repository.Repository.OpenFlags;
 import org.dcache.util.Args;
 import org.dcache.util.Checksum;
+import org.dcache.vehicles.replication.CorruptFileMessage;
 
 public class ChecksumScanner
     implements CellCommandListener, CellLifeCycleAware
@@ -50,7 +53,7 @@ public class ChecksumScanner
     private final SingleScan _singleScan = new SingleScan();
 
     private Repository _repository;
-    private PnfsHandler _pnfs;
+    private CellStub _broadcast;
     private ChecksumModuleV1 _csm;
     private String poolName;
 
@@ -71,14 +74,13 @@ public class ChecksumScanner
         _scrubber.kill();
     }
 
+    public void setBroadcast(CellStub broadcast) {
+        _broadcast = broadcast;
+    }
+
     public void setRepository(Repository repository)
     {
         _repository = repository;
-    }
-
-    public void setPnfs(PnfsHandler pnfs)
-    {
-        _pnfs = pnfs;
     }
 
     public void setChecksumModule(ChecksumModuleV1 csm)
@@ -360,7 +362,7 @@ public class ChecksumScanner
                         isFinished = true;
                     } catch (IllegalStateException | TimeoutCacheException e) {
                         Thread.sleep(FAILURE_RATELIMIT_DELAY);
-                    } catch (CacheException | NoSuchAlgorithmException e) {
+                    } catch (NoRouteToCellException | CacheException | NoSuchAlgorithmException | SerializationException e) {
                         _log.error("Received an unexpected error during scrubbing: {}",
                                    e.getMessage());
                         Thread.sleep(FAILURE_RATELIMIT_DELAY);
@@ -416,9 +418,11 @@ public class ChecksumScanner
         }
 
         private void scanFiles(PnfsId[] repository)
-                throws InterruptedException, NoSuchAlgorithmException, CacheException
+                throws InterruptedException, NoSuchAlgorithmException, CacheException, SerializationException, NoRouteToCellException
         {
+            String pool = _repository.getPoolName();
             for (PnfsId id : repository) {
+                Iterable<Checksum> checksums = null;
                 try {
                     if (_repository.getState(id) == EntryState.CACHED ||
                             _repository.getState(id) == EntryState.PRECIOUS) {
@@ -432,6 +436,15 @@ public class ChecksumScanner
                     }
                 } catch (FileCorruptedCacheException e) {
                     _badCount++;
+                    /*
+                     * Broadcast message so that replica manager, if running,
+                     * will receive it.
+                     */
+                    long size = _repository.getEntry(id).getFileAttributes().getSize();
+                    _broadcast.send(new CorruptFileMessage(pool,
+                                                           id.toString(),
+                                                           checksums,
+                                                           size));
                     _log.error(AlarmMarkerFactory.getMarker(PredefinedAlarm.CHECKSUM,
                                                             id.toString(),
                                                             poolName),

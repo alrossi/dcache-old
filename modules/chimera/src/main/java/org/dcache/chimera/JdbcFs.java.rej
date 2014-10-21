@@ -1,0 +1,11 @@
+--- modules/chimera/src/main/java/org/dcache/chimera/JdbcFs.java
++++ modules/chimera/src/main/java/org/dcache/chimera/JdbcFs.java
+@@ -16,6 +16,8 @@
+  */
+ package org.dcache.chimera;
+ 
++import com.google.common.collect.ImmutableList;
++import com.google.common.collect.Multimap;
+ import com.zaxxer.hikari.HikariDataSource;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;

@@ -94,4 +94,10 @@
       <property name="nameSpaceProvider" ref="name-space-provider"/>
   </bean>
 
+  <bean id="locationQueryHandler"
+      class="org.dcache.replication.namespace.LocationQueryHandler"
+      init-method="initialize" destroy-method="shutdown">
+      <property name="fileSystem" ref="file-system"/>
+      <property name="concurrentRequests" value="${pnfsmanager.location-query-concurrent-requests}"/>
+  </bean>
 </beans>

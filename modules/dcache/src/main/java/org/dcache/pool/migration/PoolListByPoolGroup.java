@@ -8,7 +8,7 @@ import org.dcache.cells.CellStub;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-class PoolListByPoolGroup
+public class PoolListByPoolGroup
     extends PoolListFromPoolManager
 {
     private final CellStub _poolManager;

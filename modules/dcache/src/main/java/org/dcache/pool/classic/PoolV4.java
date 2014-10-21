@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -107,6 +108,7 @@ import org.dcache.util.IoPriority;
 import org.dcache.util.Version;
 import org.dcache.vehicles.FileAttributes;
 import org.dcache.vehicles.PnfsSetFileAttributes;
+import org.dcache.vehicles.replication.PoolCopyIsSystemStickyMessage;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -1321,30 +1323,41 @@ public class PoolV4
     public PoolQueryRepositoryMsg messageArrived(PoolQueryRepositoryMsg msg)
         throws CacheException, InterruptedException
     {
-        msg.setReply(new RepositoryCookie(), getRepositoryListing());
+        msg.setReply(new RepositoryCookie(), getRepositoryListing(msg.getPnfsid()));
         return msg;
     }
 
-    private List<CacheRepositoryEntryInfo> getRepositoryListing()
+    private List<CacheRepositoryEntryInfo> getRepositoryListing(String pnfsid)
         throws CacheException, InterruptedException
     {
         List<CacheRepositoryEntryInfo> listing = new ArrayList<>();
-        for (PnfsId pnfsid : _repository) {
+        Iterator<PnfsId> iterator;
+        if (pnfsid != null) {
+            List<PnfsId> list = new ArrayList<>();
+            list.add(new PnfsId(pnfsid));
+            iterator = list.iterator();
+        } else {
+            iterator = _repository.iterator();
+        }
+
+        while (iterator.hasNext()) {
+            PnfsId pnfsId = iterator.next();
             try {
-                switch (_repository.getState(pnfsid)) {
-                case PRECIOUS:
-                case CACHED:
-                case BROKEN:
-                    listing.add(new CacheRepositoryEntryInfo(_repository.getEntry(pnfsid)));
-                    break;
-                default:
-                    break;
+                switch (_repository.getState(pnfsId)) {
+                    case PRECIOUS:
+                    case CACHED:
+                    case BROKEN:
+                        listing.add(new CacheRepositoryEntryInfo(
+                                        _repository.getEntry(pnfsId)));
+                        break;
+                    default:
+                        break;
                 }
             } catch (FileNotInCacheException e) {
-                /* The file was deleted before we got a chance to add
-                 * it to the list. Since deleted files are not
-                 * supposed to be on the list, the exception is not a
-                 * problem.
+                /*
+                 * The file was deleted before we got a chance to add it to the
+                 * list. Since deleted files are not supposed to be on the list,
+                 * the exception is not a problem.
                  */
             }
         }

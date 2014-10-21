@@ -9,7 +9,8 @@ import diskCacheV111.util.IteratorCookie;
 public class PoolQueryRepositoryMsg extends PoolMessage {
 
    private IteratorCookie _cookie  = new IteratorCookie() ;
-   private List<CacheRepositoryEntryInfo>           _infos;
+   private List<CacheRepositoryEntryInfo> _infos;
+   private String _pnfsid;
 
     private static final long serialVersionUID = 5505604194473710945L;
 
@@ -21,6 +22,11 @@ public class PoolQueryRepositoryMsg extends PoolMessage {
       this(poolName);
       _cookie = cookie ;
    }
+   public PoolQueryRepositoryMsg(String poolName, String pnfsid) {
+       this(poolName);
+       _pnfsid = pnfsid;
+   }
+
    public void setReply( IteratorCookie cookie , List<CacheRepositoryEntryInfo> infos ){
       _cookie  = cookie ;
       _infos = infos ;
@@ -28,5 +34,5 @@ public class PoolQueryRepositoryMsg extends PoolMessage {
    }
    public List<CacheRepositoryEntryInfo> getInfos(){ return _infos ; }
    public IteratorCookie getCookie(){ return _cookie ; }
-
+   public String getPnfsid(){ return _pnfsid; }
 }
