@@ -27,7 +27,7 @@ import diskCacheV111.util.PnfsId;
 import org.dcache.auth.Subjects;
 import org.dcache.namespace.FileAttribute;
 import org.dcache.poolmanager.PoolMonitor;
-import org.dcache.replication.v3.namespace.data.ResilientPoolGroupInfo;
+import org.dcache.replication.v3.namespace.data.PoolGroupInfo;
 import org.dcache.vehicles.FileAttributes;
 
 import static org.dcache.namespace.FileAttribute.*;
@@ -47,11 +47,11 @@ public class ResilientInfoCache {
         }
     }
 
-    private class PoolInfoFetcher extends CacheLoader<String, ResilientPoolGroupInfo> {
+    private class PoolInfoFetcher extends CacheLoader<String, PoolGroupInfo> {
 
         @Override
-        public ResilientPoolGroupInfo load(String pool) throws Exception {
-            ResilientPoolGroupInfo info = new ResilientPoolGroupInfo();
+        public PoolGroupInfo load(String pool) throws Exception {
+            PoolGroupInfo info = new PoolGroupInfo();
             getResilientPoolGroupOfPool(pool, info);
             if (info.isResilient()) {
                 getStorageUnitsInGroup(info);
@@ -61,7 +61,7 @@ public class ResilientInfoCache {
         }
 
         private void getResilientPoolGroupOfPool(String pool,
-                                                 ResilientPoolGroupInfo info) {
+                                                 PoolGroupInfo info) {
             Collection<SelectionPoolGroup> pgroups
                 = poolMonitor.getPoolSelectionUnit()
                              .getPoolGroupsOfPool(pool);
@@ -81,7 +81,7 @@ public class ResilientInfoCache {
             } while (it.hasNext());
         }
 
-        private void getStorageUnitsInGroup(ResilientPoolGroupInfo info) {
+        private void getStorageUnitsInGroup(PoolGroupInfo info) {
             Collection<SelectionLink> links
                 = poolMonitor.getPoolSelectionUnit()
                              .getLinksPointingToPoolGroup(info.getPoolGroup()
@@ -100,7 +100,7 @@ public class ResilientInfoCache {
             }
         }
 
-        private void loadAllPoolsInGroup(String source, ResilientPoolGroupInfo info) {
+        private void loadAllPoolsInGroup(String source, PoolGroupInfo info) {
             Collection<SelectionPool> pools
                 = poolMonitor.getPoolSelectionUnit()
                              .getPoolsByPoolGroup(info.getPoolGroup().getName());
@@ -137,7 +137,7 @@ public class ResilientInfoCache {
      * From initialization.
      */
     private LoadingCache<PnfsId, FileAttributes> pnfsInfoCache;
-    private LoadingCache<String, ResilientPoolGroupInfo> poolInfoCache;
+    private LoadingCache<String, PoolGroupInfo> poolInfoCache;
 
     public List<String> getAllLocationsFor(PnfsId pnfsId) throws CacheException {
         return namespace.getCacheLocation(Subjects.ROOT, pnfsId);
@@ -153,9 +153,9 @@ public class ResilientInfoCache {
                         + " has no mapped attributes.");
     }
 
-    public ResilientPoolGroupInfo getPoolGroupInfo(String pool)
+    public PoolGroupInfo getPoolGroupInfo(String pool)
                     throws ExecutionException {
-        ResilientPoolGroupInfo info = poolInfoCache.get(pool);
+        PoolGroupInfo info = poolInfoCache.get(pool);
         if (info != null) {
             return info;
         }

@@ -11,7 +11,7 @@ import dmg.cells.nucleus.CellMessageReceiver;
 import dmg.cells.nucleus.CellMessageSender;
 
 import org.dcache.pool.repository.Repository;
-import org.dcache.replication.v3.ReplicaManagerTaskExecutor;
+import org.dcache.replication.v3.CDCFixedPoolTaskExecutor;
 import org.dcache.replication.v3.pool.tasks.CacheEntryInfoTask;
 import org.dcache.replication.v3.vehicles.CacheEntryInfoMessage;
 
@@ -25,7 +25,7 @@ public class CacheEntryInfoMessageHandler implements CellMessageReceiver,
 
     private CellEndpoint endpoint;
     private Repository repository;
-    private ReplicaManagerTaskExecutor executor;
+    private CDCFixedPoolTaskExecutor executor;
 
     public void messageArrived(CellMessage message,
                                CacheEntryInfoMessage info)
@@ -55,7 +55,7 @@ public class CacheEntryInfoMessageHandler implements CellMessageReceiver,
        this.endpoint = endpoint;
     }
 
-    public void setExecutor(ReplicaManagerTaskExecutor executor) {
+    public void setExecutor(CDCFixedPoolTaskExecutor executor) {
         this.executor = executor;
     }
 

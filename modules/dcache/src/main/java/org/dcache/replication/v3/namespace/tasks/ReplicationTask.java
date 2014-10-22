@@ -11,7 +11,7 @@ import org.dcache.pool.migration.Task;
 import org.dcache.pool.migration.TaskCompletionHandler;
 import org.dcache.replication.v3.namespace.ResilientInfoCache;
 import org.dcache.replication.v3.namespace.data.ReplicaJobDefinition;
-import org.dcache.replication.v3.namespace.data.ResilientPoolGroupInfo;
+import org.dcache.replication.v3.namespace.data.PoolGroupInfo;
 import org.dcache.replication.v3.vehicles.CacheEntryInfoMessage;
 import org.dcache.vehicles.FileAttributes;
 
@@ -59,7 +59,7 @@ public class ReplicationTask implements Runnable {
         String pool = message.getPool();
 
         FileAttributes attributes;
-        ResilientPoolGroupInfo poolInfo;
+        PoolGroupInfo poolInfo;
 
         try {
             attributes = cache.getAttributes(message.pnfsId);

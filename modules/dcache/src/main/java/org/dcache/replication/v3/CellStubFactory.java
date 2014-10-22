@@ -15,18 +15,6 @@ public class CellStubFactory implements CellMessageSender {
     private Long messageTimeout;
     private TimeUnit messageTimeoutUnit;
 
-    public void setCellEndpoint(CellEndpoint endpoint) {
-        this.endpoint = endpoint;
-    }
-
-    public void setMessageTimeout(long messageTimeout) {
-        this.messageTimeout = messageTimeout;
-    }
-
-    public void setMessageTimeoutUnit(TimeUnit messageTimeoutUnit) {
-        this.messageTimeoutUnit = messageTimeoutUnit;
-    }
-
     public CellStub getCellStub(String destination) {
         CellStub stub = new CellStub();
         stub.setDestination(destination);
@@ -38,5 +26,17 @@ public class CellStubFactory implements CellMessageSender {
             stub.setTimeoutUnit(messageTimeoutUnit);
         }
         return stub;
+    }
+
+    public void setCellEndpoint(CellEndpoint endpoint) {
+        this.endpoint = endpoint;
+    }
+
+    public void setMessageTimeout(long messageTimeout) {
+        this.messageTimeout = messageTimeout;
+    }
+
+    public void setMessageTimeoutUnit(TimeUnit messageTimeoutUnit) {
+        this.messageTimeoutUnit = messageTimeoutUnit;
     }
 }

@@ -10,7 +10,7 @@ import diskCacheV111.util.AccessLatency;
 import diskCacheV111.util.PnfsId;
 
 import org.dcache.cells.CellStub;
-import org.dcache.replication.v3.ReplicaManagerTaskExecutor;
+import org.dcache.replication.v3.CDCFixedPoolTaskExecutor;
 import org.dcache.replication.v3.namespace.ResilientInfoCache;
 import org.dcache.replication.v3.namespace.handlers.task.FileInfoTaskCompletionHandler;
 import org.dcache.replication.v3.vehicles.CacheEntryInfoMessage;
@@ -26,11 +26,10 @@ public class FileInfoTask implements Runnable {
     class CacheEntryResultListener implements Runnable {
         public void run() {
             CacheEntryInfoMessage message = null;
-
             try {
                 message = future.get();
             } catch (InterruptedException | ExecutionException t) {
-                handler.taskFailed(message, t);
+                handler.taskFailed(message, t.getMessage());
                 return;
             }
 
@@ -46,14 +45,14 @@ public class FileInfoTask implements Runnable {
     private final CellStub pool;
     private final ResilientInfoCache cache;
     private final FileInfoTaskCompletionHandler handler;
-    private final ReplicaManagerTaskExecutor executor;
+    private final CDCFixedPoolTaskExecutor executor;
     private ListenableFuture<CacheEntryInfoMessage> future;
 
     public FileInfoTask(PnfsId pnfsId,
                         CellStub pool,
                         FileInfoTaskCompletionHandler handler,
                         ResilientInfoCache cache,
-                        ReplicaManagerTaskExecutor executor) {
+                        CDCFixedPoolTaskExecutor executor) {
         this.pnfsId = pnfsId;
         this.pool = pool;
         this.handler = handler;
@@ -71,11 +70,10 @@ public class FileInfoTask implements Runnable {
                 return;
             }
         } catch (ExecutionException t) {
-            handler.taskFailed(null,
-                            new ExecutionException("CacheEntryInfoTask failed "
-                                            + "for " + pnfsId + "@" +
-                                            pool.getDestinationPath().getCellName(),
-                                            t));
+            String error = "CacheEntryInfoTask failed "
+                            + "for " + pnfsId + "@" +
+                            pool.getDestinationPath().getCellName(); // plus t
+            handler.taskFailed(null, error);
             return;
         }
 

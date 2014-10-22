@@ -5,19 +5,18 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.dcache.util.CDCExecutorServiceDecorator;
-
 /**
  * @author arossi
+ *
  */
-public class ReplicaManagerTaskExecutor implements ExecutorService {
-    protected ExecutorService delegate;
-    protected int infoWorkers;
+public abstract class CDCTaskExecutor<E extends ExecutorService> implements
+                ExecutorService {
+    protected E delegate;
+    protected int numberOfThreads;
 
     public boolean awaitTermination(long timeout, TimeUnit unit)
                     throws InterruptedException {
@@ -28,10 +27,7 @@ public class ReplicaManagerTaskExecutor implements ExecutorService {
         delegate.execute(command);
     }
 
-    public void initialize() {
-        ExecutorService executor = Executors.newFixedThreadPool(infoWorkers);
-        delegate = new CDCExecutorServiceDecorator(executor);
-    }
+    public abstract void initialize();
 
     public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks)
                     throws InterruptedException {
@@ -63,8 +59,8 @@ public class ReplicaManagerTaskExecutor implements ExecutorService {
         return delegate.isTerminated();
     }
 
-    public void setInfoWorkers(int infoWorkers) {
-        this.infoWorkers = infoWorkers;
+    public void setNumberOfThreads(int numberOfThreads) {
+        this.numberOfThreads = numberOfThreads;
     }
 
     public void shutdown() {

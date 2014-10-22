@@ -10,12 +10,12 @@ import diskCacheV111.poolManager.StorageUnit;
 /**
  * @author arossi
  */
-public class ResilientPoolGroupInfo {
+public class PoolGroupInfo {
     private final Map<String, StorageUnit> storageUnits;
 
     private SelectionPoolGroup poolGroup;
 
-    public ResilientPoolGroupInfo() {
+    public PoolGroupInfo() {
         storageUnits = new HashMap<>();
     }
 

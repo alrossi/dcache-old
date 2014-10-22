@@ -84,35 +84,7 @@ public class ReplicaJobDefinition extends JobDefinition {
                                        ImmutableList.of(new StickyRecord("system",
                                                         StickyRecord.NON_EXPIRING)));
 
-    private ReplicaJobDefinition(Collection<String> source,
-                                 Collection<String> poolGroup,
-                                 CellStub poolManager,
-                                 CacheEntryMode targetMode,
-                                 int replicas,
-                                 /*
-                                  * this needs to be taken care of; e.g.,
-                                  * exclude-when=
-                                  */
-                                 boolean isSameHostOK) {
-        super(null,     // filters
-              null,     // source mode
-              targetMode,
-              new ProportionalPoolSelectionStrategy(),
-              null,     // cache entry comparator
-              new PoolListByNames(poolManager, source),
-              new PoolListByPoolGroup(poolManager, poolGroup),
-              TimeUnit.MINUTES.toMillis(1),
-              false,    // not a permanent job
-              true,     // replica creation is always "eager"
-              replicas, // what is required, without consideration of what may exist
-              false,
-              true,
-              null,
-              null,
-              false);
-    }
-
-    public static ReplicaJobDefinition create(ResilientPoolGroupInfo message,
+    public static ReplicaJobDefinition create(PoolGroupInfo message,
                                               FileAttributes fileAttributes,
                                               String pool,
                                               boolean greedy,
@@ -158,5 +130,33 @@ public class ReplicaJobDefinition extends JobDefinition {
                                         REPLICA_CACHE_ENTRY_MODE,
                                         replicas,
                                         isSameHostOK);
+    }
+
+    private ReplicaJobDefinition(Collection<String> source,
+                                 Collection<String> poolGroup,
+                                 CellStub poolManager,
+                                 CacheEntryMode targetMode,
+                                 int replicas,
+                                 /*
+                                  * this needs to be taken care of; e.g.,
+                                  * exclude-when=
+                                  */
+                                 boolean isSameHostOK) {
+        super(null,     // filters
+              null,     // source mode
+              targetMode,
+              new ProportionalPoolSelectionStrategy(),
+              null,     // cache entry comparator
+              new PoolListByNames(poolManager, source),
+              new PoolListByPoolGroup(poolManager, poolGroup),
+              TimeUnit.MINUTES.toMillis(1),
+              false,    // not a permanent job
+              true,     // replica creation is always "eager"
+              replicas, // what is required, without consideration of what may exist
+              false,
+              true,
+              null,
+              null,
+              false);
     }
 }

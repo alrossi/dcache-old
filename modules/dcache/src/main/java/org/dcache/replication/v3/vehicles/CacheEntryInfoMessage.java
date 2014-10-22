@@ -15,6 +15,7 @@ public class CacheEntryInfoMessage extends Message {
     private static final long serialVersionUID = 1L;
 
     public final PnfsId pnfsId;
+
     private String pool;
     private CacheEntry entry;
     private boolean isSystemSticky;
@@ -24,27 +25,27 @@ public class CacheEntryInfoMessage extends Message {
         isSystemSticky = false;
     }
 
-    public boolean isSystemSticky() {
-        return isSystemSticky;
-    }
-
-    public void setSystemSticky(boolean isSystemSticky) {
-        this.isSystemSticky = isSystemSticky;
-    }
-
     public CacheEntry getEntry() {
         return entry;
-    }
-
-    public void setEntry(CacheEntry entry) {
-        this.entry = entry;
     }
 
     public String getPool() {
         return pool;
     }
 
+    public boolean isSystemSticky() {
+        return isSystemSticky;
+    }
+
+    public void setEntry(CacheEntry entry) {
+        this.entry = entry;
+    }
+
     public void setPool(String pool) {
         this.pool = pool;
+    }
+
+    public void setSystemSticky(boolean isSystemSticky) {
+        this.isSystemSticky = isSystemSticky;
     }
 }

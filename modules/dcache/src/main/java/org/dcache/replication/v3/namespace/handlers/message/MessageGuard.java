@@ -16,22 +16,6 @@ import org.dcache.replication.v3.namespace.ResilienceWatchdog;
  *
  */
 public class MessageGuard {
-    private static final Logger LOGGER
-        = LoggerFactory.getLogger(MessageGuard.class);
-
-    private final String replicaId = "REPLICAMANAGER" + UUID.randomUUID();
-    private final AtomicBoolean accept = new AtomicBoolean(false);
-
-    private long initialWait = 1;
-    private TimeUnit initialWaitUnit = TimeUnit.MINUTES;
-
-    private ResilienceWatchdog watchdog;
-    private boolean startWatchdog = false;
-
-    public void initialize() {
-        new AlarmClock().start();
-    }
-
     /**
      * One-time alarm clock thread. The message handler can be paused for an
      * initial period before beginning to process intercepted messages. This is
@@ -41,24 +25,55 @@ public class MessageGuard {
     private class AlarmClock extends Thread {
         @Override
         public void run() {
-            long waitInMs = initialWaitUnit.toMillis(initialWait);
-            try {
-                Thread.sleep(waitInMs);
-            } catch (InterruptedException ie) {
-                LOGGER.debug("Thread interrupted during initial wait.");
+            if (initialWait > 0) {
+                long waitInMs = initialWaitUnit.toMillis(initialWait);
+
+                try {
+                    Thread.sleep(waitInMs);
+                } catch (InterruptedException ie) {
+                    LOGGER.debug("Thread interrupted during initial wait.");
+                }
             }
 
             accept.set(true);
 
-            if (startWatchdog) {
+            if (watchdog != null) {
                 watchdog.initialize();
             }
         }
     }
 
+    private static final Logger LOGGER
+        = LoggerFactory.getLogger(MessageGuard.class);
+    private final String replicaId = "REPLICAMANAGER" + UUID.randomUUID();
+
+    private final AtomicBoolean accept = new AtomicBoolean(false);
+    private long initialWait = 1;
+    private TimeUnit initialWaitUnit = TimeUnit.MINUTES;
+
+    private ResilienceWatchdog watchdog;
+
+    public void initialize() {
+        new AlarmClock().start();
+    }
+
+    public void setInitialWait(long initialWait) {
+        this.initialWait = initialWait;
+    }
+
+    public void setInitialWaitUnit(TimeUnit initialWaitUnit) {
+        this.initialWaitUnit = initialWaitUnit;
+    }
+
+    public void setWatchdog(ResilienceWatchdog watchdog) {
+        this.watchdog = watchdog;
+    }
+
+    /**
+     * For package use by all message handlers.
+     */
     boolean acceptMessage(String message, Object messageObject) {
-        LOGGER.trace("************* Replication {}: {}.", message,
-                        messageObject);
+        LOGGER.trace("**** acceptMessage **** {}: {}.", message, messageObject);
 
         if (!accept.get()) {
             LOGGER.trace("Replica Manager message handler is paused, "
@@ -83,21 +98,5 @@ public class MessageGuard {
         CDC.setSession(replicaId);
 
         return true;
-    }
-
-    public void setStartWatchdog(boolean startWatchdog) {
-        this.startWatchdog = startWatchdog;
-    }
-
-    public void setInitialWait(long initialWait) {
-        this.initialWait = initialWait;
-    }
-
-    public void setInitialWaitUnit(TimeUnit initialWaitUnit) {
-        this.initialWaitUnit = initialWaitUnit;
-    }
-
-    public void setWatchdog(ResilienceWatchdog watchdog) {
-        this.watchdog = watchdog;
     }
 }
