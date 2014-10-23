@@ -100,7 +100,6 @@
         <includeInKey>group1 type host service domain</includeInKey>
     </alarmType>
     <alarmType>
-        <logger>org.dcache.pool.classic.ChecksumScanner</logger>
         <type>BROKEN_FILE</type>
         <regex>Marking pool entry (.+) as BROKEN</regex>
         <level>ERROR</level>
