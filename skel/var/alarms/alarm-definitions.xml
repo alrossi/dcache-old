@@ -102,7 +102,7 @@
     <alarmType>
         <type>BROKEN_FILE</type>
         <regex>Marking pool entry (.+) as BROKEN</regex>
-        <level>ERROR</level>
+        <level>WARN</level>
         <severity>MODERATE</severity>
         <includeInKey>group1 type host service domain</includeInKey>
     </alarmType>
