@@ -116,71 +116,29 @@ documents or software obtained from this server.
  obligated to secure any necessary Government licenses before exporting
  documents or software obtained from this server.
  */
-package org.dcache.services.billing.cells.receivers;
+package org.dcache.vehicles.billing;
 
-import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collection;
 
-import dmg.cells.nucleus.CellMessageReceiver;
-
-import org.dcache.services.billing.histograms.data.ITimeFrameHistogramDataService;
-import org.dcache.services.billing.histograms.data.TimeFrameHistogramData;
-import org.dcache.vehicles.billing.BatchedHistogramRequestMessage;
-import org.dcache.vehicles.billing.HistogramRequestMessage;
+import diskCacheV111.vehicles.Message;
 
 /**
- * Serves up histogram data. The {@link HistogramRequestMessage} specifies an
- * array of {@link TimeFrameHistogramData} containing arrays of doubles. The
- * underlying store is accessed through the
- * {@link ITimeFrameHistogramDataService} abstraction.
+ * Optimization for reducing message traffic during activity burst.
  *
  * @author arossi
  */
-public class HistogramRequestReceiver implements CellMessageReceiver {
+public class BatchedHistogramRequestMessage extends Message {
+    private static final long serialVersionUID = -1750018885108954033L;
 
-    private ITimeFrameHistogramDataService service;
+    private final Collection<HistogramRequestMessage> messages =
+                    new ArrayList<>();
 
-    /**
-     * Returns data specified by a histogram request. <br>
-     */
-    public HistogramRequestMessage messageArrived(HistogramRequestMessage request) {
-        Class<TimeFrameHistogramData[]> returnType = request.getReturnType();
-        request.clearReply();
-
-        try {
-            Method m = service.getClass().getMethod(request.getMethod(),
-                            request.getParameterTypes());
-
-            if (!returnType.equals(m.getReturnType())) {
-                throw new NoSuchMethodException("return type for method " + m
-                                + " is not " + returnType);
-            }
-
-            TimeFrameHistogramData[] data
-                = (TimeFrameHistogramData[]) m.invoke(service,
-                                                      request.getParameterValues());
-            request.setReturnValue(data);
-            request.setSucceeded();
-        } catch (Exception t) {
-            request.setFailed(-1, t.getMessage());
-        }
-
-        return request;
+    public void addMessage(HistogramRequestMessage message) {
+        messages.add(message);
     }
 
-    public BatchedHistogramRequestMessage messageArrived(BatchedHistogramRequestMessage request) {
-        Collection<HistogramRequestMessage> messages = request.getMessages();
-        for (HistogramRequestMessage message: messages) {
-            messageArrived(message);
-        }
-
-        request.setSucceeded();
-        return request;
+    public Collection<HistogramRequestMessage> getMessages() {
+        return messages;
     }
-
-    public void setService(ITimeFrameHistogramDataService service) {
-        this.service = service;
-    }
-
-
 }
