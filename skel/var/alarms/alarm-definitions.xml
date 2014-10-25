@@ -66,7 +66,7 @@
     <alarmType>
         <type>HSM_FLUSH_ERROR</type>
         <regex>Error while flushing to tape (.+ path .+)</regex>
-        <level>WARN</level>
+        <level>ERROR</level>
         <severity>HIGH</severity>
         <includeInKey>type host service domain group1</includeInKey>
     </alarmType>
