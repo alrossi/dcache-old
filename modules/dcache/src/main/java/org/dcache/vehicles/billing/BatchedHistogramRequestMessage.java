@@ -116,160 +116,29 @@ documents or software obtained from this server.
  obligated to secure any necessary Government licenses before exporting
  documents or software obtained from this server.
  */
-package org.dcache.services.billing.cells.receivers;
+package org.dcache.vehicles.billing;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.Serializable;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.FutureTask;
 
-import diskCacheV111.util.CacheException;
-
-import dmg.cells.nucleus.CellEndpoint;
-import dmg.cells.nucleus.CellMessage;
-import dmg.cells.nucleus.CellMessageReceiver;
-import dmg.cells.nucleus.CellMessageSender;
-import dmg.util.command.DelayedCommand;
-
-import org.dcache.services.billing.histograms.data.ITimeFrameHistogramDataService;
-import org.dcache.services.billing.histograms.data.TimeFrameHistogramData;
-import org.dcache.vehicles.billing.BatchedHistogramRequestMessage;
-import org.dcache.vehicles.billing.HistogramRequestMessage;
+import diskCacheV111.vehicles.Message;
 
 /**
- * Serves up histogram data. The {@link HistogramRequestMessage} specifies an
- * array of {@link TimeFrameHistogramData} containing arrays of doubles. The
- * underlying store is accessed through the
- * {@link ITimeFrameHistogramDataService} abstraction.
+ * Optimization for reducing message traffic during activity burst.
  *
  * @author arossi
  */
-public class HistogramRequestReceiver implements CellMessageReceiver,
-                CellMessageSender {
-    class HistogramQueryWorker extends FutureTask {
-        final List<HistogramRequestMessage> requests;
+public class BatchedHistogramRequestMessage extends Message {
+    private static final long serialVersionUID = -1750018885108954033L;
 
-        public HistogramQueryWorker(final List<HistogramRequestMessage> requests) {
-            super(new Callable<Void>() {
-                public Void call() throws Exception {
-                    for (HistogramRequestMessage request : requests) {
-                        Class<TimeFrameHistogramData[]> returnType = request.getReturnType();
-                        request.clearReply();
-                        Method m = service.getClass().getMethod(
-                                        request.getMethod(),
-                                        request.getParameterTypes());
+    private final List<List<HistogramRequestMessage>> messages =
+                    new ArrayList<>();
 
-                        if (!returnType.equals(m.getReturnType())) {
-                            throw new NoSuchMethodException(
-                                            "return type for method " + m
-                                                            + " is not "
-                                                            + returnType);
-                        }
-
-                        TimeFrameHistogramData[] data = (TimeFrameHistogramData[]) m.invoke(
-                                        service, request.getParameterValues());
-                        request.setReturnValue(data);
-                        request.setSucceeded();
-                    }
-                    return null;
-                }
-            });
-
-            this.requests = requests;
-        }
+    public void addMessages(List<HistogramRequestMessage> messages) {
+        this.messages.add(messages);
     }
 
-    class HistogramRequestTask extends DelayedCommand {
-        private static final long serialVersionUID = -2689884852516621339L;
-
-        final BatchedHistogramRequestMessage request;
-
-        HistogramRequestTask(BatchedHistogramRequestMessage request) {
-            this.request = request;
-        }
-
-        @Override
-        protected Serializable execute() throws Exception {
-            List<List<HistogramRequestMessage>> messages = request.getMessages();
-            LOGGER.debug("Beginning execute(), number of messages {}",
-                            messages.size());
-
-            List<HistogramQueryWorker> workers = new ArrayList<>();
-
-            for (List<HistogramRequestMessage> list : messages) {
-                workers.add(new HistogramQueryWorker(list));
-            }
-
-            request.getMessages().clear();
-            request.clearReply();
-
-            for (HistogramQueryWorker worker : workers) {
-                requestThreadPool.execute(worker);
-            }
-
-            for (HistogramQueryWorker worker : workers) {
-                try {
-                    LOGGER.debug("calling worker.get()");
-                    worker.get();
-                } catch (Exception t) {
-                    LOGGER.error("Worker for {} failed: {}.", worker.requests,
-                                    t.getMessage());
-                    request.setFailed(CacheException.DEFAULT_ERROR_CODE,
-                                    t.getMessage());
-                    return request;
-                }
-            }
-
-            for (HistogramQueryWorker worker : workers) {
-                request.addMessages(worker.requests);
-            }
-
-            LOGGER.debug("request succeeded, number of messages {}",
-                            request.getMessages().size());
-
-            request.setSucceeded();
-            return request;
-        }
-    }
-
-    static final Logger LOGGER = LoggerFactory.getLogger(HistogramRequestReceiver.class);
-
-    private ITimeFrameHistogramDataService service;
-    private CellEndpoint endpoint;
-    private ExecutorService requestThreadPool;
-    private int concurrentRequests = 33; // workers + master
-
-    public void initialize() {
-        requestThreadPool = Executors.newFixedThreadPool(concurrentRequests);
-    }
-
-    public void messageArrived(CellMessage message,
-                    BatchedHistogramRequestMessage request) {
-        LOGGER.error("messageArrived " + request);
-        try {
-            message.revertDirection();
-            new HistogramRequestTask(request).call().deliver(endpoint, message);
-        } catch (RuntimeException t) {
-            LOGGER.error("Unexpected error during query processing for {}.",
-                            request, t);
-        } catch (Exception e) {
-            LOGGER.error("Error during query processing for {}: {}", request,
-                            e.getMessage());
-        }
-    }
-
-    public void setCellEndpoint(CellEndpoint endpoint) {
-        this.endpoint = endpoint;
-    }
-
-    public void setService(ITimeFrameHistogramDataService service) {
-        this.service = service;
+    public List<List<HistogramRequestMessage>> getMessages() {
+        return messages;
     }
 }
