@@ -198,7 +198,7 @@ public class HistogramRequestReceiver implements CellMessageReceiver,
         @Override
         protected Serializable execute() throws Exception {
             List<List<HistogramRequestMessage>> messages = request.getMessages();
-            LOGGER.error("Beginning execute(), number of messages {}",
+            LOGGER.debug("Beginning execute(), number of messages {}",
                             messages.size());
 
             List<HistogramQueryWorker> workers = new ArrayList<>();
@@ -231,7 +231,7 @@ public class HistogramRequestReceiver implements CellMessageReceiver,
                 request.addMessages(worker.requests);
             }
 
-            LOGGER.error("request succeeded, number of messages {}",
+            LOGGER.debug("request succeeded, number of messages {}",
                             request.getMessages().size());
 
             request.setSucceeded();

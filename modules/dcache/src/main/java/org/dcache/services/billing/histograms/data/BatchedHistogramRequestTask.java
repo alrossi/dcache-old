@@ -95,7 +95,7 @@ public class BatchedHistogramRequestTask implements Runnable {
     }
 
     public BatchedHistogramRequestMessage getMessage() throws InterruptedException {
-        LOGGER.error("Sending batched histogram request {}.", message);
+        LOGGER.debug("Sending batched histogram request {}.", message);
 
         /*
          * should not return <code>null</code>
@@ -114,7 +114,7 @@ public class BatchedHistogramRequestTask implements Runnable {
 
     public void run() {
         synchronized(this) {
-            LOGGER.error("run() called, future is done.", future.isDone());
+            LOGGER.debug("run() called, future is done.", future.isDone());
             if (future.isCancelled()) {
                 LOGGER.warn("Request {} was cancelled.", message);
             } else {
