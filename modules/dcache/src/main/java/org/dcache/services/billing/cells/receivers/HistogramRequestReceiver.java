@@ -203,6 +203,9 @@ public class HistogramRequestReceiver implements CellMessageReceiver, CellMessag
                 workers.add(new HistogramQueryWorker(message));
             }
 
+            request.getMessages().clear();
+            request.clearReply();
+
             for (HistogramQueryWorker worker: workers) {
                 requestThreadPool.execute(worker);
             }
@@ -220,10 +223,13 @@ public class HistogramRequestReceiver implements CellMessageReceiver, CellMessag
                    return request;
                }
             }
+
             LOGGER.error("request succeeded, number of messages {}", request.getMessages().size());
             for (HistogramRequestMessage message: request.getMessages()) {
+                request.addMessage(message);
                 LOGGER.error("data for message {}", (Object)message.getReturnValue());
             }
+
             request.setSucceeded();
             return request;
         }

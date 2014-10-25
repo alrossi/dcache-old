@@ -157,7 +157,7 @@ public class BatchedHistogramRequestProxy implements InvocationHandler,
                             (new Throwable(message.getErrorObject().toString()));
                     }
                 } catch (InterruptedException | ExecutionException t) {
-                    LOGGER.error("Ccould not process reply: {}.",
+                    LOGGER.error("Could not process reply: {}.",
                                    t.getMessage());
                 }
             }
