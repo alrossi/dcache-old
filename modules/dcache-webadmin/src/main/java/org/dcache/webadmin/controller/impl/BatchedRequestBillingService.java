@@ -331,12 +331,18 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
         for (int tFrame = 0; tFrame < timeFrames.length; tFrame++) {
             Date low = timeFrames[tFrame].getLow();
             for (PlotType type : PlotType.values()) {
+                TimeFrameHistogramData[] data =
+                                messages[i++].getReturnValue();
                 String fileName = getFileName(type.ordinal(), tFrame);
+                if (data == null) {
+                    logger.error("{}, data was null", fileName);
+                    continue;
+                }
                 generatePlot(type,
                              timeFrames[tFrame],
                              fileName,
                              getTitle(type.ordinal(), tFrame, low),
-                             messages[i++].getReturnValue());
+                             data);
             }
         }
 
