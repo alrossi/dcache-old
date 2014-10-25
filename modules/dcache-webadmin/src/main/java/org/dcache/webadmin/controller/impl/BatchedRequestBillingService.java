@@ -310,11 +310,9 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
                         Thread.currentThread().getContextClassLoader(),
                         new Class[] { ITimeFrameHistogramDataService.class },
                         proxy);
-        int i = 0;
         for (int tFrame = 0; tFrame < timeFrames.length; tFrame++) {
             for (PlotType type : PlotType.values()) {
                 load(type, timeFrames[tFrame]);
-                i++;
             }
         }
 
@@ -328,7 +326,7 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
         HistogramRequestMessage[] messages
             = reply.getMessages().toArray(new HistogramRequestMessage[0]);
 
-        if (i < messages.length) {
+        if (timeFrames.length * PlotType.values().length > messages.length) {
             logger.error("Incomplete data set returned; error: {}",
                             reply.getErrorObject());
             return;
@@ -337,11 +335,11 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
         TimeFrameHistogramData[][] data
             = new TimeFrameHistogramData[messages.length][];
 
-        for (i = 0; i < messages.length; i++) {
+        int i = 0;
+        for (; i < messages.length; i++) {
             data[i] = messages[i].getReturnValue();
         }
 
-        i = 0;
         for (int tFrame = 0; tFrame < timeFrames.length; tFrame++) {
             Date low = timeFrames[tFrame].getLow();
             for (PlotType type : PlotType.values()) {

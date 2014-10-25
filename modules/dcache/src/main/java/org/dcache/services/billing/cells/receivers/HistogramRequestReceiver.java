@@ -224,9 +224,9 @@ public class HistogramRequestReceiver implements CellMessageReceiver, CellMessag
                }
             }
 
-            for (HistogramRequestMessage message: request.getMessages()) {
-                request.addMessage(message);
-                LOGGER.error("data for message {}", (Object)message.getReturnValue());
+            for (HistogramQueryWorker worker: workers) {
+                request.addMessage(worker.request);
+                LOGGER.error("data for message {}", (Object)worker.request.getReturnValue());
             }
 
             LOGGER.error("request succeeded, number of messages {}",
