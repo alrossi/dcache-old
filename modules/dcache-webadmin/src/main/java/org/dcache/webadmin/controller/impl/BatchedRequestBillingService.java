@@ -306,7 +306,7 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
     public void refresh() throws NoRouteToCellException,
                                  ServiceUnavailableException{
         TimeFrame[] timeFrames = generateTimeFrames();
-        proxy = new BatchedHistogramRequestProxy(cell, null);
+        proxy = new BatchedHistogramRequestProxy(cell, executor);
         client = (ITimeFrameHistogramDataService) Proxy.newProxyInstance(
                         Thread.currentThread().getContextClassLoader(),
                         new Class[] { ITimeFrameHistogramDataService.class },
