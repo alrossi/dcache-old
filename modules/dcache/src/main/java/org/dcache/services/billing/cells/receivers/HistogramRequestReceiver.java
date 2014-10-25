@@ -209,6 +209,7 @@ public class HistogramRequestReceiver implements CellMessageReceiver, CellMessag
 
             for (HistogramQueryWorker worker: workers) {
                try {
+                   LOGGER.error("calling worker.get()");
                    worker.get();
                } catch (Exception t) {
                    LOGGER.error("Query for {} failed: {}.",
@@ -219,7 +220,10 @@ public class HistogramRequestReceiver implements CellMessageReceiver, CellMessag
                    return request;
                }
             }
-
+            LOGGER.error("request succeeded, number of messages {}", request.getMessages().size());
+            for (HistogramRequestMessage message: request.getMessages()) {
+                LOGGER.error("data for message {}", (Object)message.getReturnValue());
+            }
             request.setSucceeded();
             return request;
         }
