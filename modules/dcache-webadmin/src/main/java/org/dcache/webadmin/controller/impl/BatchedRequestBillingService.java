@@ -141,7 +141,7 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
     private final List<String> plotTitles = new ArrayList<>();
     private final List<String> extTypes = new ArrayList<>();
     private final List<String> timeDescription = new ArrayList<>();
-    private final Executor executor;
+    private Executor executor;
 
     /**
      * refreshing can be done periodically by the daemon, or forced
@@ -241,7 +241,6 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
     public BatchedRequestBillingService(String style, String scale) {
         this.style = Style.valueOf(style);
         this.scale = scale;
-        this.executor = Executors.newFixedThreadPool(1);
     }
 
     @Override
@@ -347,6 +346,7 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
     @Override
     public void run() {
         try {
+            executor = Executors.newFixedThreadPool(1);
             while (true) {
                 try {
                     refresh();

@@ -68,8 +68,6 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.dcache.cells.CellStub;
@@ -112,13 +110,12 @@ public class BatchedHistogramRequestProxy implements InvocationHandler,
     private final CellStub cell;
     private final Executor executor;
     private BatchedHistogramRequestMessage message;
-    ListenableFuture<? extends BatchedHistogramRequestMessage> future;
+    private ListenableFuture<? extends BatchedHistogramRequestMessage> future;
     private boolean isReady;
 
     public BatchedHistogramRequestProxy(CellStub cell, Executor executor) {
-        checkNotNull(cell);
-        this.cell = cell;
-        this.executor = executor;
+        this.cell = checkNotNull(cell);
+        this.executor = checkNotNull(executor);
         message = new BatchedHistogramRequestMessage();
         isReady = false;
     }
