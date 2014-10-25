@@ -310,10 +310,11 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
                         Thread.currentThread().getContextClassLoader(),
                         new Class[] { ITimeFrameHistogramDataService.class },
                         proxy);
-
+        int i = 0;
         for (int tFrame = 0; tFrame < timeFrames.length; tFrame++) {
             for (PlotType type : PlotType.values()) {
                 load(type, timeFrames[tFrame]);
+                i++;
             }
         }
 
@@ -327,14 +328,25 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
         HistogramRequestMessage[] messages
             = reply.getMessages().toArray(new HistogramRequestMessage[0]);
 
-        int i = 0;
+        if (i < messages.length) {
+            logger.error("Incomplete data set returned; error: {}",
+                            reply.getErrorObject());
+            return;
+        }
+
+        TimeFrameHistogramData[][] data
+            = new TimeFrameHistogramData[messages.length][];
+
+        for (i = 0; i < messages.length; i++) {
+            data[i] = messages[i].getReturnValue();
+        }
+
+        i = 0;
         for (int tFrame = 0; tFrame < timeFrames.length; tFrame++) {
             Date low = timeFrames[tFrame].getLow();
             for (PlotType type : PlotType.values()) {
-                TimeFrameHistogramData[] data =
-                                messages[i++].getReturnValue();
                 String fileName = getFileName(type.ordinal(), tFrame);
-                if (data == null) {
+                if (data[i] == null) {
                     logger.error("{}, data was null", fileName);
                     continue;
                 }
@@ -342,7 +354,8 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
                              timeFrames[tFrame],
                              fileName,
                              getTitle(type.ordinal(), tFrame, low),
-                             data);
+                             data[i]);
+                i++;
             }
         }
 

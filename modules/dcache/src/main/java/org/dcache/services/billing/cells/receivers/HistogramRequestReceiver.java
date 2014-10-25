@@ -224,11 +224,13 @@ public class HistogramRequestReceiver implements CellMessageReceiver, CellMessag
                }
             }
 
-            LOGGER.error("request succeeded, number of messages {}", request.getMessages().size());
             for (HistogramRequestMessage message: request.getMessages()) {
                 request.addMessage(message);
                 LOGGER.error("data for message {}", (Object)message.getReturnValue());
             }
+
+            LOGGER.error("request succeeded, number of messages {}",
+                               request.getMessages().size());
 
             request.setSucceeded();
             return request;
@@ -248,7 +250,7 @@ public class HistogramRequestReceiver implements CellMessageReceiver, CellMessag
 
     public void messageArrived(CellMessage message,
                                BatchedHistogramRequestMessage request) {
-        LOGGER.trace("messageArrived " + request);
+        LOGGER.error("messageArrived " + request);
         try {
             message.revertDirection();
             new HistogramRequestTask(request).call()
