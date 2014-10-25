@@ -131,6 +131,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 
+import diskCacheV111.util.CacheException;
+
 import dmg.cells.nucleus.CellEndpoint;
 import dmg.cells.nucleus.CellMessage;
 import dmg.cells.nucleus.CellMessageReceiver;
@@ -151,6 +153,38 @@ import org.dcache.vehicles.billing.HistogramRequestMessage;
  * @author arossi
  */
 public class HistogramRequestReceiver implements CellMessageReceiver, CellMessageSender {
+    class HistogramQueryWorker extends FutureTask {
+        final HistogramRequestMessage request;
+
+        public HistogramQueryWorker(final HistogramRequestMessage request) {
+            super(new Callable<Void>() {
+                public Void call() throws Exception {
+                    Class<TimeFrameHistogramData[]> returnType
+                        = request.getReturnType();
+                    request.clearReply();
+                    Method m = service.getClass()
+                                      .getMethod(request.getMethod(),
+                                                 request.getParameterTypes());
+
+                    if (!returnType.equals(m.getReturnType())) {
+                        throw new NoSuchMethodException("return type for method "
+                                                        + m + " is not "
+                                                        + returnType);
+                    }
+
+                    TimeFrameHistogramData[] data
+                        = (TimeFrameHistogramData[]) m.invoke(service,
+                                                              request.getParameterValues());
+                    request.setReturnValue(data);
+                    request.setSucceeded();
+                    return null;
+                }
+            });
+
+            this.request = request;
+        }
+    }
+
     class HistogramRequestTask extends DelayedCommand {
         private static final long serialVersionUID = -2689884852516621339L;
 
@@ -177,8 +211,12 @@ public class HistogramRequestReceiver implements CellMessageReceiver, CellMessag
                try {
                    worker.get();
                } catch (Exception t) {
-                   LOGGER.error("Error from worker task {}: {}.",
-                                   worker.request, t.getMessage());
+                   LOGGER.error("Query for {} failed: {}.",
+                                   worker.request,
+                                   t.getMessage());
+                                   request.setFailed(CacheException.DEFAULT_ERROR_CODE,
+                                                     t.getMessage());
+                   return request;
                }
             }
 
@@ -187,49 +225,12 @@ public class HistogramRequestReceiver implements CellMessageReceiver, CellMessag
         }
     }
 
-    class HistogramQueryWorker extends FutureTask {
-        final HistogramRequestMessage request;
-
-        public HistogramQueryWorker(final HistogramRequestMessage request) {
-            super(new Callable<Void>() {
-                public Void call() throws Exception {
-                    Class<TimeFrameHistogramData[]> returnType
-                        = request.getReturnType();
-                    request.clearReply();
-
-                    try {
-                        Method m = service.getClass()
-                                          .getMethod(request.getMethod(),
-                                                     request.getParameterTypes());
-
-                        if (!returnType.equals(m.getReturnType())) {
-                            throw new NoSuchMethodException("return type for method " + m
-                                            + " is not " + returnType);
-                        }
-
-                        TimeFrameHistogramData[] data
-                            = (TimeFrameHistogramData[]) m.invoke(service,
-                                                                  request.getParameterValues());
-                        request.setReturnValue(data);
-                        request.setSucceeded();
-                    } catch (Exception t) {
-                        request.setFailed(-1, t.getMessage());
-                    }
-
-                    return null;
-                }
-            });
-
-            this.request = request;
-        }
-    }
-
     static final Logger LOGGER = LoggerFactory.getLogger(HistogramRequestReceiver.class);
 
     private ITimeFrameHistogramDataService service;
     private CellEndpoint endpoint;
     private ExecutorService requestThreadPool;
-    private int concurrentRequests = 33;
+    private int concurrentRequests = 33; // workers + master
 
     public void initialize() {
         requestThreadPool = Executors.newFixedThreadPool(concurrentRequests);
@@ -251,11 +252,11 @@ public class HistogramRequestReceiver implements CellMessageReceiver, CellMessag
         }
     }
 
-    public void setService(ITimeFrameHistogramDataService service) {
-        this.service = service;
-    }
-
     public void setCellEndpoint(CellEndpoint endpoint) {
         this.endpoint = endpoint;
+    }
+
+    public void setService(ITimeFrameHistogramDataService service) {
+        this.service = service;
     }
 }

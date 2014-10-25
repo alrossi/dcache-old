@@ -76,9 +76,10 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import diskCacheV111.util.CacheException;
 import diskCacheV111.util.ServiceUnavailableException;
 
 import dmg.cells.nucleus.NoRouteToCellException;
@@ -140,6 +141,7 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
     private final List<String> plotTitles = new ArrayList<>();
     private final List<String> extTypes = new ArrayList<>();
     private final List<String> timeDescription = new ArrayList<>();
+    private final Executor executor;
 
     /**
      * refreshing can be done periodically by the daemon, or forced
@@ -239,6 +241,7 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
     public BatchedRequestBillingService(String style, String scale) {
         this.style = Style.valueOf(style);
         this.scale = scale;
+        this.executor = Executors.newFixedThreadPool(1);
     }
 
     @Override
@@ -303,7 +306,7 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
     public void refresh() throws NoRouteToCellException,
                                  ServiceUnavailableException{
         TimeFrame[] timeFrames = generateTimeFrames();
-        proxy = new BatchedHistogramRequestProxy(cell);
+        proxy = new BatchedHistogramRequestProxy(cell, null);
         client = (ITimeFrameHistogramDataService) Proxy.newProxyInstance(
                         Thread.currentThread().getContextClassLoader(),
                         new Class[] { ITimeFrameHistogramDataService.class },
@@ -318,7 +321,7 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
         BatchedHistogramRequestMessage reply;
         try {
             reply = proxy.getMessage();
-        } catch (CacheException | InterruptedException t) {
+        } catch (InterruptedException t) {
             throw new RuntimeException(t);
         }
 
@@ -337,6 +340,7 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
                              messages[i++].getReturnValue());
             }
         }
+
         lastUpdate = System.currentTimeMillis();
     }
 
