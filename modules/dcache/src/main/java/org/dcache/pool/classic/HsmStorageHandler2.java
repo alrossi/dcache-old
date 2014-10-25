@@ -2,6 +2,8 @@
 
 package org.dcache.pool.classic;
 
+import aj.org.objectweb.asm.Handle;
+
 import com.google.common.base.Charsets;
 import com.google.common.base.Throwables;
 import com.google.common.io.Files;
@@ -1027,7 +1029,14 @@ public class HsmStorageHandler2
                                    "Flush aborted because file was deleted");
             } catch (CacheException e) {
                 excep = e;
-                _log.error("Error while flushing to tape: " + e);
+                String path = null;
+                try {
+                   path = _pnfs.getPathByPnfsId(pnfsId);
+                } catch (CacheException t) {
+                   path = "<unavailable>";
+                }
+                _log.error("Error while flushing to tape {}, path {}: {}.",
+                                pnfsId, path, e.toString());
                 _infoMsg.setResult(e.getRc(), e.getMessage());
             } catch (InterruptedException e) {
                 excep = e;
