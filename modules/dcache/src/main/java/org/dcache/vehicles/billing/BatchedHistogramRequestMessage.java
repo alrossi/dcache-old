@@ -119,7 +119,7 @@ documents or software obtained from this server.
 package org.dcache.vehicles.billing;
 
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.List;
 
 import diskCacheV111.vehicles.Message;
 
@@ -131,14 +131,14 @@ import diskCacheV111.vehicles.Message;
 public class BatchedHistogramRequestMessage extends Message {
     private static final long serialVersionUID = -1750018885108954033L;
 
-    private final Collection<HistogramRequestMessage> messages =
+    private final List<List<HistogramRequestMessage>> messages =
                     new ArrayList<>();
 
-    public void addMessage(HistogramRequestMessage message) {
-        messages.add(message);
+    public void addMessages(List<HistogramRequestMessage> messages) {
+        this.messages.add(messages);
     }
 
-    public Collection<HistogramRequestMessage> getMessages() {
+    public List<List<HistogramRequestMessage>> getMessages() {
         return messages;
     }
 }

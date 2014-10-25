@@ -59,39 +59,27 @@ documents or software obtained from this server.
  */
 package org.dcache.services.billing.histograms.data;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
 
-import org.dcache.cells.CellStub;
 import org.dcache.services.billing.histograms.TimeFrame;
-import org.dcache.vehicles.billing.BatchedHistogramRequestMessage;
 import org.dcache.vehicles.billing.HistogramRequestMessage;
-
-import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Proxied client handler to the {@link ITimeFrameHistogramDataService} service.
+ * Constructs a {@link HistogramRequestMessage}.
  *
  * @author arossi
  */
-public class BatchedHistogramRequestProxy implements InvocationHandler,
-                                                     Runnable {
-    private static final Logger LOGGER
-        = LoggerFactory.getLogger(BatchedHistogramRequestProxy.class);
+public class HistogramReflectionHandler implements InvocationHandler {
     private static final Class[] ONE_PARAM = new Class[] { TimeFrame.class };
     private static final Class[] TWO_PARAM = new Class[] { TimeFrame.class,
                     Boolean.class };
 
-    private static HistogramRequestMessage createRequestMessage(Method method,
-                    Object[] args) {
+    private HistogramRequestMessage message;
+
+    private void createRequestMessage(Method method, Object[] args) {
         Class<Serializable>[] types;
         Serializable[] serializable;
         if (args.length == 1) {
@@ -102,68 +90,18 @@ public class BatchedHistogramRequestProxy implements InvocationHandler,
             serializable = new Serializable[] { (TimeFrame) args[0],
                             (Boolean) args[1] };
         }
-
-        return new HistogramRequestMessage(method.getName(), types,
-                        serializable);
+        message = new HistogramRequestMessage(method.getName(),
+                                              types,
+                                              serializable);
     }
 
-    private final CellStub cell;
-    private final Executor executor;
-    private BatchedHistogramRequestMessage message;
-    private ListenableFuture<? extends BatchedHistogramRequestMessage> future;
-    private boolean isReady;
-
-    public BatchedHistogramRequestProxy(CellStub cell, Executor executor) {
-        this.cell = checkNotNull(cell);
-        this.executor = checkNotNull(executor);
-        message = new BatchedHistogramRequestMessage();
-        isReady = false;
-    }
-
-    public BatchedHistogramRequestMessage getMessage() throws InterruptedException {
-        LOGGER.error("Sending batched histogram request {}.", message);
-
-        /*
-         * should not return <code>null</code>
-         */
-        future = cell.send(message);
-        future.addListener(this, executor);
-
-        synchronized(this) {
-            while (!isReady) {
-                wait(TimeUnit.SECONDS.toMillis(1));
-            }
-        }
-
+    public HistogramRequestMessage getMessage() {
         return message;
     }
 
     public Object invoke(Object proxy, Method method, Object[] args)
                     throws Throwable {
-        message.addMessage(createRequestMessage(method, args));
+        createRequestMessage(method, args);
         return null;
-    }
-
-    public void run() {
-        synchronized(this) {
-            LOGGER.error("run() called, future is done.", future.isDone());
-            if (future.isCancelled()) {
-                LOGGER.warn("Request {} was cancelled.", message);
-            } else {
-                try {
-                    message = future.get();
-                    if (message.getErrorObject() != null) {
-                        throw new ExecutionException
-                            (new Throwable(message.getErrorObject().toString()));
-                    }
-                } catch (InterruptedException | ExecutionException t) {
-                    LOGGER.error("Could not process reply: {}.",
-                                   t.getMessage());
-                }
-            }
-
-            isReady = true;
-            notifyAll();
-        }
     }
 }

@@ -74,6 +74,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.Executor;
@@ -91,7 +92,8 @@ import org.dcache.services.billing.histograms.TimeFrame;
 import org.dcache.services.billing.histograms.TimeFrame.BinType;
 import org.dcache.services.billing.histograms.TimeFrame.Type;
 import org.dcache.services.billing.histograms.config.HistogramWrapper;
-import org.dcache.services.billing.histograms.data.BatchedHistogramRequestProxy;
+import org.dcache.services.billing.histograms.data.BatchedHistogramRequestTask;
+import org.dcache.services.billing.histograms.data.HistogramReflectionHandler;
 import org.dcache.services.billing.histograms.data.ITimeFrameHistogramDataService;
 import org.dcache.services.billing.histograms.data.TimeFrameHistogramData;
 import org.dcache.services.billing.plots.util.ITimeFramePlot;
@@ -125,8 +127,8 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
     private String plotsDir;
 
     private String imgType;
-    private ITimeFrameHistogramDataService client;
-    private BatchedHistogramRequestProxy proxy;
+    private ITimeFrameHistogramDataService handler;
+    private HistogramReflectionHandler proxy;
 
     /**
      * in default setup, these are implemented by same class
@@ -155,39 +157,52 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
     private long lastUpdate = System.currentTimeMillis();
     private Thread refresher;
 
-    public void load(PlotType plotType, TimeFrame timeFrame)
+    public List<HistogramRequestMessage> load(PlotType plotType, TimeFrame timeFrame)
                         throws NoRouteToCellException,
                                ServiceUnavailableException {
         logger.debug("load {} {}", plotType, timeFrame);
+        List<HistogramRequestMessage> messages = new ArrayList<>();
         try {
             switch (plotType) {
                 case BYTES_READ:
-                    client.getDcBytesHistogram(timeFrame, false);
-                    client.getHsmBytesHistogram(timeFrame, false);
+                    handler.getDcBytesHistogram(timeFrame, false);
+                    messages.add(proxy.getMessage());
+                    handler.getHsmBytesHistogram(timeFrame, false);
+                    messages.add(proxy.getMessage());
                     break;
                 case BYTES_WRITTEN:
-                    client.getDcBytesHistogram(timeFrame, true);
-                    client.getHsmBytesHistogram(timeFrame, true);
+                    handler.getDcBytesHistogram(timeFrame, true);
+                    messages.add(proxy.getMessage());
+                    handler.getHsmBytesHistogram(timeFrame, true);
+                    messages.add(proxy.getMessage());
                     break;
                 case BYTES_P2P:
-                    client.getP2pBytesHistogram(timeFrame);
+                    handler.getP2pBytesHistogram(timeFrame);
+                    messages.add(proxy.getMessage());
                     break;
                 case TRANSFERS_READ:
-                    client.getDcTransfersHistogram(timeFrame, false);
-                    client.getHsmTransfersHistogram(timeFrame, false);
+                    handler.getDcTransfersHistogram(timeFrame, false);
+                    messages.add(proxy.getMessage());
+                    handler.getHsmTransfersHistogram(timeFrame, false);
+                    messages.add(proxy.getMessage());
                     break;
                 case TRANSFERS_WRITTEN:
-                    client.getDcTransfersHistogram(timeFrame, true);
-                    client.getHsmTransfersHistogram(timeFrame, true);
+                    handler.getDcTransfersHistogram(timeFrame, true);
+                    messages.add(proxy.getMessage());
+                    handler.getHsmTransfersHistogram(timeFrame, true);
+                    messages.add(proxy.getMessage());
                     break;
                 case TRANSFERS_P2P:
-                    client.getP2pTransfersHistogram(timeFrame);
+                    handler.getP2pTransfersHistogram(timeFrame);
+                    messages.add(proxy.getMessage());
                     break;
                 case CONNECTION_TIME:
-                    client.getDcConnectTimeHistograms(timeFrame);
+                    handler.getDcConnectTimeHistograms(timeFrame);
+                    messages.add(proxy.getMessage());
                     break;
                 case CACHE_HITS:
-                    client.getHitHistograms(timeFrame);
+                    handler.getHitHistograms(timeFrame);
+                    messages.add(proxy.getMessage());
                     break;
             }
         } catch (UndeclaredThrowableException ute) {
@@ -207,6 +222,8 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
                                         + "to the dCache team.",
                                         cause);
         }
+
+        return messages;
     }
 
     /**
@@ -305,55 +322,56 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
     public void refresh() throws NoRouteToCellException,
                                  ServiceUnavailableException{
         TimeFrame[] timeFrames = generateTimeFrames();
-        proxy = new BatchedHistogramRequestProxy(cell, executor);
-        client = (ITimeFrameHistogramDataService) Proxy.newProxyInstance(
+        /*
+         * Handler is not thread safe, but we use one instance per invocation
+         * of this thread, which is then called serially.
+         */
+        proxy = new HistogramReflectionHandler();
+        handler = (ITimeFrameHistogramDataService) Proxy.newProxyInstance(
                         Thread.currentThread().getContextClassLoader(),
                         new Class[] { ITimeFrameHistogramDataService.class },
                         proxy);
+
+        BatchedHistogramRequestMessage reply = new BatchedHistogramRequestMessage();
         for (int tFrame = 0; tFrame < timeFrames.length; tFrame++) {
             for (PlotType type : PlotType.values()) {
-                load(type, timeFrames[tFrame]);
+                reply.addMessages(load(type, timeFrames[tFrame]));
             }
         }
 
-        BatchedHistogramRequestMessage reply;
         try {
-            reply = proxy.getMessage();
+            reply = new BatchedHistogramRequestTask(cell, executor, reply)
+                    .getMessage();
         } catch (InterruptedException t) {
             throw new RuntimeException(t);
         }
 
-        HistogramRequestMessage[] messages
-            = reply.getMessages().toArray(new HistogramRequestMessage[0]);
-
-        if (timeFrames.length * PlotType.values().length > messages.length) {
+        List<List<HistogramRequestMessage>> messages = reply.getMessages();
+        if (timeFrames.length * PlotType.values().length > messages.size()) {
             logger.error("Incomplete data set returned; error: {}",
                             reply.getErrorObject());
             return;
         }
 
-        TimeFrameHistogramData[][] data
-            = new TimeFrameHistogramData[messages.length][];
-
-        int i = 0;
-        for (; i < messages.length; i++) {
-            data[i] = messages[i].getReturnValue();
-        }
+        Iterator<List<HistogramRequestMessage>> iterator = messages.iterator();
 
         for (int tFrame = 0; tFrame < timeFrames.length; tFrame++) {
             Date low = timeFrames[tFrame].getLow();
             for (PlotType type : PlotType.values()) {
                 String fileName = getFileName(type.ordinal(), tFrame);
-                if (data[i] == null) {
-                    logger.error("{}, data was null", fileName);
-                    continue;
+                List<HistogramRequestMessage> list = iterator.next();
+                List<TimeFrameHistogramData> data = new ArrayList<>();
+                for (HistogramRequestMessage message: list) {
+                    TimeFrameHistogramData[] rvalue = message.getReturnValue();
+                    for (TimeFrameHistogramData d: rvalue) {
+                        data.add(d);
+                    }
                 }
                 generatePlot(type,
                              timeFrames[tFrame],
                              fileName,
                              getTitle(type.ordinal(), tFrame, low),
-                             data[i]);
-                i++;
+                             data);
             }
         }
 
@@ -420,7 +438,7 @@ public final class BatchedRequestBillingService implements IBillingService, Runn
                               TimeFrame timeFrame,
                               String fileName,
                               String title,
-                              TimeFrameHistogramData[] data)
+                              List<TimeFrameHistogramData> data)
                                               throws ServiceUnavailableException,
                                                      NoRouteToCellException {
         List<HistogramWrapper<?>> config = new ArrayList<>();

@@ -124,7 +124,6 @@ import org.slf4j.LoggerFactory;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -152,36 +151,38 @@ import org.dcache.vehicles.billing.HistogramRequestMessage;
  *
  * @author arossi
  */
-public class HistogramRequestReceiver implements CellMessageReceiver, CellMessageSender {
+public class HistogramRequestReceiver implements CellMessageReceiver,
+                CellMessageSender {
     class HistogramQueryWorker extends FutureTask {
-        final HistogramRequestMessage request;
+        final List<HistogramRequestMessage> requests;
 
-        public HistogramQueryWorker(final HistogramRequestMessage request) {
+        public HistogramQueryWorker(final List<HistogramRequestMessage> requests) {
             super(new Callable<Void>() {
                 public Void call() throws Exception {
-                    Class<TimeFrameHistogramData[]> returnType
-                        = request.getReturnType();
-                    request.clearReply();
-                    Method m = service.getClass()
-                                      .getMethod(request.getMethod(),
-                                                 request.getParameterTypes());
+                    for (HistogramRequestMessage request : requests) {
+                        Class<TimeFrameHistogramData[]> returnType = request.getReturnType();
+                        request.clearReply();
+                        Method m = service.getClass().getMethod(
+                                        request.getMethod(),
+                                        request.getParameterTypes());
 
-                    if (!returnType.equals(m.getReturnType())) {
-                        throw new NoSuchMethodException("return type for method "
-                                                        + m + " is not "
-                                                        + returnType);
+                        if (!returnType.equals(m.getReturnType())) {
+                            throw new NoSuchMethodException(
+                                            "return type for method " + m
+                                                            + " is not "
+                                                            + returnType);
+                        }
+
+                        TimeFrameHistogramData[] data = (TimeFrameHistogramData[]) m.invoke(
+                                        service, request.getParameterValues());
+                        request.setReturnValue(data);
+                        request.setSucceeded();
                     }
-
-                    TimeFrameHistogramData[] data
-                        = (TimeFrameHistogramData[]) m.invoke(service,
-                                                              request.getParameterValues());
-                    request.setReturnValue(data);
-                    request.setSucceeded();
                     return null;
                 }
             });
 
-            this.request = request;
+            this.requests = requests;
         }
     }
 
@@ -196,41 +197,42 @@ public class HistogramRequestReceiver implements CellMessageReceiver, CellMessag
 
         @Override
         protected Serializable execute() throws Exception {
-            Collection<HistogramRequestMessage> messages = request.getMessages();
+            List<List<HistogramRequestMessage>> messages = request.getMessages();
+            LOGGER.error("Beginning execute(), number of messages {}",
+                            messages.size());
+
             List<HistogramQueryWorker> workers = new ArrayList<>();
 
-            for (HistogramRequestMessage message: messages) {
-                workers.add(new HistogramQueryWorker(message));
+            for (List<HistogramRequestMessage> list : messages) {
+                workers.add(new HistogramQueryWorker(list));
             }
 
             request.getMessages().clear();
             request.clearReply();
 
-            for (HistogramQueryWorker worker: workers) {
+            for (HistogramQueryWorker worker : workers) {
                 requestThreadPool.execute(worker);
             }
 
-            for (HistogramQueryWorker worker: workers) {
-               try {
-                   LOGGER.error("calling worker.get()");
-                   worker.get();
-               } catch (Exception t) {
-                   LOGGER.error("Query for {} failed: {}.",
-                                   worker.request,
-                                   t.getMessage());
-                                   request.setFailed(CacheException.DEFAULT_ERROR_CODE,
-                                                     t.getMessage());
-                   return request;
-               }
+            for (HistogramQueryWorker worker : workers) {
+                try {
+                    LOGGER.debug("calling worker.get()");
+                    worker.get();
+                } catch (Exception t) {
+                    LOGGER.error("Worker for {} failed: {}.", worker.requests,
+                                    t.getMessage());
+                    request.setFailed(CacheException.DEFAULT_ERROR_CODE,
+                                    t.getMessage());
+                    return request;
+                }
             }
 
-            for (HistogramQueryWorker worker: workers) {
-                request.addMessage(worker.request);
-                LOGGER.error("data for message {}", (Object)worker.request.getReturnValue());
+            for (HistogramQueryWorker worker : workers) {
+                request.addMessages(worker.requests);
             }
 
             LOGGER.error("request succeeded, number of messages {}",
-                               request.getMessages().size());
+                            request.getMessages().size());
 
             request.setSucceeded();
             return request;
@@ -249,18 +251,17 @@ public class HistogramRequestReceiver implements CellMessageReceiver, CellMessag
     }
 
     public void messageArrived(CellMessage message,
-                               BatchedHistogramRequestMessage request) {
+                    BatchedHistogramRequestMessage request) {
         LOGGER.error("messageArrived " + request);
         try {
             message.revertDirection();
-            new HistogramRequestTask(request).call()
-                                             .deliver(endpoint, message);
+            new HistogramRequestTask(request).call().deliver(endpoint, message);
         } catch (RuntimeException t) {
             LOGGER.error("Unexpected error during query processing for {}.",
                             request, t);
         } catch (Exception e) {
-            LOGGER.error("Error during query processing for {}: {}",
-                            request, e.getMessage());
+            LOGGER.error("Error during query processing for {}: {}", request,
+                            e.getMessage());
         }
     }
 
