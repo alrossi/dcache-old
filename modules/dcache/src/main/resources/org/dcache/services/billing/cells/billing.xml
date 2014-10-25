@@ -76,7 +76,8 @@
       <property name="access" ref="jdbc-billing-info-access"/>
     </bean>
 
-    <bean id="histogram-request-receiver" class="org.dcache.services.billing.cells.receivers.HistogramRequestReceiver">
+    <bean id="histogram-request-receiver" class="org.dcache.services.billing.cells.receivers.HistogramRequestReceiver"
+        init-method="initialize">
       <property name="service" ref="histogram-service"/>
     </bean>
 

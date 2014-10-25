@@ -149,7 +149,8 @@
     <!-- JAIDA; implements both the histogram factory and the plot generator -->
     <bean id="PlotGenerator" class="org.dcache.services.billing.plots.jaida.JaidaTimeFramePlotGenerator"/>
 
-    <bean id="BillingService" class="org.dcache.webadmin.controller.impl.StandardBillingService"
+    <!-- <bean id="BillingService" class="org.dcache.webadmin.controller.impl.StandardBillingService" -->
+    <bean id="BillingService" class="org.dcache.webadmin.controller.impl.BatchedRequestBillingService"
         destroy-method="shutDown">
         <constructor-arg value="${httpd.plots.billing.style}"/>
         <constructor-arg value="${httpd.plots.billing.scale}"/>
