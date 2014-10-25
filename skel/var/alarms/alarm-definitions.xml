@@ -64,6 +64,13 @@
         <includeInKey>type host service domain</includeInKey>
     </alarmType>
     <alarmType>
+        <type>HSM_FLUSH_ERROR</type>
+        <regex>Error while flushing to tape (.+ path .+)</regex>
+        <level>WARN</level>
+        <severity>HIGH</severity>
+        <includeInKey>type host service domain group1</includeInKey>
+    </alarmType>
+    <alarmType>
         <type>LOCATION_MANAGER_UNAVAILABLE</type>
         <regex>Timeout querying location manager</regex>
         <level>WARN</level>
