@@ -425,7 +425,7 @@ public class ChecksumScanner
                     }
                 } catch (FileCorruptedCacheException e) {
                     _badCount++;
-                    _log.error("Marking file {} as BROKEN: {}", id, e.getMessage());
+                    _log.error("Scanner marked {} as BROKEN: {}", id, e.getMessage());
                     try {
                         _repository.setState(id, EntryState.BROKEN);
                     } catch (IllegalTransitionException | CacheException f) {
