@@ -292,7 +292,6 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> implements
         Long timestamp = eventObject.getTimeStamp();
         entry.setFirstArrived(timestamp);
         entry.setLastUpdate(timestamp);
-        entry.setInfo(eventObject.getFormattedMessage());
         Map<String, String> mdc = eventObject.getMDCPropertyMap();
 
         /*
