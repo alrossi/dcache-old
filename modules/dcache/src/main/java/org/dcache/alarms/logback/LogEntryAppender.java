@@ -295,17 +295,22 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> implements
         entry.setInfo(eventObject.getFormattedMessage());
         Map<String, String> mdc = eventObject.getMDCPropertyMap();
 
-        String host = mdc.get(IAlarms.HOST_TAG);
+        /*
+         *  The map returned by this call is detached from
+         *  that internal to the event object, so we can safely
+         *  remove properties from it.
+         */
+        String host = mdc.remove(IAlarms.HOST_TAG);
         if (host == null) {
             host = IAlarms.UNKNOWN_HOST;
         }
 
-        String domain = mdc.get(IAlarms.DOMAIN_TAG);
+        String domain = mdc.remove(IAlarms.DOMAIN_TAG);
         if (domain == null) {
             domain = IAlarms.UNKNOWN_DOMAIN;
         }
 
-        String service = mdc.get(IAlarms.SERVICE_TAG);
+        String service = mdc.remove(IAlarms.SERVICE_TAG);
         if (service == null) {
             service = IAlarms.UNKNOWN_SERVICE;
         }
@@ -314,6 +319,26 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> implements
         entry.setDomain(domain);
         entry.setService(service);
 
+        mdc.remove(IAlarms.CELL);
+        mdc.remove(IAlarms.DOMAIN);
+
+        /*
+         * Add any leftover context to the message.
+         * If the filter matches on message, it will include
+         * any specific context properties as part of the identifying
+         * key.
+         */
+        StringBuilder extendedMessage = new StringBuilder();
+        extendedMessage.append(eventObject.getFormattedMessage());
+        for (String key: mdc.keySet()) {
+            extendedMessage.append(" [")
+                           .append(key)
+                           .append("=")
+                           .append(mdc.get(key))
+                           .append("]");
+        }
+
+        entry.setInfo(extendedMessage.toString());
         postProcessAlarm(eventObject, entry);
         return entry;
     }
@@ -336,7 +361,7 @@ public class LogEntryAppender extends AppenderBase<ILoggingEvent> implements
 
         AlarmDefinition match = null;
         for (AlarmDefinition definition : definitions.values()) {
-            if (definition.matches(event)) {
+            if (definition.matches(event, entry)) {
                 alarm = true;
                 match = definition;
                 break;

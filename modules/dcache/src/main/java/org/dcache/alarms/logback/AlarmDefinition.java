@@ -80,6 +80,7 @@ import java.util.regex.PatternSyntaxException;
 import org.dcache.alarms.AlarmDefinitionValidationException;
 import org.dcache.alarms.IAlarms;
 import org.dcache.alarms.Severity;
+import org.dcache.alarms.dao.LogEntry;
 import org.dcache.util.RegexUtils;
 
 /**
@@ -481,7 +482,7 @@ public class AlarmDefinition {
         return type;
     }
 
-    public boolean matches(ILoggingEvent event) {
+    public boolean matches(ILoggingEvent event, LogEntry entry) {
         if (!event.getLevel().isGreaterOrEqual(level)) {
             return false;
         }
@@ -498,7 +499,7 @@ public class AlarmDefinition {
             regex = Pattern.compile(regexStr, RegexUtils.parseFlags(regexFlags));
         }
 
-        if (regex != null && !doMatch(event)) {
+        if (regex != null && !doMatch(event, entry)) {
             return false;
         }
 
@@ -737,8 +738,8 @@ public class AlarmDefinition {
         }
     }
 
-    private boolean doMatch(ILoggingEvent event) {
-        if (regex.matcher(event.getFormattedMessage()).find()) {
+    private boolean doMatch(ILoggingEvent event, LogEntry entry) {
+        if (regex.matcher(entry.getInfo()).find()) {
             return true;
         }
 
