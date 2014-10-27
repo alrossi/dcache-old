@@ -363,7 +363,7 @@ class WriteHandleImpl implements ReplicaDescriptor
         if (_targetState == EntryState.REMOVED) {
             _repository.setState(_entry, EntryState.REMOVED);
         } else {
-            _log.warn("Marking pool entry as BROKEN", _entry.getPnfsId());
+            _log.warn("Marking pool entry as BROKEN");
             _repository.setState(_entry, EntryState.BROKEN);
         }
     }
