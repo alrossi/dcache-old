@@ -185,10 +185,15 @@ final class LoggingEventConverter {
     LogEntry createEntryFromEvent(ILoggingEvent event) {
         Map<String, String> mdc = event.getMDCPropertyMap();
 
-        String service = mdc.get(Alarm.SERVICE_TAG);
-
+        /*
+         * The map returned by this call is detached from
+         * that internal to the event object, so we can safely
+         * remove properties from it.
+         */
+        String service = mdc.remove(Alarm.SERVICE_TAG);
+        String cell = mdc.remove(RemoteMDCFilter.CELL);
         if (service == null) {
-            service = mdc.get(RemoteMDCFilter.CELL);
+            service = cell;
         }
 
         if (serviceName.equals(service)) {
@@ -198,21 +203,38 @@ final class LoggingEventConverter {
             return ALARM_SERVICE_EVENT;
         }
 
-        String host = mdc.get(Alarm.HOST_TAG);
+        String host = mdc.remove(Alarm.HOST_TAG);
         if (host == null) {
             host = NetworkUtils.getCanonicalHostName();
         }
 
-        String domain = mdc.get(Alarm.DOMAIN_TAG);
+        String domain = mdc.remove(Alarm.DOMAIN_TAG);
+        String domain2 = mdc.get(RemoteMDCFilter.DOMAIN);
         if (domain == null) {
-            domain = mdc.get(RemoteMDCFilter.DOMAIN);
+            domain = domain2;
+        }
+
+        /*
+         * Add any leftover context to the message.
+         * If the filter matches on message, it will include
+         * any specific context properties as part of the identifying
+         * key.
+         */
+        StringBuilder extendedMessage = new StringBuilder();
+        extendedMessage.append(event.getFormattedMessage());
+        for (String key: mdc.keySet()) {
+            extendedMessage.append(" [")
+                           .append(key)
+                           .append("=")
+                           .append(mdc.get(key))
+                           .append("]");
         }
 
         LogEntry entry = new LogEntry();
         Long timestamp = event.getTimeStamp();
         entry.setFirstArrived(timestamp);
         entry.setLastUpdate(timestamp);
-        entry.setInfo(event.getFormattedMessage());
+        entry.setInfo(extendedMessage.toString());
         entry.setHost(host);
         entry.setDomain(domain);
         entry.setService(service);
@@ -243,7 +265,7 @@ final class LoggingEventConverter {
         }
 
         try {
-            Alarm match = findMatchingDefinition(event);
+            Alarm match = findMatchingDefinition(event, entry);
             entry.setAlarm(true);
             return match;
         } catch (NoSuchElementException notDefined) {
@@ -262,12 +284,13 @@ final class LoggingEventConverter {
         }
     }
 
-    private AlarmDefinition findMatchingDefinition(ILoggingEvent event)
+    private AlarmDefinition findMatchingDefinition(ILoggingEvent event,
+                                                   LogEntry entry)
                     throws NoSuchElementException {
         Collection<AlarmDefinition> definitions
             = definitionsMapping.getDefinitions();
         for (AlarmDefinition definition : definitions) {
-            if (matches(event, definition)) {
+            if (matches(event, definition, entry)) {
                 return definition;
             }
         }
@@ -275,9 +298,10 @@ final class LoggingEventConverter {
     }
 
     private boolean matches(ILoggingEvent event,
-                            AlarmDefinition definition) {
+                            AlarmDefinition definition,
+                            LogEntry entry) {
         Pattern regex = definition.getRegexPattern();
-        if (regex.matcher(event.getFormattedMessage()).find()) {
+        if (regex.matcher(entry.getInfo()).find()) {
             return true;
         }
 
