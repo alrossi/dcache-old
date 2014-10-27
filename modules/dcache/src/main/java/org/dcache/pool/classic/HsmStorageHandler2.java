@@ -2,8 +2,6 @@
 
 package org.dcache.pool.classic;
 
-import aj.org.objectweb.asm.Handle;
-
 import com.google.common.base.Charsets;
 import com.google.common.base.Throwables;
 import com.google.common.io.Files;
