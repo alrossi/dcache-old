@@ -1,5 +1,6 @@
 package org.dcache.replication.v3.namespace;
 
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -128,16 +129,20 @@ public class ResilientInfoCache {
 
     private int pnfsInfoCacheExpiry = 1;
     private int poolInfoCacheExpiry = 1;
+    private int poolStatusCacheExpiry = 1;
     private int pnfsInfoCacheSize = 1000;
     private int poolInfoCacheSize = 1000;
+    private int poolStatusCacheSize = 50;
     private TimeUnit pnfsInfoCacheTimeoutUnit = TimeUnit.MINUTES;
     private TimeUnit poolInfoCacheTimeoutUnit = TimeUnit.MINUTES;
+    private TimeUnit poolStatusCacheTimeoutUnit = TimeUnit.HOURS;
 
     /*
      * From initialization.
      */
     private LoadingCache<PnfsId, FileAttributes> pnfsInfoCache;
     private LoadingCache<String, PoolGroupInfo> poolInfoCache;
+    private Cache<String, String> poolStatusCache;
 
     public List<String> getAllLocationsFor(PnfsId pnfsId) throws CacheException {
         return namespace.getCacheLocation(Subjects.ROOT, pnfsId);
@@ -161,6 +166,16 @@ public class ResilientInfoCache {
         }
         throw new NoSuchElementException(pool
                         + " has no mapped information for pool group.");
+    }
+
+    public boolean hasRecentlyChangedStatus(String pool, String status) {
+        boolean present = poolStatusCache.getIfPresent(pool) != null;
+        poolStatusCache.put(pool, status);
+        return present;
+    }
+
+    public void clearPoolStatusCache() {
+        poolStatusCache.invalidateAll();
     }
 
     public void initialize() throws IllegalArgumentException {
@@ -189,18 +204,25 @@ public class ResilientInfoCache {
         }
 
         pnfsInfoCache = CacheBuilder.newBuilder()
-                        .expireAfterAccess(pnfsInfoCacheExpiry,
-                                           pnfsInfoCacheTimeoutUnit)
+                        .expireAfterWrite(pnfsInfoCacheExpiry,
+                                          pnfsInfoCacheTimeoutUnit)
                         .maximumSize(pnfsInfoCacheSize)
                         .softValues()
                         .build(new PnfsInfoFetcher());
 
         poolInfoCache = CacheBuilder.newBuilder()
-                        .expireAfterAccess(poolInfoCacheExpiry,
-                                           poolInfoCacheTimeoutUnit)
+                        .expireAfterWrite(poolInfoCacheExpiry,
+                                          poolInfoCacheTimeoutUnit)
                         .maximumSize(poolInfoCacheSize)
                         .softValues()
                         .build(new PoolInfoFetcher());
+
+        poolStatusCache = CacheBuilder.newBuilder()
+                        .expireAfterWrite(poolStatusCacheExpiry,
+                                          poolStatusCacheTimeoutUnit)
+                        .maximumSize(poolStatusCacheSize)
+                        .softValues()
+                        .build();
     }
 
     public void setNamespace(NameSpaceProvider namespace) {
@@ -233,5 +255,17 @@ public class ResilientInfoCache {
 
     public void setPoolMonitor(PoolMonitor poolMonitor) {
         this.poolMonitor = poolMonitor;
+    }
+
+    public void setPoolStatusCacheExpiry(int poolStatusCacheExpiry) {
+        this.poolStatusCacheExpiry = poolStatusCacheExpiry;
+    }
+
+    public void setPoolStatusCacheTimeoutUnit(TimeUnit poolStatusCacheTimeoutUnit) {
+        this.poolStatusCacheTimeoutUnit = poolStatusCacheTimeoutUnit;
+    }
+
+    public void setPoolStatusCacheSize(int poolStatusCacheSize) {
+        this.poolStatusCacheSize = poolStatusCacheSize;
     }
 }

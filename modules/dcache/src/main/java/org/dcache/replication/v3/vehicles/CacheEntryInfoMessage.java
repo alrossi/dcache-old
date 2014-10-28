@@ -18,11 +18,9 @@ public class CacheEntryInfoMessage extends Message {
 
     private String pool;
     private CacheEntry entry;
-    private boolean isSystemSticky;
 
     public CacheEntryInfoMessage(PnfsId pnfsId) {
         this.pnfsId = Preconditions.checkNotNull(pnfsId, "message lacks pnfsid");
-        isSystemSticky = false;
     }
 
     public CacheEntry getEntry() {
@@ -33,19 +31,11 @@ public class CacheEntryInfoMessage extends Message {
         return pool;
     }
 
-    public boolean isSystemSticky() {
-        return isSystemSticky;
-    }
-
     public void setEntry(CacheEntry entry) {
         this.entry = entry;
     }
 
     public void setPool(String pool) {
         this.pool = pool;
-    }
-
-    public void setSystemSticky(boolean isSystemSticky) {
-        this.isSystemSticky = isSystemSticky;
     }
 }

@@ -4,6 +4,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import diskCacheV111.util.AccessLatency;
@@ -36,7 +37,7 @@ public class FileInfoTask implements Runnable {
             if (future.isCancelled()) {
                 handler.taskCancelled(message, "Future task was cancelled");
             } else {
-                handler.taskCompleted(message);
+                handler.taskCompleted(message, tried);
             }
         }
     }
@@ -46,18 +47,21 @@ public class FileInfoTask implements Runnable {
     private final ResilientInfoCache cache;
     private final FileInfoTaskCompletionHandler handler;
     private final CDCFixedPoolTaskExecutor executor;
+    private final Set<String> tried;
     private ListenableFuture<CacheEntryInfoMessage> future;
 
     public FileInfoTask(PnfsId pnfsId,
                         CellStub pool,
                         FileInfoTaskCompletionHandler handler,
                         ResilientInfoCache cache,
-                        CDCFixedPoolTaskExecutor executor) {
+                        CDCFixedPoolTaskExecutor executor,
+                        Set<String> tried) {
         this.pnfsId = pnfsId;
         this.pool = pool;
         this.handler = handler;
         this.cache = cache;
         this.executor = executor;
+        this.tried = tried;
     }
 
     public void run() {

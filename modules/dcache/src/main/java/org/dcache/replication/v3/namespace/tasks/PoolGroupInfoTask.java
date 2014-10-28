@@ -37,7 +37,7 @@ public class PoolGroupInfoTask implements Runnable {
 
     public void run() {
         try {
-            handler.taskCompleted(pnfsId, pool, cache.getPoolGroupInfo(pool));
+            handler.taskCompleted(pnfsId, pool, cache.getPoolGroupInfo(pool), null);
         } catch (ExecutionException t) {
             handler.taskFailed(pnfsId, pool, t.getMessage());
         }

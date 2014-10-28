@@ -42,32 +42,27 @@ public class CacheEntryInfoTask extends DelayedCommand {
 
     @Override
     protected Serializable execute() throws Exception {
-        if (isSystemSticky(message.pnfsId)) {
-            message.setSystemSticky(true);
-        }
+        ensureSystemSticky(message.pnfsId);
         return message;
     }
 
-    private boolean isSystemSticky(PnfsId pnfsId) throws CacheException,
+    private void ensureSystemSticky(PnfsId pnfsId) throws CacheException,
                     InterruptedException {
         try {
             EntryState state = waitUntilReady(pnfsId);
             switch (state) {
                 case PRECIOUS:
                 case CACHED:
+                    /*
+                     * Force system sticky.
+                     */
+                    repository.setSticky(pnfsId,
+                                         "system",
+                                         StickyRecord.NON_EXPIRING,
+                                         true);
                     CacheEntry entry = repository.getEntry(pnfsId);
+                    message.setEntry(entry);
                     LOGGER.debug("{}, state {}, entry {}", pnfsId, state, entry);
-                    if (entry != null) {
-                        message.setEntry(entry);
-                        boolean sticky = entry.isSticky();
-                        if (sticky) {
-                            for (StickyRecord record : entry.getStickyRecords()) {
-                                if ("system".equalsIgnoreCase(record.owner())) {
-                                    return true;
-                                }
-                            }
-                        }
-                    }
                     break;
                 default:
                     LOGGER.debug("{}, state {}", pnfsId, state);
@@ -77,7 +72,6 @@ public class CacheEntryInfoTask extends DelayedCommand {
             LOGGER.debug("{} was not in the repository of {}", pnfsId,
                                                                repository.getPoolName());
         }
-        return false;
     }
 
     private EntryState waitUntilReady(PnfsId pnfsId) throws CacheException,
