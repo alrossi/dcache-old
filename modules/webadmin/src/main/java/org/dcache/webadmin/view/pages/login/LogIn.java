@@ -36,8 +36,7 @@ import org.dcache.webadmin.view.util.DefaultFocusBehaviour;
 @RequireHttps
 public class LogIn extends BasePage {
 
-    private static final String X509_CERTIFICATE_ATTRIBUTE
-        = "javax.servlet.request.X509Certificate";
+    private static final String X509_CERTIFICATE_ATTRIBUTE = "javax.servlet.request.X509Certificate";
     private static final Logger _log = LoggerFactory.getLogger(LogIn.class);
     private static final long serialVersionUID = 8902191632839916396L;
 
@@ -88,9 +87,7 @@ public class LogIn extends BasePage {
 
             @Override
             public void onSubmit() {
-                IAuthenticationStrategy strategy
-                    = getApplication().getSecuritySettings()
-                                      .getAuthenticationStrategy();
+                IAuthenticationStrategy strategy = getApplication().getSecuritySettings().getAuthenticationStrategy();
                 try {
                     if (!isSignedIn()) {
                         signIn(_logInModel, strategy);
@@ -145,46 +142,51 @@ public class LogIn extends BasePage {
         }
 
         /**
-         * There seems to be an unresolved issue in the way the base url
-         * is determined for the originating page.  It seems that if the
-         * RestartResponseAtInterceptPageException is thrown
-         * from within a subcomponent of the page, the url
-         * reflects in its query part that subcomponent, and
-         * consequently on redirect after intercept, Wicket attempts
-         * to return to it, generating an Access Denied Page.
+         * There seems to be an unresolved issue in the way the base url is
+         * determined for the originating page. It seems that if the
+         * RestartResponseAtInterceptPageException is thrown from within a
+         * subcomponent of the page, the url reflects in its query part that
+         * subcomponent, and consequently on redirect after intercept, Wicket
+         * attempts to return to it, generating an Access Denied Page.
          * <p>
          * At present I see no other way of maintaining proper intercept-
-         * redirect behavior except via a workaround which defeats
-         * the exception handling mechanism by setting the response page,
-         * determined via the constructor.  Panels using the
-         * intercept exception (for example, {@link UserPanel}) should
-         * set the first page parameter to be the originating page
-         * class name.
+         * redirect behavior except via a workaround which defeats the exception
+         * handling mechanism by setting the response page, determined via the
+         * constructor. Panels using the intercept exception (for example,
+         * {@link UserPanel}) should set the first page parameter to be the
+         * originating page class name.
          * <p>
-         * This behavior has been present since Wicket 1.5.
-         * See <a href="http://apache-wicket.1842946.n4.nabble.com/RestartResponseAtInterceptPageException-problem-in-1-5-td4255020.html">RestartAtIntercept problem</a>.
+         * This behavior has been present since Wicket 1.5. See <a href=
+         * "http://apache-wicket.1842946.n4.nabble.com/RestartResponseAtInterceptPageException-problem-in-1-5-td4255020.html"
+         * >RestartAtIntercept problem</a>.
          */
-         private void setGoOnPage() {
-             /*
+        private void setGoOnPage() {
+            /*
              * If login has been called because the user was not yet logged in,
-              * then continue to the original destination, otherwise to the Home
+             * then continue to the original destination, otherwise to the Home
              * page.
-              */
+             */
             try {
                 continueToOriginalDestination();
             } catch (ReplaceHandlerException e) {
                 /*
-                 * Note that #continueToOriginalDestination should use
-                 * this exception to return to the calling page, with
-                 * no exception thrown if this page was not invoked
-                 * as an intercept page.  Hence catching this exception
-                 * is technically incorrect behavior, according to the
-                 * Wicket specification.  But see the documentation
-                 * to this method.
+                 * Note that #continueToOriginalDestination should use this
+                 * exception to return to the calling page, with no exception
+                 * thrown if this page was not invoked as an intercept page.
+                 * Hence catching this exception is technically incorrect
+                 * behavior, according to the Wicket specification. But see the
+                 * documentation to this method.
                  */
+                if (returnPage == null) {
+                    throw e;
+                }
             }
 
-            setResponsePage(returnPage);
+            if (returnPage == null) {
+                setResponsePage(getApplication().getHomePage());
+            } else {
+                setResponsePage(returnPage);
+            }
         }
 
         private void signIn(LogInBean model, IAuthenticationStrategy strategy)
@@ -219,13 +221,13 @@ public class LogIn extends BasePage {
 
     public LogIn() {
         super();
-        this.returnPage = getApplication().getHomePage();
+        returnPage = null;
     }
 
     public LogIn(PageParameters pageParameters) throws ClassNotFoundException {
         super(pageParameters);
-        this.returnPage = (Class<? extends Page>)BasePage.class.getClassLoader()
-                           .loadClass(pageParameters.get(0).toString());
+        returnPage = (Class<? extends Page>) BasePage.class.getClassLoader().loadClass(
+                        pageParameters.get(0).toString());
     }
 
     protected void initialize() {
@@ -238,8 +240,7 @@ public class LogIn extends BasePage {
     }
 
     public static void signInWithCert(LogInService service)
-                    throws IllegalArgumentException,
-                    LogInServiceException {
+                    throws IllegalArgumentException, LogInServiceException {
         X509Certificate[] certChain = getCertChain();
         UserBean user = service.authenticate(certChain);
         WebAdminInterfaceSession session = (WebAdminInterfaceSession) Session.get();
@@ -247,8 +248,7 @@ public class LogIn extends BasePage {
     }
 
     private static X509Certificate[] getCertChain() {
-        ServletWebRequest servletWebRequest
-            = (ServletWebRequest) RequestCycle.get().getRequest();
+        ServletWebRequest servletWebRequest = (ServletWebRequest) RequestCycle.get().getRequest();
         HttpServletRequest request = servletWebRequest.getContainerRequest();
         Object certificate = request.getAttribute(X509_CERTIFICATE_ATTRIBUTE);
         X509Certificate[] chain;
