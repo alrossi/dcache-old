@@ -6,8 +6,6 @@ import org.apache.wicket.model.PropertyModel;
 import org.apache.wicket.model.StringResourceModel;
 import org.apache.wicket.protocol.http.servlet.ServletWebRequest;
 import org.apache.wicket.request.mapper.parameter.PageParameters;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.MissingResourceException;
 
@@ -22,17 +20,19 @@ import org.dcache.webadmin.view.panels.userpanel.UserPanel;
  * @author jans
  */
 public class BasePage extends WebPage {
-
+    public static final String CURRENT_PAGE = "current-page";
     private static final long serialVersionUID = 7817347486820155316L;
     private String _title = "";
-    
+
     public BasePage() {
         initialize();
+        getPageParameters().add(CURRENT_PAGE, getClass().getName());
     }
 
     public BasePage(PageParameters parameters) {
         super(parameters);
         initialize();
+        getPageParameters().add(CURRENT_PAGE, getClass().getName());
     }
 
     protected void initialize() {

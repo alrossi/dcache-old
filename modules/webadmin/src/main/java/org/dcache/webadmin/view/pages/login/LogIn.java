@@ -87,7 +87,8 @@ public class LogIn extends BasePage {
 
             @Override
             public void onSubmit() {
-                IAuthenticationStrategy strategy = getApplication().getSecuritySettings().getAuthenticationStrategy();
+                IAuthenticationStrategy strategy = getApplication().getSecuritySettings()
+                                                                   .getAuthenticationStrategy();
                 try {
                     if (!isSignedIn()) {
                         signIn(_logInModel, strategy);
@@ -152,9 +153,9 @@ public class LogIn extends BasePage {
          * At present I see no other way of maintaining proper intercept-
          * redirect behavior except via a workaround which defeats the exception
          * handling mechanism by setting the response page, determined via the
-         * constructor. Panels using the intercept exception (for example,
-         * {@link UserPanel}) should set the first page parameter to be the
-         * originating page class name.
+         * constructor. All pages derived from the BasePage now automatically
+         * add a name-value pair to the PageParameters.
+         *
          * <p>
          * This behavior has been present since Wicket 1.5. See <a href=
          * "http://apache-wicket.1842946.n4.nabble.com/RestartResponseAtInterceptPageException-problem-in-1-5-td4255020.html"
@@ -165,6 +166,9 @@ public class LogIn extends BasePage {
              * If login has been called because the user was not yet logged in,
              * then continue to the original destination, otherwise to the Home
              * page.
+             *
+             * This hack does not seem to catch all corner cases.
+             * The problem should be fixed at the level of the url.
              */
             try {
                 continueToOriginalDestination();
@@ -222,12 +226,14 @@ public class LogIn extends BasePage {
     public LogIn() {
         super();
         returnPage = null;
+        System.out.println("LogIn page called without parameters");
     }
 
     public LogIn(PageParameters pageParameters) throws ClassNotFoundException {
         super(pageParameters);
         returnPage = (Class<? extends Page>) BasePage.class.getClassLoader().loadClass(
-                        pageParameters.get(0).toString());
+                        pageParameters.get(BasePage.CURRENT_PAGE).toString());
+        System.out.println("LogIn page called from " + returnPage);
     }
 
     protected void initialize() {
