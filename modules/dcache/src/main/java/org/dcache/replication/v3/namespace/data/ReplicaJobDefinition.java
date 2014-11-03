@@ -161,7 +161,7 @@ public class ReplicaJobDefinition extends JobDefinition {
               null,       // cache entry comparator not necessary
               new PoolListByNames(poolManager, source),
               new PoolListByPoolGroup(poolManager, poolGroup),
-              TimeUnit.MINUTES.toMillis(1),
+              TimeUnit.MINUTES.toMillis(10),
               false,      // job is transient
               true,       // replica creation is always "eager"
               replicas,   // what is required, without consideration of what may exist
