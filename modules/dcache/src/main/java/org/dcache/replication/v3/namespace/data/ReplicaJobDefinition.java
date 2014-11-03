@@ -77,6 +77,18 @@ import org.dcache.pool.migration.ProportionalPoolSelectionStrategy;
 import org.dcache.pool.repository.StickyRecord;
 import org.dcache.vehicles.FileAttributes;
 
+/**
+ * The creation of the definition entails first checking for
+ * the minimum and maximum numbers, along with whether copies are
+ * allowed on different pools on the same host.  The greedy flag
+ * determines whether to associate the required replica count
+ * with the minimum or the maximum.
+ * <p>
+ * Any values associated with the file's storage unit override
+ * those for the pool group.
+ *
+ * @author arossi
+ */
 public class ReplicaJobDefinition extends JobDefinition {
 
     private static final CacheEntryMode REPLICA_CACHE_ENTRY_MODE =
@@ -142,21 +154,21 @@ public class ReplicaJobDefinition extends JobDefinition {
                                   * exclude-when=
                                   */
                                  boolean isSameHostOK) {
-        super(null,     // filters
-              null,     // source mode
-              targetMode,
+        super(null,       // filters
+              null,       // source mode check is part of replica manager logic
+              targetMode, // always CACHED+system(sticky)
               new ProportionalPoolSelectionStrategy(),
-              null,     // cache entry comparator
+              null,       // cache entry comparator not necessary
               new PoolListByNames(poolManager, source),
               new PoolListByPoolGroup(poolManager, poolGroup),
               TimeUnit.MINUTES.toMillis(1),
-              false,    // not a permanent job
-              true,     // replica creation is always "eager"
-              replicas, // what is required, without consideration of what may exist
-              false,
-              true,
+              false,      // job is transient
+              true,       // replica creation is always "eager"
+              replicas,   // what is required, without consideration of what may exist
+              false,      // only pin on a new replica copy should belong to system
+              true,       // not sure whether the checksum is necessary ... for now set to true
               null,
               null,
-              false);
+              false);     // source mode check is part of replica manager logic
     }
 }
