@@ -113,6 +113,7 @@ public class ResilientInfoCache {
             PoolGroupInfo info = new PoolGroupInfo();
             getResilientPoolGroupOfPool(pool, info);
             if (info.isResilient()) {
+                getAllPoolsOfGroup(info);
                 getStorageUnitsInGroup(info);
             }
             loadAllPoolsInGroup(pool, info);
@@ -138,6 +139,13 @@ public class ResilientInfoCache {
                     break;
                 }
             } while (it.hasNext());
+        }
+
+        private void getAllPoolsOfGroup(PoolGroupInfo info) {
+            Collection<SelectionPool> pools =
+                            poolMonitor.getPoolSelectionUnit()
+                            .getPoolsByPoolGroup(info.getPoolGroup().getName());
+            info.setPools(pools);
         }
 
         private void getStorageUnitsInGroup(PoolGroupInfo info) {

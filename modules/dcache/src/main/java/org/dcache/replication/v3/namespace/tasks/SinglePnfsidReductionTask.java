@@ -60,37 +60,104 @@ documents or software obtained from this server.
 package org.dcache.replication.v3.namespace.tasks;
 
 import com.google.common.base.Preconditions;
+import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
+import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPool;
+import diskCacheV111.util.CacheException;
 import diskCacheV111.util.PnfsId;
 
 import org.dcache.replication.v3.namespace.ReplicaManagerHub;
+import org.dcache.replication.v3.namespace.ResilientInfoCache;
+import org.dcache.replication.v3.namespace.data.PoolGroupInfo;
+import org.dcache.replication.v3.vehicles.RemoveReplicasMessage;
 
 /**
  * @author arossi
  */
 public class SinglePnfsidReductionTask implements Runnable {
+    private static final Logger LOGGER
+        = LoggerFactory.getLogger(SinglePnfsidReductionTask.class);
+
+    class RemoveResultListener implements Runnable {
+        public void run() {
+            RemoveReplicasMessage message = null;
+            try {
+                message = future.get();
+            } catch (InterruptedException | ExecutionException t) {
+                hub.getReductionTaskHandler()
+                   .taskFailed(SinglePnfsidReductionTask.this, t.getMessage());
+                return;
+            }
+
+            if (future.isCancelled()) {
+                hub.getReductionTaskHandler()
+                   .taskCancelled(SinglePnfsidReductionTask.this);
+            } else if (!message.iterator().hasNext()) {
+                hub.getReductionTaskHandler()
+                   .taskCompleted(SinglePnfsidReductionTask.this);
+            } else {
+                /*
+                 * maybe retry here ... XXX
+                 */
+            }
+        }
+    }
 
     public final PnfsId pnfsId;
-
     private final ReplicaManagerHub hub;
-    private final Set<String> allLocations;
     private final Set<String> confirmedLocations;
+    private final RemoveResultListener listener;
+    private ListenableFuture<RemoveReplicasMessage> future;
 
     public SinglePnfsidReductionTask(PnfsId pnfsId,
                                      Collection<String> confirmedLocations,
                                      ReplicaManagerHub hub) {
         this.pnfsId = Preconditions.checkNotNull(pnfsId);
         this.hub = hub;
-        this.allLocations = new HashSet<>();
         this.confirmedLocations = new HashSet<>();
         this.confirmedLocations.addAll(confirmedLocations);
+        listener = new RemoveResultListener();
     }
 
     public void run() {
+        try {
+            Collection<PnfsId> pnfsids = new ArrayList<>();
+            pnfsids.add(pnfsId);
 
+            ResilientInfoCache cache = hub.getCache();
+
+            /*
+             * If we are executing this task, confirmedLocations
+             * cannot be empty.
+             */
+            String poolFromGroup = confirmedLocations.iterator().next();
+            PoolGroupInfo info = cache.getPoolGroupInfo(poolFromGroup);
+            Collection<SelectionPool> poolsInGroup = info.getPools();
+            List<String> allLocations = hub.getCache().getAllLocationsFor(pnfsId);
+            for (String location: allLocations) {
+                if (poolsInGroup.contains(location) &&
+                                !confirmedLocations.contains(location)) {
+                    future = hub.getPoolStubFactory()
+                                .getCellStub(location)
+                                .send(new RemoveReplicasMessage(pnfsids));
+                    future.addListener(listener,
+                                       hub.getPnfsInfoTaskExecutor());
+                    LOGGER.trace("Sent SinglePnfsidReductionTask for {} to {}",
+                                        pnfsId, location);
+                }
+            }
+        } catch (CacheException | ExecutionException t) {
+            hub.getReductionTaskHandler()
+                .taskFailed(SinglePnfsidReductionTask.this, t.getMessage());
+        }
     }
 }

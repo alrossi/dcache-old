@@ -59,10 +59,14 @@ documents or software obtained from this server.
  */
 package org.dcache.replication.v3.namespace.data;
 
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
+import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPool;
 import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPoolGroup;
 import diskCacheV111.poolManager.StorageUnit;
 
@@ -74,11 +78,13 @@ import diskCacheV111.poolManager.StorageUnit;
  */
 public class PoolGroupInfo {
     private final Map<String, StorageUnit> storageUnits;
+    private final Set<SelectionPool> pools;
 
     private SelectionPoolGroup poolGroup;
 
     public PoolGroupInfo() {
         storageUnits = new HashMap<>();
+        pools = new HashSet<>();
     }
 
     public void addStorageUnit(StorageUnit storageUnit) {
@@ -87,6 +93,10 @@ public class PoolGroupInfo {
 
     public SelectionPoolGroup getPoolGroup() {
         return poolGroup;
+    }
+
+    public Collection<SelectionPool> getPools() {
+        return pools;
     }
 
     public StorageUnit getStorageUnit(String unitName) {
@@ -99,6 +109,10 @@ public class PoolGroupInfo {
 
     public void setPoolGroup(SelectionPoolGroup poolGroup) {
         this.poolGroup = poolGroup;
+    }
+
+    public void setPools(Collection<SelectionPool> pools) {
+        this.pools.addAll(pools);
     }
 
     public Iterator<StorageUnit> storageUnits() {

@@ -87,7 +87,7 @@ public class PoolGroupInfoTask implements Runnable {
     }
 
     public PoolGroupInfoTask(String pool,
-                    ReplicaManagerHub hub) {
+                             ReplicaManagerHub hub) {
         this.pool = pool;
         this.pnfsId = null;
         this.hub = hub;

@@ -86,8 +86,8 @@ public final class ReductionTaskCompletionHandler {
                         task.pnfsId, message);
     }
 
-    public void taskCancelled(SinglePnfsidReductionTask task, String message) {
-        LOGGER.warn("Reduction task for {} was cancelled: {}",
-                        task.pnfsId, message);
+    public void taskCancelled(SinglePnfsidReductionTask task) {
+        LOGGER.warn("Reduction task for {} was cancelled.",
+                        task.pnfsId);
     }
 }
