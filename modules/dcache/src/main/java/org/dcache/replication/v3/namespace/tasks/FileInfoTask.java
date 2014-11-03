@@ -69,10 +69,7 @@ import java.util.concurrent.ExecutionException;
 import diskCacheV111.util.AccessLatency;
 import diskCacheV111.util.PnfsId;
 
-import org.dcache.cells.CellStub;
-import org.dcache.replication.v3.CDCFixedPoolTaskExecutor;
-import org.dcache.replication.v3.namespace.ResilientInfoCache;
-import org.dcache.replication.v3.namespace.handlers.task.FileInfoTaskCompletionHandler;
+import org.dcache.replication.v3.namespace.ReplicaManagerHub;
 import org.dcache.replication.v3.vehicles.CacheEntryInfoMessage;
 import org.dcache.vehicles.FileAttributes;
 
@@ -95,61 +92,56 @@ public class FileInfoTask implements Runnable {
             try {
                 message = future.get();
             } catch (InterruptedException | ExecutionException t) {
-                handler.taskFailed(message, t.getMessage());
+                hub.getFileInfoTaskHandler().taskFailed(message, t.getMessage());
                 return;
             }
 
             if (future.isCancelled()) {
-                handler.taskCancelled(message, "Future task was cancelled");
+                hub.getFileInfoTaskHandler().taskCancelled(message, "Future task was cancelled");
             } else {
-                handler.taskCompleted(message, tried);
+                hub.getFileInfoTaskHandler().taskCompleted(message, tried);
             }
         }
     }
 
     private final PnfsId pnfsId;
-    private final CellStub pool;
-    private final ResilientInfoCache cache;
-    private final FileInfoTaskCompletionHandler handler;
-    private final CDCFixedPoolTaskExecutor executor;
+    private final String pool;
+    private final ReplicaManagerHub hub;
     private final Set<String> tried;
     private ListenableFuture<CacheEntryInfoMessage> future;
 
     public FileInfoTask(PnfsId pnfsId,
-                        CellStub pool,
-                        FileInfoTaskCompletionHandler handler,
-                        ResilientInfoCache cache,
-                        CDCFixedPoolTaskExecutor executor,
+                        String pool,
+                        ReplicaManagerHub hub,
                         Set<String> tried) {
         this.pnfsId = pnfsId;
         this.pool = pool;
-        this.handler = handler;
-        this.cache = cache;
-        this.executor = executor;
+        this.hub = hub;
         this.tried = tried;
     }
 
     public void run() {
         FileAttributes attributes;
         try {
-            attributes = cache.getAttributes(pnfsId);
+            attributes = hub.getCache().getAttributes(pnfsId);
             if (!attributes.getAccessLatency().equals(AccessLatency.ONLINE)) {
-                handler.taskCancelled(null, pnfsId
+                hub.getFileInfoTaskHandler().taskCancelled(null, pnfsId
                                             + " is not ONLINE; ignoring ...");
                 return;
             }
         } catch (ExecutionException t) {
             String error = "CacheEntryInfoTask failed "
-                            + "for " + pnfsId + "@" +
-                            pool.getDestinationPath().getCellName();
-            handler.taskFailed(null, error);
+                            + "for " + pnfsId + "@" + pool;
+            hub.getFileInfoTaskHandler().taskFailed(null, error);
             return;
         }
 
-        future = pool.send(new CacheEntryInfoMessage(pnfsId));
-        future.addListener(new CacheEntryResultListener(), executor);
+        future = hub.getPoolStubFactory()
+                    .getCellStub(pool)
+                    .send(new CacheEntryInfoMessage(pnfsId));
+        future.addListener(new CacheEntryResultListener(),
+                           hub.getPnfsInfoTaskExecutor());
         LOGGER.trace("Sent CacheEntryInfoMessage for {} to {}",
-                        pnfsId,
-                        pool.getDestinationPath().getCellName());
+                        pnfsId, pool);
     }
 }

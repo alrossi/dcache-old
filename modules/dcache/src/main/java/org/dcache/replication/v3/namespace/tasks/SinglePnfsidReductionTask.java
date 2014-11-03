@@ -59,68 +59,38 @@ documents or software obtained from this server.
  */
 package org.dcache.replication.v3.namespace.tasks;
 
+import com.google.common.base.Preconditions;
+
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
 import diskCacheV111.util.PnfsId;
 
-import org.dcache.cells.CellStub;
-import org.dcache.replication.v3.namespace.ResilientInfoCache;
-import org.dcache.replication.v3.namespace.handlers.task.ReductionTaskCompletionHandler;
+import org.dcache.replication.v3.namespace.ReplicaManagerHub;
 
 /**
  * @author arossi
- *
  */
-public class ReductionTask implements Runnable {
+public class SinglePnfsidReductionTask implements Runnable {
 
-    private final PnfsId pnfsId;
-    private final ResilientInfoCache cache;
-    private final CellStub poolManager;
-    private final ReductionTaskCompletionHandler completionHandler;
-    private final int numberOfCopies;
+    public final PnfsId pnfsId;
+
+    private final ReplicaManagerHub hub;
     private final Set<String> allLocations;
     private final Set<String> confirmedLocations;
 
-    public ReductionTask(PnfsId pnfsId,
-                         Collection<String> confirmedLocations,
-                         ResilientInfoCache cache,
-                         ReductionTaskCompletionHandler completionHandler) {
-        this(pnfsId, confirmedLocations.size(), cache, null, completionHandler);
+    public SinglePnfsidReductionTask(PnfsId pnfsId,
+                                     Collection<String> confirmedLocations,
+                                     ReplicaManagerHub hub) {
+        this.pnfsId = Preconditions.checkNotNull(pnfsId);
+        this.hub = hub;
+        this.allLocations = new HashSet<>();
+        this.confirmedLocations = new HashSet<>();
         this.confirmedLocations.addAll(confirmedLocations);
     }
 
-    public ReductionTask(PnfsId pnfsId,
-                         int numberOfCopies,
-                         ResilientInfoCache cache,
-                         CellStub poolManager,
-                         ReductionTaskCompletionHandler completionHandler) {
-        this.pnfsId = pnfsId;
-        this.cache = cache;
-        this.poolManager = poolManager;
-        this.completionHandler = completionHandler;
-        this.numberOfCopies = numberOfCopies;
-        allLocations = new HashSet<>();
-        confirmedLocations = new HashSet<>();
-    }
-
     public void run() {
-        if (confirmedLocations == null) {
-            reduceByPoolCost();
-        } else {
-            eliminateUnconfirmed();
-        }
-
-    }
-
-    private void eliminateUnconfirmed() {
-        // TODO Auto-generated method stub
-
-    }
-
-    private void reduceByPoolCost() {
-        // TODO Auto-generated method stub
 
     }
 }

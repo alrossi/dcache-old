@@ -69,9 +69,7 @@ import diskCacheV111.vehicles.PnfsClearCacheLocationMessage;
 
 import dmg.cells.nucleus.CellMessageReceiver;
 
-import org.dcache.replication.v3.CDCFixedPoolTaskExecutor;
-import org.dcache.replication.v3.namespace.ResilientInfoCache;
-import org.dcache.replication.v3.namespace.handlers.task.PoolGroupInfoTaskCompletionHandler;
+import org.dcache.replication.v3.namespace.ReplicaManagerHub;
 import org.dcache.replication.v3.namespace.tasks.PoolGroupInfoTask;
 import org.dcache.vehicles.PnfsSetFileAttributes;
 
@@ -92,10 +90,8 @@ public final class PnfsCacheLocationHandler implements CellMessageReceiver {
     private static final Logger LOGGER
         = LoggerFactory.getLogger(PnfsCacheLocationHandler.class);
 
-    private CDCFixedPoolTaskExecutor executor;
-    private ResilientInfoCache cache;
     private MessageGuard guard;
-    private PoolGroupInfoTaskCompletionHandler completionHandler;
+    private ReplicaManagerHub hub;
 
     public void messageArrived(PnfsClearCacheLocationMessage message) {
         /*
@@ -109,10 +105,11 @@ public final class PnfsCacheLocationHandler implements CellMessageReceiver {
         PnfsId pnfsId = message.getPnfsId();
         String pool = message.getPoolName();
 
-        executor.execute(new PoolGroupInfoTask(pnfsId,
-                                               pool,
-                                               cache,
-                                               completionHandler));
+        hub.getPoolGroupInfoTaskExecutor()
+           .execute(new PoolGroupInfoTask(pnfsId,
+                                          pool,
+                                          hub.getCache(),
+                                          hub.getPoolGroupInfoTaskHandler()));
         LOGGER.debug("executed PoolGroupInfoTask for {}.", pool);
     }
 
@@ -144,32 +141,19 @@ public final class PnfsCacheLocationHandler implements CellMessageReceiver {
          * Results processed by PoolGroupInfoHandler#handleDone.
          */
         String pool = locations.iterator().next();
-        executor.execute(new PoolGroupInfoTask(pnfsId,
-                                               pool,
-                                               cache,
-                                               completionHandler));
+        hub.getPoolGroupInfoTaskExecutor()
+           .execute(new PoolGroupInfoTask(pnfsId,
+                                          pool,
+                                          hub.getCache(),
+                                          hub.getPoolGroupInfoTaskHandler()));
         LOGGER.debug("executed PoolGroupInfoTask for {}.", pool);
-    }
-
-    public void setCache(ResilientInfoCache cache) {
-        this.cache = cache;
     }
 
     public void setGuard(MessageGuard guard) {
         this.guard = guard;
     }
 
-    public void setPoolInfoTaskExecutor(
-                    CDCFixedPoolTaskExecutor poolInfoTaskExecutor) {
-        this.executor = poolInfoTaskExecutor;
-    }
-
-    public PoolGroupInfoTaskCompletionHandler getPoolGroupInfoTaskHandler() {
-        return completionHandler;
-    }
-
-    public void setPoolGroupInfoTaskHandler(PoolGroupInfoTaskCompletionHandler
-                                            completionHandler) {
-        this.completionHandler = completionHandler;
+    public void setHub(ReplicaManagerHub hub) {
+        this.hub = hub;
     }
 }

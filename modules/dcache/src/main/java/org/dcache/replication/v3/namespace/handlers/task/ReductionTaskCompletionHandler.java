@@ -59,18 +59,35 @@ documents or software obtained from this server.
  */
 package org.dcache.replication.v3.namespace.handlers.task;
 
-import org.dcache.replication.v3.namespace.tasks.ReductionTask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.dcache.replication.v3.namespace.tasks.SinglePnfsidReductionTask;
 
 /**
+ * Currently this handler simply logs the result.
+ *
  * @author arossi
  */
 public final class ReductionTaskCompletionHandler {
-    public void taskCompleted(ReductionTask task) {
+    private static final Logger LOGGER
+        = LoggerFactory.getLogger(ReductionTaskCompletionHandler.class);
+
+    public void taskCompleted(SinglePnfsidReductionTask task) {
+        LOGGER.debug("Reduction task for {} succeeded. "
+                        + "Replication cycle finished.",
+                        task.pnfsId);
     }
 
-    public void taskFailed(ReductionTask task, String message) {
+    public void taskFailed(SinglePnfsidReductionTask task, String message) {
+        LOGGER.error("Reduction task for {} failed: {}.  "
+                        + "Reduction will be retried during the next periodic "
+                        + "watchdog scan.",
+                        task.pnfsId, message);
     }
 
-    public void taskCancelled(ReductionTask task, String message) {
+    public void taskCancelled(SinglePnfsidReductionTask task, String message) {
+        LOGGER.warn("Reduction task for {} was cancelled: {}",
+                        task.pnfsId, message);
     }
 }

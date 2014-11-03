@@ -66,9 +66,8 @@ import java.util.Set;
 
 import diskCacheV111.util.PnfsId;
 
-import org.dcache.replication.v3.CDCFixedPoolTaskExecutor;
 import org.dcache.replication.v3.CellStubFactory;
-import org.dcache.replication.v3.namespace.ResilientInfoCache;
+import org.dcache.replication.v3.namespace.ReplicaManagerHub;
 import org.dcache.replication.v3.namespace.data.PoolGroupInfo;
 import org.dcache.replication.v3.namespace.tasks.FileInfoTask;
 
@@ -96,28 +95,7 @@ public final class PoolGroupInfoTaskCompletionHandler {
     private static final Logger LOGGER
         = LoggerFactory.getLogger(PoolGroupInfoTaskCompletionHandler.class);
 
-    private CellStubFactory poolStubFactory;
-    private CDCFixedPoolTaskExecutor pnfsInfoTaskExecutor;
-    private ResilientInfoCache cache;
-    private FileInfoTaskCompletionHandler fileInfoTaskHandler;
-
-    public void setCache(ResilientInfoCache cache) {
-        this.cache = cache;
-    }
-
-    public void setFileInfoTaskHandler(FileInfoTaskCompletionHandler
-                                       fileInfoTaskHandler) {
-        this.fileInfoTaskHandler = fileInfoTaskHandler;
-    }
-
-    public void setPnfsInfoTaskExecutor(CDCFixedPoolTaskExecutor
-                                        pnfsInfoTaskExecutor) {
-        this.pnfsInfoTaskExecutor = pnfsInfoTaskExecutor;
-    }
-
-    public void setPoolStubFactory(CellStubFactory poolStubFactory) {
-        this.poolStubFactory = poolStubFactory;
-    }
+    private ReplicaManagerHub hub;
 
     public void taskCompleted(PnfsId pnfsId,
                               String pool,
@@ -137,12 +115,10 @@ public final class PoolGroupInfoTaskCompletionHandler {
          * on to the migration task.
          */
         FileInfoTask task = new FileInfoTask(pnfsId,
-                                             poolStubFactory.getCellStub(pool),
-                                             fileInfoTaskHandler,
-                                             cache,
-                                             pnfsInfoTaskExecutor,
+                                             pool,
+                                             hub,
                                              triedPools);
-        pnfsInfoTaskExecutor.execute(task);
+        hub.getPnfsInfoTaskExecutor().execute(task);
         LOGGER.debug("executed FileInfoTask for {}.", pnfsId);
     }
 
@@ -154,5 +130,9 @@ public final class PoolGroupInfoTaskCompletionHandler {
                         + "Replication cannot proceed at this time, but will "
                         + "be retried during the next periodic watchdog scan.",
                         pnfsId, pool, message);
+    }
+
+    public void setHub(ReplicaManagerHub hub) {
+        this.hub = hub;
     }
 }

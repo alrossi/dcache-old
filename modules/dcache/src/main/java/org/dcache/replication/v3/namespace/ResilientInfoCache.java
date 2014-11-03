@@ -94,7 +94,6 @@ import static org.dcache.namespace.FileAttribute.*;
 
 /**
  * @author arossi
- *
  */
 public class ResilientInfoCache {
     private class PnfsInfoFetcher extends CacheLoader<PnfsId,

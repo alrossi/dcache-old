@@ -63,14 +63,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
 
-import org.dcache.cells.CellStub;
 import org.dcache.pool.migration.Task;
 import org.dcache.pool.migration.TaskCompletionHandler;
+import org.dcache.replication.v3.namespace.ReplicaManagerHub;
 import org.dcache.replication.v3.namespace.ResilientInfoCache;
-import org.dcache.replication.v3.namespace.data.ReplicaJobDefinition;
 import org.dcache.replication.v3.namespace.data.PoolGroupInfo;
+import org.dcache.replication.v3.namespace.data.ReplicaJobDefinition;
 import org.dcache.replication.v3.vehicles.CacheEntryInfoMessage;
 import org.dcache.vehicles.FileAttributes;
 
@@ -87,30 +86,18 @@ public class ReplicationTask implements Runnable {
     protected static final Logger LOGGER
         = LoggerFactory.getLogger(ReplicationTask.class);
 
-    private CacheEntryInfoMessage message;
-    private TaskCompletionHandler handler;
-    private ScheduledExecutorService executor;
-    private ResilientInfoCache cache;
-    private CellStub poolManager;
-    private CellStub pnfsManager;
-    private CellStub pinManager;
-    private boolean useGreedyRequests;
+    private final CacheEntryInfoMessage message;
+    private final TaskCompletionHandler handler;
+    private final ReplicaManagerHub hub;
+    private final boolean useGreedyRequests;
 
     public ReplicationTask(CacheEntryInfoMessage message,
                            TaskCompletionHandler handler,
-                           ScheduledExecutorService executor,
-                           ResilientInfoCache cache,
-                           CellStub poolManager,
-                           CellStub pnfsManager,
-                           CellStub pinManager,
+                           ReplicaManagerHub hub,
                            boolean useGreedyRequests) {
         this.message = message;
         this.handler = handler;
-        this.executor = executor;
-        this.cache = cache;
-        this.poolManager = poolManager;
-        this.pnfsManager = pnfsManager;
-        this.pinManager = pinManager;
+        this.hub = hub;
         this.useGreedyRequests = useGreedyRequests;
     }
 
@@ -121,6 +108,7 @@ public class ReplicationTask implements Runnable {
         PoolGroupInfo poolInfo;
 
         try {
+            ResilientInfoCache cache = hub.getCache();
             attributes = cache.getAttributes(message.pnfsId);
             poolInfo = cache.getPoolGroupInfo(pool);
         } catch (ExecutionException t) {
@@ -137,12 +125,12 @@ public class ReplicationTask implements Runnable {
                                           attributes,
                                           pool,
                                           useGreedyRequests,
-                                          poolManager);
+                                          hub.getPoolManager());
         new Task(handler,
                  null,
-                 pnfsManager,
-                 pinManager,
-                 executor,
+                 hub.getPnfsManager(),
+                 hub.getPinManager(),
+                 hub.getMigrationTaskExecutor(),
                  pool,
                  message.getEntry(),
                  jobDefinition).run();

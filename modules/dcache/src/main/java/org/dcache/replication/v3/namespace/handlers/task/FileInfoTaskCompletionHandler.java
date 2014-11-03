@@ -65,10 +65,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.dcache.cells.CellStub;
-import org.dcache.replication.v3.CDCFixedPoolTaskExecutor;
-import org.dcache.replication.v3.CDCScheduledPoolTaskExecutor;
-import org.dcache.replication.v3.namespace.ResilientInfoCache;
+import org.dcache.replication.v3.namespace.ReplicaManagerHub;
 import org.dcache.replication.v3.namespace.tasks.ReplicationTask;
 import org.dcache.replication.v3.vehicles.CacheEntryInfoMessage;
 
@@ -96,58 +93,9 @@ public final class FileInfoTaskCompletionHandler {
     private static final Logger LOGGER
         = LoggerFactory.getLogger(FileInfoTaskCompletionHandler.class);
 
-    private ResilientInfoCache cache;
-    private CDCScheduledPoolTaskExecutor migrationTaskExecutor;
-    private CDCFixedPoolTaskExecutor pnfsInfoTaskExecutor;
-    private CDCFixedPoolTaskExecutor reductionTaskExecutor;
-    private ReductionTaskCompletionHandler reductionTaskHandler;
-    private PoolGroupInfoTaskCompletionHandler poolGroupInfoTaskHandler;
-    private CellStub poolManager;
-    private CellStub pnfsManager;
-    private CellStub pinManager;
-
+    private ReplicaManagerHub hub;
     private boolean useGreedyRequests;
 
-    public void setCache(ResilientInfoCache cache) {
-        this.cache = cache;
-    }
-
-    public void setMigrationTaskExecutor(CDCScheduledPoolTaskExecutor
-                                         migrationTaskExecutor) {
-        this.migrationTaskExecutor = migrationTaskExecutor;
-    }
-
-    public void setPinManager(CellStub pinManager) {
-        this.pinManager = pinManager;
-    }
-
-    public void setPnfsInfoTaskExecutor(CDCFixedPoolTaskExecutor
-                                        pnfsInfoTaskExecutor) {
-        this.pnfsInfoTaskExecutor = pnfsInfoTaskExecutor;
-    }
-
-    public void setPnfsManager(CellStub pnfsManager) {
-        this.pnfsManager = pnfsManager;
-    }
-
-    public void setPoolGroupInfoTaskHandler(PoolGroupInfoTaskCompletionHandler
-                                            poolGroupInfoTaskHandler) {
-        this.poolGroupInfoTaskHandler = poolGroupInfoTaskHandler;
-    }
-
-    public void setPoolManager(CellStub poolManager) {
-        this.poolManager = poolManager;
-    }
-
-    public void setReductionTaskExecutor(CDCFixedPoolTaskExecutor
-                                         reductionTaskExecutor) {
-        this.reductionTaskExecutor = reductionTaskExecutor;
-    }
-
-    public void setReductionTaskHandler(ReductionTaskCompletionHandler
-                                        reductionTaskHandler) {
-        this.reductionTaskHandler = reductionTaskHandler;
-    }
 
     public void setUseGreedyRequests(boolean useGreedyRequests) {
         this.useGreedyRequests = useGreedyRequests;
@@ -183,11 +131,7 @@ public final class FileInfoTaskCompletionHandler {
          *
          */
         ReplicationTaskCompletionHandler handler =
-                        new ReplicationTaskCompletionHandler(tried,
-                                                             cache,
-                                                             reductionTaskExecutor,
-                                                             reductionTaskHandler,
-                                                             poolGroupInfoTaskHandler);
+                        new ReplicationTaskCompletionHandler(tried, hub);
         /*
          * Issue the migration task with a completion handler. Should the task
          * complete with less confirmed locations than the current number, the
@@ -195,13 +139,9 @@ public final class FileInfoTaskCompletionHandler {
          */
         ReplicationTask task = new ReplicationTask(info,
                                                    handler,
-                                                   migrationTaskExecutor,
-                                                   cache,
-                                                   poolManager,
-                                                   pnfsManager,
-                                                   pinManager,
+                                                   hub,
                                                    useGreedyRequests);
-        pnfsInfoTaskExecutor.execute(task);
+        hub.getPnfsInfoTaskExecutor().execute(task);
     }
 
     /*

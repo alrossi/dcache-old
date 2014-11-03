@@ -63,8 +63,7 @@ import java.util.concurrent.ExecutionException;
 
 import diskCacheV111.util.PnfsId;
 
-import org.dcache.replication.v3.namespace.ResilientInfoCache;
-import org.dcache.replication.v3.namespace.handlers.task.PoolGroupInfoTaskCompletionHandler;
+import org.dcache.replication.v3.namespace.ReplicaManagerHub;
 
 /**
  * Fetches the pool group info and passes it off to a completion
@@ -76,33 +75,34 @@ import org.dcache.replication.v3.namespace.handlers.task.PoolGroupInfoTaskComple
 public class PoolGroupInfoTask implements Runnable {
     public final String pool;
     public final PnfsId pnfsId;
-    private final PoolGroupInfoTaskCompletionHandler handler;
-    private final ResilientInfoCache cache;
+
+    private final ReplicaManagerHub hub;
 
     public PoolGroupInfoTask(PnfsId pnfsId,
                              String pool,
-                             ResilientInfoCache cache,
-                             PoolGroupInfoTaskCompletionHandler handler) {
+                             ReplicaManagerHub hub) {
         this.pool = pool;
         this.pnfsId = pnfsId;
-        this.cache = cache;
-        this.handler = handler;
+        this.hub = hub;
     }
 
     public PoolGroupInfoTask(String pool,
-                             ResilientInfoCache cache,
-                             PoolGroupInfoTaskCompletionHandler handler) {
+                    ReplicaManagerHub hub) {
         this.pool = pool;
         this.pnfsId = null;
-        this.cache = cache;
-        this.handler = handler;
+        this.hub = hub;
     }
 
     public void run() {
         try {
-            handler.taskCompleted(pnfsId, pool, cache.getPoolGroupInfo(pool), null);
+            hub.getPoolGroupInfoTaskHandler()
+               .taskCompleted(pnfsId,
+                              pool,
+                              hub.getCache().getPoolGroupInfo(pool),
+                              null);
         } catch (ExecutionException t) {
-            handler.taskFailed(pnfsId, pool, t.getMessage());
+            hub.getPoolGroupInfoTaskHandler()
+               .taskFailed(pnfsId, pool, t.getMessage());
         }
     }
 }

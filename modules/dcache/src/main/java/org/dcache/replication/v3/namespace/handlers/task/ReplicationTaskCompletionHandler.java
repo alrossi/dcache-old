@@ -73,9 +73,8 @@ import org.dcache.alarms.AlarmMarkerFactory;
 import org.dcache.alarms.PredefinedAlarm;
 import org.dcache.pool.migration.Task;
 import org.dcache.pool.migration.TaskCompletionHandler;
-import org.dcache.replication.v3.CDCFixedPoolTaskExecutor;
-import org.dcache.replication.v3.namespace.ResilientInfoCache;
-import org.dcache.replication.v3.namespace.tasks.ReductionTask;
+import org.dcache.replication.v3.namespace.ReplicaManagerHub;
+import org.dcache.replication.v3.namespace.tasks.SinglePnfsidReductionTask;
 import org.dcache.vehicles.FileAttributes;
 
 /**
@@ -99,26 +98,17 @@ public final class ReplicationTaskCompletionHandler implements TaskCompletionHan
         = LoggerFactory.getLogger(ReplicationTaskCompletionHandler.class);
 
     private final Set<String> triedSourcePools;
-    private final ResilientInfoCache cache;
-    private final CDCFixedPoolTaskExecutor reductionTaskExecutor;
-    private final ReductionTaskCompletionHandler reductionTaskHandler;
-    private final PoolGroupInfoTaskCompletionHandler poolGroupInfoTaskHandler;
+    private final ReplicaManagerHub hub;
 
     public ReplicationTaskCompletionHandler(Set<String> triedSourcePools,
-                                            ResilientInfoCache cache,
-                                            CDCFixedPoolTaskExecutor reductionTaskExecutor,
-                                            ReductionTaskCompletionHandler reductionTaskHandler,
-                                            PoolGroupInfoTaskCompletionHandler poolGroupInfoTaskHandler) {
+                                            ReplicaManagerHub hub) {
         this.triedSourcePools = Preconditions.checkNotNull(triedSourcePools);
-        this.cache = Preconditions.checkNotNull(cache);
-        this.reductionTaskExecutor = Preconditions.checkNotNull(reductionTaskExecutor);
-        this.reductionTaskHandler = Preconditions.checkNotNull(reductionTaskHandler);
-        this.poolGroupInfoTaskHandler = Preconditions.checkNotNull(poolGroupInfoTaskHandler);
+        this.hub = hub;
     }
 
     public void taskCancelled(Task task) {
         LOGGER.warn("Migration task {} for {} was cancelled", task.getId(),
-                                                               task.getPnfsId());
+                                                              task.getPnfsId());
     }
 
     public void taskFailed(Task task, String msg) {
@@ -126,7 +116,7 @@ public final class ReplicationTaskCompletionHandler implements TaskCompletionHan
             PnfsId pnfsId = task.getPnfsId();
             LOGGER.debug("Migration task {} for {} failed; looking for another"
                             + " source pool", task.getId(), pnfsId);
-            FileAttributes attributes = cache.getAttributes(pnfsId);
+            FileAttributes attributes = hub.getCache().getAttributes(pnfsId);
             Collection<String> locations = attributes.getLocations();
             locations.removeAll(triedSourcePools);
             if (locations.isEmpty()) {
@@ -143,10 +133,11 @@ public final class ReplicationTaskCompletionHandler implements TaskCompletionHan
                  * read).  We just choose the first location.
                  */
                 String newSource = locations.iterator().next();
-                poolGroupInfoTaskHandler.taskCompleted(pnfsId,
-                                                       newSource,
-                                                       cache.getPoolGroupInfo(newSource),
-                                                       triedSourcePools);
+                hub.getPoolGroupInfoTaskHandler()
+                   .taskCompleted(pnfsId,
+                                  newSource,
+                                  hub.getCache().getPoolGroupInfo(newSource),
+                                  triedSourcePools);
 
             }
         } catch (ExecutionException t) {
@@ -169,9 +160,9 @@ public final class ReplicationTaskCompletionHandler implements TaskCompletionHan
         /*
          * Post process the task for excess copies.
          */
-        reductionTaskExecutor.execute(new ReductionTask(task.getPnfsId(),
-                                                        null, // task.getConfirmedLocations(),
-                                                        cache,
-                                                        reductionTaskHandler));
+        hub.getReductionTaskExecutor()
+           .execute(new SinglePnfsidReductionTask(task.getPnfsId(),
+                                                  null, // task.getConfirmedLocations(),
+                                                  hub));
     }
 }
