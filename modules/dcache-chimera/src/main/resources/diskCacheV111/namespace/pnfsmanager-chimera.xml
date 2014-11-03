@@ -94,10 +94,97 @@
       <property name="nameSpaceProvider" ref="name-space-provider"/>
   </bean>
 
-  <bean id="locationQueryHandler"
-      class="org.dcache.replication.namespace.LocationQueryHandler"
-      init-method="initialize" destroy-method="shutdown">
-      <property name="fileSystem" ref="file-system"/>
-      <property name="concurrentRequests" value="${pnfsmanager.location-query-concurrent-requests}"/>
-  </bean>
+  <!-- +++++++++++++++++++++++++++++++++++++++++++++++ Replica Manager +++++++++++++++++++++++++++++++++++++++++++++++ -->
+
+    <bean id="PoolManagerStub" class="org.dcache.cells.CellStub">
+        <property name="destination" value="${replicamanager.service.poolmanager}"/>
+        <property name="timeout" value="${replicamanager.limits.poolmanager-timeout}"/>
+        <property name="timeoutUnit" value="${replicamanager.limits.poolmanager-timeout.unit}"/>
+        <property name="retryOnNoRouteToCell" value="true"/>
+    </bean>
+
+    <bean id="PinManagerStub" class="org.dcache.cells.CellStub">
+        <property name="destination" value="${replicamanager.service.pinmanager}"/>
+        <property name="timeout" value="${replicamanager.limits.pinmanager-timeout}"/>
+        <property name="timeoutUnit" value="${replicamanager.limits.pinmanager-timeout.unit}"/>
+        <property name="retryOnNoRouteToCell" value="true"/>
+    </bean>
+
+    <bean id="PnfsManagerStub" class="org.dcache.cells.CellStub">
+        <description>Not for internal use: for export to callbacks.</description>
+        <property name="destination" value="${replicamanager.service.pnfsmanager}"/>
+        <property name="timeout" value="${replicamanager.limits.pnfsmanager-timeout}"/>
+        <property name="timeoutUnit" value="${replicamanager.limits.pnfsmanager-timeout.unit}"/>
+        <property name="retryOnNoRouteToCell" value="true"/>
+    </bean>
+
+    <bean id="PoolMonitorStub" class="org.dcache.poolmanager.RemotePoolMonitorFactoryBean">
+        <property name="poolManagerStub" ref="PoolManagerStub"/>
+    </bean>
+
+    <bean id="PoolStubFactory" class="org.dcache.replication.v3.CellStubFactory">
+        <property name="timeout" value="${replicamanager.limits.pool-timeout}"/>
+        <property name="timeoutUnit" value="${replicamanager.limits.pool-timeout.unit}"/>
+    </bean>
+
+    <bean id="ResilientInfoCache" class="org.dcache.replication.v3.namespace.ResilientInfoCache">
+        <property name="poolMonitor" ref="PoolMonitorStub"/>
+        <property name="namespace" ref="name-space-provider"/>
+        <property name="pnfsInfoCacheExpiry" value="${replicamanager.limits.pnfs-info-cache-expiry}"/>
+        <property name="pnfsInfoCacheExpiryUnit" value="${replicamanager.limits.pnfs-info-cache-expiry.unit}"/>
+        <property name="pnfsInfoCacheSize" value="${replicamanager.limits.pnfs-info-cache-size}"/>
+        <property name="poolInfoCacheExpiry" value="${replicamanager.limits.pool-info-cache-expiry}"/>
+        <property name="poolInfoCacheExpiryUnit" value="${replicamanager.limits.pool-info-cache-expiry.unit}"/>
+        <property name="poolInfoCacheSize" value="${replicamanager.limits.pool-info-cache-size}"/>
+        <property name="poolStatusCacheExpiry" value="${replicamanager.limits.pool-status-cache-expiry}"/>
+        <property name="poolStatusCacheExpiryUnit" value="${replicamanager.limits.pool-status-cache-expiry.unit}"/>
+        <property name="poolStatusCacheSize" value="${replicamanager.limits.pool-status-cache-size}"/>
+    </bean>
+
+    <bean id="FileInfoTaskHandler" class="org.dcache.replication.v3.namespace.handlers.task.FileInfoTaskCompletionHandler">
+        <property name="ReplicaManagerHub" ref="ReplicaManagerHub"/>
+        <property name="useGreedyRequests" value="${replicamanager.requests.use-greedy-limits}"/>
+    </bean>
+
+    <bean id="PoolGroupInfoTaskHandler" class="org.dcache.replication.v3.namespace.handlers.task.PoolGroupInfoTaskCompletionHandler">
+        <property name="ReplicaManagerHub" ref="ReplicaManagerHub"/>
+    </bean>
+
+    <bean id="ReductionTaskHandler" class="org.dcache.replication.v3.namespace.handlers.task.ReductionTaskCompletionHandler"/>
+
+    <bean id="MigrationTaskExecutor" class="org.dcache.replication.v3.CDCScheduledPoolTaskExecutor">
+        <property name="numberOfThreads" value="${replicamanager.limits.number-of-replica-workers}"/>
+    </bean>
+
+    <bean id="PnfsInfoTaskExecutor" class="org.dcache.replication.v3.CDCFixedPoolTaskExecutor">
+        <property name="numberOfThreads" value="${replicamanager.limits.number-of-cache-info-workers}"/>
+    </bean>
+
+    <bean id="PoolGroupInfoTaskExecutor" class="org.dcache.replication.v3.CDCFixedPoolTaskExecutor">
+        <property name="numberOfThreads" value="${replicamanager.limits.number-of-pool-group-info-workers}"/>
+    </bean>
+
+    <bean id="PoolStatusChangeTaskExecutor" class="org.dcache.replication.v3.CDCFixedPoolTaskExecutor">
+        <property name="numberOfThreads" value="${replicamanager.limits.number-of-pool-status-info-workers}"/>
+    </bean>
+
+    <bean id="ReductionTaskExecutor" class="org.dcache.replication.v3.CDCFixedPoolTaskExecutor">
+        <property name="numberOfThreads" value="${replicamanager.limits.number-of-reduction-workers}"/>
+    </bean>
+
+    <bean id="ReplicaManagerHub" class="org.dcache.replication.v3.namespace.ReplicaManagerHub">
+        <property name="pinManager" ref="PinManagerStub"/>
+        <property name="pnfsManager" ref="PnfsManagerStub"/>
+        <property name="poolManager" ref="PoolManagerStub"/>
+        <property name="poolStubFactory" ref="PoolStubFactory"/>
+        <property name="cache" ref="ResilientInfoCache"/>
+        <property name="fileInfoTaskHandler" ref="FileInfoTaskHandler"/>
+        <property name="poolGroupInfoTaskHandler" ref="PoolGroupInfoTaskHandler"/>
+        <property name="reductionTaskHandler" ref="ReductionTaskHandler"/>
+        <property name="migrationTaskExecutor" ref="MigrationTaskExecutor"/>
+        <property name="pnfsInfoTaskExecutor" ref="PnfsInfoTaskExecutor"/>
+        <property name="poolGroupInfoTaskExecutor" ref="PoolGroupInfoTaskExecutor"/>
+        <property name="poolStatusChangeTaskExecutor" ref="PoolStatusChangeTaskExecutor"/>
+        <property name="reductionTaskExecutor" ref="ReductionTaskExecutor"/>
+    </bean>
 </beans>

@@ -96,6 +96,9 @@ public final class FileInfoTaskCompletionHandler {
     private ReplicaManagerHub hub;
     private boolean useGreedyRequests;
 
+    public void setHub(ReplicaManagerHub hub) {
+        this.hub = hub;
+    }
 
     public void setUseGreedyRequests(boolean useGreedyRequests) {
         this.useGreedyRequests = useGreedyRequests;

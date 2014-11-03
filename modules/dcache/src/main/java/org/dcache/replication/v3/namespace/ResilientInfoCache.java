@@ -191,9 +191,9 @@ public class ResilientInfoCache {
     private int pnfsInfoCacheSize = 1000;
     private int poolInfoCacheSize = 1000;
     private int poolStatusCacheSize = 50;
-    private TimeUnit pnfsInfoCacheTimeoutUnit = TimeUnit.MINUTES;
-    private TimeUnit poolInfoCacheTimeoutUnit = TimeUnit.MINUTES;
-    private TimeUnit poolStatusCacheTimeoutUnit = TimeUnit.HOURS;
+    private TimeUnit pnfsInfoCacheExpiryUnit = TimeUnit.MINUTES;
+    private TimeUnit poolInfoCacheExpiryUnit = TimeUnit.MINUTES;
+    private TimeUnit poolStatusCacheExpiryUnit = TimeUnit.HOURS;
 
     /*
      * From initialization.
@@ -263,21 +263,21 @@ public class ResilientInfoCache {
 
         pnfsInfoCache = CacheBuilder.newBuilder()
                         .expireAfterWrite(pnfsInfoCacheExpiry,
-                                          pnfsInfoCacheTimeoutUnit)
+                                          pnfsInfoCacheExpiryUnit)
                         .maximumSize(pnfsInfoCacheSize)
                         .softValues()
                         .build(new PnfsInfoFetcher());
 
         poolInfoCache = CacheBuilder.newBuilder()
                         .expireAfterWrite(poolInfoCacheExpiry,
-                                          poolInfoCacheTimeoutUnit)
+                                          poolInfoCacheExpiryUnit)
                         .maximumSize(poolInfoCacheSize)
                         .softValues()
                         .build(new PoolInfoFetcher());
 
         poolStatusCache = CacheBuilder.newBuilder()
                         .expireAfterWrite(poolStatusCacheExpiry,
-                                          poolStatusCacheTimeoutUnit)
+                                          poolStatusCacheExpiryUnit)
                         .maximumSize(poolStatusCacheSize)
                         .softValues()
                         .build();
@@ -295,8 +295,8 @@ public class ResilientInfoCache {
         this.pnfsInfoCacheSize = pnfsInfoCacheSize;
     }
 
-    public void setPnfsInfoCacheTimeoutUnit(TimeUnit pnfsInfoCacheTimeoutUnit) {
-        this.pnfsInfoCacheTimeoutUnit = pnfsInfoCacheTimeoutUnit;
+    public void setPnfsInfoCacheExpiryUnit(TimeUnit pnfsInfoCacheExpiryUnit) {
+        this.pnfsInfoCacheExpiryUnit = pnfsInfoCacheExpiryUnit;
     }
 
     public void setPoolInfoCacheExpiry(int poolInfoCacheExpiry) {
@@ -307,8 +307,8 @@ public class ResilientInfoCache {
         this.poolInfoCacheSize = poolInfoCacheSize;
     }
 
-    public void setPoolInfoCacheTimeoutUnit(TimeUnit poolInfoCacheTimeoutUnit) {
-        this.poolInfoCacheTimeoutUnit = poolInfoCacheTimeoutUnit;
+    public void setPoolInfoCacheExpiryUnit(TimeUnit poolInfoCacheExpiryUnit) {
+        this.poolInfoCacheExpiryUnit = poolInfoCacheExpiryUnit;
     }
 
     public void setPoolMonitor(PoolMonitor poolMonitor) {
@@ -319,8 +319,8 @@ public class ResilientInfoCache {
         this.poolStatusCacheExpiry = poolStatusCacheExpiry;
     }
 
-    public void setPoolStatusCacheTimeoutUnit(TimeUnit poolStatusCacheTimeoutUnit) {
-        this.poolStatusCacheTimeoutUnit = poolStatusCacheTimeoutUnit;
+    public void setPoolStatusCacheExpiryUnit(TimeUnit poolStatusCacheExpiryUnit) {
+        this.poolStatusCacheExpiryUnit = poolStatusCacheExpiryUnit;
     }
 
     public void setPoolStatusCacheSize(int poolStatusCacheSize) {

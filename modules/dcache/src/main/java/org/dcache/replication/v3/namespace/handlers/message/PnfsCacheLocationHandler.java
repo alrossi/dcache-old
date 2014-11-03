@@ -106,10 +106,7 @@ public final class PnfsCacheLocationHandler implements CellMessageReceiver {
         String pool = message.getPoolName();
 
         hub.getPoolGroupInfoTaskExecutor()
-           .execute(new PoolGroupInfoTask(pnfsId,
-                                          pool,
-                                          hub.getCache(),
-                                          hub.getPoolGroupInfoTaskHandler()));
+           .execute(new PoolGroupInfoTask(pnfsId, pool, hub));
         LOGGER.debug("executed PoolGroupInfoTask for {}.", pool);
     }
 
@@ -142,10 +139,7 @@ public final class PnfsCacheLocationHandler implements CellMessageReceiver {
          */
         String pool = locations.iterator().next();
         hub.getPoolGroupInfoTaskExecutor()
-           .execute(new PoolGroupInfoTask(pnfsId,
-                                          pool,
-                                          hub.getCache(),
-                                          hub.getPoolGroupInfoTaskHandler()));
+           .execute(new PoolGroupInfoTask(pnfsId, pool, hub));
         LOGGER.debug("executed PoolGroupInfoTask for {}.", pool);
     }
 

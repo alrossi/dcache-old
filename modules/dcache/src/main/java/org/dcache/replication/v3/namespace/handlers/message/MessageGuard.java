@@ -71,15 +71,15 @@ import dmg.cells.nucleus.CDC;
 import org.dcache.replication.v3.namespace.ResilienceWatchdog;
 
 /**
- * Used to ensure that the pnfs cache location handler is active
+ * Used to ensure that the handlers are active
  * and that the incoming message does not carry the replica manager session id.
  * This is to avoid initiating unnecessary replica requests on copies
  * just made by a request originating in the replica manager itself.
  * While such redundant requests will not cause an infinite
  * cycle, as the migration task in which this bottoms out will not
- * continue creating copies (and thus triggering the update messages to
- * the namespace which are intercepted by the replica manager), they
- * would generate more work than is necessary or desirable.
+ * continue indefinitely creating copies (and thus triggering update
+ * messages to the namespace which are intercepted by the replica manager),
+ * they would generate more work than is necessary or desirable.
  *
  * @author arossi
  */

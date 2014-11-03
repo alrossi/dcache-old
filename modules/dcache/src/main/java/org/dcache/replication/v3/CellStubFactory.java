@@ -74,18 +74,18 @@ import org.dcache.cells.CellStub;
  */
 public final class CellStubFactory implements CellMessageSender {
     private CellEndpoint endpoint;
-    private Long messageTimeout;
-    private TimeUnit messageTimeoutUnit;
+    private Long timeout;
+    private TimeUnit timeoutUnit;
 
     public CellStub getCellStub(String destination) {
         CellStub stub = new CellStub();
         stub.setDestination(destination);
         stub.setCellEndpoint(endpoint);
-        if (messageTimeout != null) {
-            stub.setTimeout(messageTimeout);
+        if (timeout != null) {
+            stub.setTimeout(timeout);
         }
-        if (messageTimeoutUnit != null) {
-            stub.setTimeoutUnit(messageTimeoutUnit);
+        if (timeoutUnit != null) {
+            stub.setTimeoutUnit(timeoutUnit);
         }
         return stub;
     }
@@ -94,11 +94,11 @@ public final class CellStubFactory implements CellMessageSender {
         this.endpoint = endpoint;
     }
 
-    public void setMessageTimeout(long messageTimeout) {
-        this.messageTimeout = messageTimeout;
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
     }
 
-    public void setMessageTimeoutUnit(TimeUnit messageTimeoutUnit) {
-        this.messageTimeoutUnit = messageTimeoutUnit;
+    public void setTimeoutUnit(TimeUnit timeoutUnit) {
+        this.timeoutUnit = timeoutUnit;
     }
 }

@@ -97,6 +97,10 @@ public final class PoolGroupInfoTaskCompletionHandler {
 
     private ReplicaManagerHub hub;
 
+    public void setHub(ReplicaManagerHub hub) {
+        this.hub = hub;
+    }
+
     public void taskCompleted(PnfsId pnfsId,
                               String pool,
                               PoolGroupInfo info,
@@ -130,9 +134,5 @@ public final class PoolGroupInfoTaskCompletionHandler {
                         + "Replication cannot proceed at this time, but will "
                         + "be retried during the next periodic watchdog scan.",
                         pnfsId, pool, message);
-    }
-
-    public void setHub(ReplicaManagerHub hub) {
-        this.hub = hub;
     }
 }
