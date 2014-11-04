@@ -13,9 +13,15 @@ import diskCacheV111.vehicles.Message;
  */
 public class RemoveReplicasMessage extends Message {
     private static final long serialVersionUID = 1L;
+
+    public final String pool;
+
+    public int retries = 0;
+
     private final Collection<PnfsId> toRemove = new ArrayList<>();
 
-    public RemoveReplicasMessage(Collection<PnfsId> toRemove) {
+    public RemoveReplicasMessage(String pool, Collection<PnfsId> toRemove) {
+        this.pool = pool;
         this.toRemove.addAll(toRemove);
     }
 

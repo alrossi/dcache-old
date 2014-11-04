@@ -186,8 +186,7 @@ public class ResilientInfoCache {
                                                  HSM));
 
     /*
-     * Provided by org.dcache.poolmanager.RemotePoolMonitorFactoryBean
-     * see resource pinmanager.xml for example
+     * Provided by org.dcache.poolmanager.RemotePoolMonitorFactoryBean.
      */
     private PoolMonitor poolMonitor;
 

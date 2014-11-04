@@ -71,10 +71,10 @@ import dmg.cells.nucleus.CDC;
 import org.dcache.replication.v3.namespace.ResilienceWatchdog;
 
 /**
- * Used to ensure that the handlers are active
- * and that the incoming message does not carry the replica manager session id.
- * This is to avoid initiating unnecessary replica requests on copies
- * just made by a request originating in the replica manager itself.
+ * Used to ensure that the handlers are active and that the incoming
+ * message does not carry the replica manager session id. This is
+ * to avoid initiating unnecessary replica requests on copies
+ * just made by a request originating from the replica manager itself.
  * While such redundant requests will not cause an infinite
  * cycle, as the migration task in which this bottoms out will not
  * continue indefinitely creating copies (and thus triggering update

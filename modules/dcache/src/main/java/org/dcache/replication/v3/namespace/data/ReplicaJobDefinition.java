@@ -90,7 +90,6 @@ import org.dcache.vehicles.FileAttributes;
  * @author arossi
  */
 public class ReplicaJobDefinition extends JobDefinition {
-
     private static final CacheEntryMode REPLICA_CACHE_ENTRY_MODE =
                     new CacheEntryMode(CacheEntryMode.State.CACHED,
                                        ImmutableList.of(new StickyRecord("system",

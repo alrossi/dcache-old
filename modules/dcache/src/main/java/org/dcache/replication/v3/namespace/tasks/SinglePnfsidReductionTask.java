@@ -81,6 +81,10 @@ import org.dcache.replication.v3.namespace.data.PoolGroupInfo;
 import org.dcache.replication.v3.vehicles.RemoveReplicasMessage;
 
 /**
+ * Responsible for eliminating any excess copies of a single file.
+ * This is done by communicating the removal to the pool repository
+ * via a special message using a ListenableFuture.
+ *
  * @author arossi
  */
 public class SinglePnfsidReductionTask implements Runnable {
@@ -88,11 +92,15 @@ public class SinglePnfsidReductionTask implements Runnable {
         = LoggerFactory.getLogger(SinglePnfsidReductionTask.class);
 
     class RemoveResultListener implements Runnable {
+        ListenableFuture<RemoveReplicasMessage> future;
+
         public void run() {
             RemoveReplicasMessage message = null;
+
             try {
                 message = future.get();
             } catch (InterruptedException | ExecutionException t) {
+                listeners.remove(this);
                 hub.getReductionTaskHandler()
                    .taskFailed(SinglePnfsidReductionTask.this, t.getMessage());
                 return;
@@ -104,19 +112,20 @@ public class SinglePnfsidReductionTask implements Runnable {
             } else if (!message.iterator().hasNext()) {
                 hub.getReductionTaskHandler()
                    .taskCompleted(SinglePnfsidReductionTask.this);
-            } else {
-                /*
-                 * maybe retry here ... XXX
-                 */
+            } else if (message.retries < 2){
+                removeReplicas(message);
+                message.retries++;
             }
+
+            listeners.remove(this);
         }
     }
 
     public final PnfsId pnfsId;
+
     private final ReplicaManagerHub hub;
     private final Set<String> confirmedLocations;
-    private final RemoveResultListener listener;
-    private ListenableFuture<RemoveReplicasMessage> future;
+    private final Collection<RemoveResultListener> listeners;
 
     public SinglePnfsidReductionTask(PnfsId pnfsId,
                                      Collection<String> confirmedLocations,
@@ -125,7 +134,7 @@ public class SinglePnfsidReductionTask implements Runnable {
         this.hub = hub;
         this.confirmedLocations = new HashSet<>();
         this.confirmedLocations.addAll(confirmedLocations);
-        listener = new RemoveResultListener();
+        this.listeners = new ArrayList<>();
     }
 
     public void run() {
@@ -142,22 +151,32 @@ public class SinglePnfsidReductionTask implements Runnable {
             String poolFromGroup = confirmedLocations.iterator().next();
             PoolGroupInfo info = cache.getPoolGroupInfo(poolFromGroup);
             Collection<SelectionPool> poolsInGroup = info.getPools();
-            List<String> allLocations = hub.getCache().getAllLocationsFor(pnfsId);
+            List<String> allLocations = hub.getCache()
+                                           .getAllLocationsFor(pnfsId);
+
             for (String location: allLocations) {
                 if (poolsInGroup.contains(location) &&
                                 !confirmedLocations.contains(location)) {
-                    future = hub.getPoolStubFactory()
-                                .getCellStub(location)
-                                .send(new RemoveReplicasMessage(pnfsids));
-                    future.addListener(listener,
-                                       hub.getPnfsInfoTaskExecutor());
-                    LOGGER.trace("Sent SinglePnfsidReductionTask for {} to {}",
-                                        pnfsId, location);
+                    removeReplicas(new RemoveReplicasMessage(location,
+                                                             pnfsids));
                 }
             }
         } catch (CacheException | ExecutionException t) {
             hub.getReductionTaskHandler()
                 .taskFailed(SinglePnfsidReductionTask.this, t.getMessage());
         }
+    }
+
+    private void removeReplicas(RemoveReplicasMessage message) {
+        RemoveResultListener listener = new RemoveResultListener();
+        ListenableFuture<RemoveReplicasMessage> future
+            = hub.getPoolStubFactory()
+                 .getCellStub(message.pool).send(message);
+        listener.future = future;
+        future.addListener(listener,
+                           hub.getPnfsInfoTaskExecutor());
+        listeners.add(listener);
+        LOGGER.trace("Sent SinglePnfsidReductionTask for {} to {}",
+                        pnfsId, message.pool);
     }
 }

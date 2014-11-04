@@ -59,10 +59,15 @@ documents or software obtained from this server.
  */
 package org.dcache.replication.v3.namespace;
 
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Random;
+
 import org.dcache.cells.CellStub;
 import org.dcache.replication.v3.CDCFixedPoolTaskExecutor;
 import org.dcache.replication.v3.CDCScheduledPoolTaskExecutor;
 import org.dcache.replication.v3.CellStubFactory;
+import org.dcache.replication.v3.SelectionStrategy;
 import org.dcache.replication.v3.namespace.handlers.task.FileInfoTaskCompletionHandler;
 import org.dcache.replication.v3.namespace.handlers.task.PoolGroupInfoTaskCompletionHandler;
 import org.dcache.replication.v3.namespace.handlers.task.ReductionTaskCompletionHandler;
@@ -75,6 +80,32 @@ import org.dcache.replication.v3.namespace.handlers.task.ReductionTaskCompletion
  * @author arossi
  */
 public final class ReplicaManagerHub {
+    /*
+     * Shared utility
+     */
+    public final SelectionStrategy<String> randomSelector
+        = new SelectionStrategy<String>() {
+
+        private Random random = new Random(System.currentTimeMillis());
+
+        public String select(Collection<String> collection) {
+            if (collection.isEmpty()) {
+                return null;
+            }
+
+            int index = Math.abs(random.nextInt()) % collection.size();
+
+            Iterator<String> it = collection.iterator();
+            String choice = null;
+
+            for (int i = 0; i < index; i++) {
+                choice = it.next();
+            }
+
+            return choice;
+        }
+    };
+
     /*
      * Cached Pool Monitor / Selection Unit data.
      */

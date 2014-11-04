@@ -78,7 +78,7 @@ import org.dcache.vehicles.FileAttributes;
  * on a separate thread because it makes two calls to the cache
  * which may need to reload from either the pool manager or
  * the database.  The final run() call on the migration task
- * executes it on a different (scheduled) queue/service.
+ * is executed on a different (scheduled) queue/service.
  *
  * @author arossi
  */

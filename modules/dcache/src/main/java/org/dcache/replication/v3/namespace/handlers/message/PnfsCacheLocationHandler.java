@@ -81,8 +81,8 @@ import org.dcache.vehicles.PnfsSetFileAttributes;
  * The same procedure is used when either an attribute update message or
  * a clear cache location message is intercepted.  A check is first done
  * to make sure the source pool belongs to a resilient group.  The
- * pool group information is retrieved via a cache which periodically
- * refreshes the pool monitor. The task is executed on a separate thread.
+ * pool group information is retrieved via a cache based on a periodic
+ * refresh of the pool monitor. The task is executed on a separate thread.
  *
  * @author arossi
  */
@@ -135,7 +135,6 @@ public final class PnfsCacheLocationHandler implements CellMessageReceiver {
 
         /*
          * Offload request for resilient pool information onto separate thread.
-         * Results processed by PoolGroupInfoHandler#handleDone.
          */
         String pool = locations.iterator().next();
         hub.getPoolGroupInfoTaskExecutor()

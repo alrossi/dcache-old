@@ -66,7 +66,6 @@ import java.util.Set;
 
 import diskCacheV111.util.PnfsId;
 
-import org.dcache.replication.v3.CellStubFactory;
 import org.dcache.replication.v3.namespace.ReplicaManagerHub;
 import org.dcache.replication.v3.namespace.data.PoolGroupInfo;
 import org.dcache.replication.v3.namespace.tasks.FileInfoTask;
@@ -76,7 +75,7 @@ import org.dcache.replication.v3.namespace.tasks.FileInfoTask;
  * source pool is resilient (otherwise it simply returns).
  * <p>
  * If the pool belongs to a resilient group, then the source's
- * CacheEntry object if fetched from the pool repository.  That
+ * CacheEntry object is fetched from the pool repository.  That
  * call also ensures that this copy has a sticky bit set belonging
  * to "system" and of indefinite expiration.  That is, the replica
  * manager DOES NOT allow temporary (simply cached) copies of files
@@ -87,7 +86,7 @@ import org.dcache.replication.v3.namespace.tasks.FileInfoTask;
  * The call to the pool repository is handled by a separate task on
  * a new thread.
  * <p>
- * This handler has no state to maintain and thus is reusable.
+ * This handler has no task-specific state to maintain and thus is reusable.
  *
  * @author arossi
  */

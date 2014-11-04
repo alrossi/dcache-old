@@ -92,14 +92,17 @@ public class FileInfoTask implements Runnable {
             try {
                 message = future.get();
             } catch (InterruptedException | ExecutionException t) {
-                hub.getFileInfoTaskHandler().taskFailed(message, t.getMessage());
+                hub.getFileInfoTaskHandler()
+                   .taskFailed(message, t.getMessage());
                 return;
             }
 
             if (future.isCancelled()) {
-                hub.getFileInfoTaskHandler().taskCancelled(message, "Future task was cancelled");
+                hub.getFileInfoTaskHandler()
+                   .taskCancelled(message, "Future task was cancelled");
             } else {
-                hub.getFileInfoTaskHandler().taskCompleted(message, tried);
+                hub.getFileInfoTaskHandler()
+                   .taskCompleted(message, tried);
             }
         }
     }
@@ -125,8 +128,8 @@ public class FileInfoTask implements Runnable {
         try {
             attributes = hub.getCache().getAttributes(pnfsId);
             if (!attributes.getAccessLatency().equals(AccessLatency.ONLINE)) {
-                hub.getFileInfoTaskHandler().taskCancelled(null, pnfsId
-                                            + " is not ONLINE; ignoring ...");
+                hub.getFileInfoTaskHandler()
+                   .taskCancelled(null, pnfsId + " is not ONLINE; ignoring ...");
                 return;
             }
         } catch (ExecutionException t) {

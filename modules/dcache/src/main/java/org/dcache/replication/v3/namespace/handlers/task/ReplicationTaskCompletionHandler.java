@@ -90,6 +90,11 @@ import org.dcache.vehicles.FileAttributes;
  * original attempt to replicate a new file).
  * <p>
  * Permanent failures raise an alarm.
+ * <p>
+ * Note that this handler is stateful (it maintains the list of source
+ * pools already tried for this particular pnfsid), and therefore not
+ * reusable; a fresh instance is constructed at for each Task and for
+ * each retry.
  *
  * @author arossi
  */
@@ -126,13 +131,13 @@ public final class ReplicationTaskCompletionHandler implements TaskCompletionHan
                 taskFailedPermanently(task, msg);
             } else {
                 /*
-                 * We don't need a selection strategy here,
+                 * We don't need a balancing selection strategy here,
                  * as we are choosing another source from which
                  * to replicate, not an optimal target pool
                  * (even if the source pool is "hot", this is a one-time
-                 * read).  We just choose the first location.
+                 * read).  We just choose randomly from the remaining pools.
                  */
-                String newSource = locations.iterator().next();
+                String newSource = hub.randomSelector.select(locations);
                 hub.getPoolGroupInfoTaskHandler()
                    .taskCompleted(pnfsId,
                                   newSource,

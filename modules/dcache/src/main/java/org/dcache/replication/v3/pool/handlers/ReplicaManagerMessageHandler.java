@@ -72,22 +72,26 @@ import dmg.cells.nucleus.CellMessageSender;
 import org.dcache.pool.repository.Repository;
 import org.dcache.replication.v3.CDCFixedPoolTaskExecutor;
 import org.dcache.replication.v3.pool.tasks.CacheEntryInfoTask;
+import org.dcache.replication.v3.pool.tasks.RemoveReplicasTask;
 import org.dcache.replication.v3.vehicles.CacheEntryInfoMessage;
+import org.dcache.replication.v3.vehicles.RemoveReplicasMessage;
 
 /**
  * Uses the ListenableFuture pattern to return cache entry info
- * to the caller.
+ * to the caller and to remove entries from the repository.  The
+ * messages serviced are specific to the replica manager.
  *
  * @author arossi
  */
-public class CacheEntryInfoMessageHandler implements CellMessageReceiver,
+public class ReplicaManagerMessageHandler implements CellMessageReceiver,
                                                      CellMessageSender {
     private static final Logger LOGGER
-        = LoggerFactory.getLogger(CacheEntryInfoMessageHandler.class);
+        = LoggerFactory.getLogger(ReplicaManagerMessageHandler.class);
 
     private CellEndpoint endpoint;
     private Repository repository;
-    private CDCFixedPoolTaskExecutor executor;
+    private CDCFixedPoolTaskExecutor cacheInfoTaskExecutor;
+    private CDCFixedPoolTaskExecutor repRmTaskExecutor;
 
     public void messageArrived(CellMessage message,
                                CacheEntryInfoMessage info)
@@ -102,7 +106,7 @@ public class CacheEntryInfoMessageHandler implements CellMessageReceiver,
 
         try {
             message.revertDirection();
-            new CacheEntryInfoTask(info, repository, executor)
+            new CacheEntryInfoTask(info, repository, cacheInfoTaskExecutor)
                 .call()
                 .deliver(endpoint, message);
         } catch (RuntimeException t) {
@@ -114,15 +118,34 @@ public class CacheEntryInfoMessageHandler implements CellMessageReceiver,
         }
     }
 
+    public void messageArrived(CellMessage message, RemoveReplicasMessage info)
+                    throws CacheException, InterruptedException {
+        try {
+            message.revertDirection();
+            new RemoveReplicasTask(info, repository, repRmTaskExecutor)
+                .call()
+                .deliver(endpoint, message);
+        } catch (RuntimeException t) {
+            LOGGER.error("Unexpected error during processing of {}.", info, t);
+        } catch (Exception e) {
+            LOGGER.error("Error during processing of {}: {}.", info,
+                            e.getMessage());
+        }
+    }
+
+    public void setCacheInfoTaskExecutor(CDCFixedPoolTaskExecutor executor) {
+        cacheInfoTaskExecutor = executor;
+    }
+
     public void setCellEndpoint(CellEndpoint endpoint) {
        this.endpoint = endpoint;
     }
 
-    public void setExecutor(CDCFixedPoolTaskExecutor executor) {
-        this.executor = executor;
-    }
-
     public void setRepository(Repository repository) {
         this.repository = repository;
+    }
+
+    public void setRepRmTaskExecutor(CDCFixedPoolTaskExecutor executor) {
+        repRmTaskExecutor = executor;
     }
 }

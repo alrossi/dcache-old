@@ -59,6 +59,7 @@ documents or software obtained from this server.
  */
 package org.dcache.replication.v3.namespace.data;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -76,7 +77,9 @@ import diskCacheV111.poolManager.StorageUnit;
  *
  * @author arossi
  */
-public class PoolGroupInfo {
+public class PoolGroupInfo implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final Map<String, StorageUnit> storageUnits;
     private final Set<SelectionPool> pools;
 

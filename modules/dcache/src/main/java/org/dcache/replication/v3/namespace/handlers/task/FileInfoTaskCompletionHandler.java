@@ -76,16 +76,16 @@ import org.dcache.replication.v3.vehicles.CacheEntryInfoMessage;
  * Note that the handler provides for repeated tries using different
  * source pools by forwarding the "tried" accumulator with the current
  * source pool added.  The accumulator is checked by the replication task's
- * completion handler in case of failure; if there other potential
+ * completion handler in case of failure; if there are other potential
  * source locations which do not appear in this set of "tried" pools,
  * another attempt at replication will be made.
  * <p>
  * The ReplicationTask is executed on the same executor pool as
  * that used for the cache info task, since after very brief work it
- * then submits the actual migration task onto another (scheduled) executor
- * as required by that API.
+ * then submits the actual migration task onto a different (scheduled)
+ * executor as required by that API.
  * <p>
- * This handler has no state to maintain and thus is reusable.
+ * This handler has no task-specific state to maintain and thus is reusable.
  *
  * @author arossi
  */
