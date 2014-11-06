@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.dcache.webadmin.view.WebAdminInterface;
 import org.dcache.webadmin.view.beans.WebAdminInterfaceSession;
+import org.dcache.webadmin.view.pages.login.LogIn;
 import org.dcache.webadmin.view.panels.header.HeaderPanel;
 import org.dcache.webadmin.view.panels.navigation.BasicNavigationPanel;
 import org.dcache.webadmin.view.panels.userpanel.UserPanel;
@@ -41,6 +42,10 @@ public abstract class BasePage extends WebPage {
     public BasePage(PageParameters parameters) {
         super(parameters);
         initialize();
+    }
+
+    public void returnToThisPageAfterLogin() {
+        redirectToInterceptPage(new LogIn(this));
     }
 
     /*

@@ -4,7 +4,7 @@ import com.google.common.collect.Lists;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.authroles.authorization.strategies.role.Roles;
 import org.apache.wicket.markup.html.basic.Label;
-import org.apache.wicket.markup.html.link.BookmarkablePageLink;
+import org.apache.wicket.markup.html.link.Link;
 import org.apache.wicket.markup.html.list.ListItem;
 import org.apache.wicket.markup.html.list.ListView;
 import org.slf4j.Logger;
@@ -69,9 +69,16 @@ public class BasicNavigationPanel extends BasePanel {
 
         @Override
         protected void populateItem(ListItem item) {
-            Class targetPage = (Class) item.getModelObject();
-            BookmarkablePageLink link = new BookmarkablePageLink("link",
-                            targetPage);
+            final Class targetPage = (Class) item.getModelObject();
+
+            Link link = new Link("link") {
+                private static final long serialVersionUID = 7900187300660312893L;
+
+                public void onClick() {
+                    setResponsePage(targetPage);
+                }
+            };
+
             handleAdminPage(targetPage, item);
             setLinkTitle(link, item.getIndex());
             handleActivePage(targetPage, item);
@@ -101,7 +108,7 @@ public class BasicNavigationPanel extends BasePanel {
                     hasAnyRole(new Roles(Role.ADMIN));
         }
 
-        private void setLinkTitle(BookmarkablePageLink link, int linkNumber) {
+        private void setLinkTitle(Link link, int linkNumber) {
             link.add(new Label("linkMessage", getStringResource(
                     LINK_TITLE_PROPERTY_NAME + linkNumber)));
         }
