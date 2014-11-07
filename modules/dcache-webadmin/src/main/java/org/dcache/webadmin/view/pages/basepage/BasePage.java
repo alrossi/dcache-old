@@ -19,9 +19,9 @@ import org.slf4j.LoggerFactory;
 import java.util.MissingResourceException;
 import java.util.concurrent.TimeUnit;
 
-import org.dcache.util.Version;
 import org.dcache.webadmin.view.WebAdminInterface;
 import org.dcache.webadmin.view.beans.WebAdminInterfaceSession;
+import org.dcache.webadmin.view.pages.login.LogIn;
 import org.dcache.webadmin.view.panels.header.HeaderPanel;
 import org.dcache.webadmin.view.panels.navigation.BasicNavigationPanel;
 import org.dcache.webadmin.view.panels.userpanel.UserPanel;
@@ -33,14 +33,6 @@ import org.dcache.webadmin.view.panels.userpanel.UserPanel;
 public abstract class BasePage extends WebPage {
     private static final long serialVersionUID = 7817347486820155316L;
 
-    private static final String META_GENERATOR_TAG =
-            "<meta name=\"generator\" content=\"dCache v" +
-            Version.of(Version.class).getVersion() + "\" />";
-    private static final String META_VERSION_TAG =
-            "<meta name=\"version\" content=\"" +
-            Version.of(Version.class).getVersion() + "\" />";
-
-
     protected final Logger _log = LoggerFactory.getLogger(this.getClass());
 
     public BasePage() {
@@ -50,6 +42,10 @@ public abstract class BasePage extends WebPage {
     public BasePage(PageParameters parameters) {
         super(parameters);
         initialize();
+    }
+
+    public void returnToThisPageAfterLogin() {
+        redirectToInterceptPage(new LogIn(this));
     }
 
     /*
@@ -114,8 +110,6 @@ public abstract class BasePage extends WebPage {
                         .getJavaScriptLibrarySettings()
                         .getJQueryReference()));
         response.render(JavaScriptHeaderItem.forUrl("js/infobox.js"));
-        response.render(StringHeaderItem.forString(META_GENERATOR_TAG));
-        response.render(StringHeaderItem.forString(META_VERSION_TAG));
     }
 
     protected Form<?> getAutoRefreshingForm(String name) {
@@ -156,7 +150,9 @@ public abstract class BasePage extends WebPage {
         add(new Label("pageTitle", new ResourceModel("title")));
         add(new HeaderPanel("headerPanel"));
         add(new UserPanel("userPanel", this));
-        add(new BasicNavigationPanel("navigationPanel", this.getClass()));
+        BasicNavigationPanel navigation = new BasicNavigationPanel("navigationPanel",
+                        this.getClass());
+        add(navigation);
     }
 
     /**

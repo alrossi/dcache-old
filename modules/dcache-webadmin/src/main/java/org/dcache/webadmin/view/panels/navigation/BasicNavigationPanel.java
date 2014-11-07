@@ -4,9 +4,7 @@ import com.google.common.collect.ImmutableList;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
 import org.apache.wicket.behavior.AttributeAppender;
-import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.basic.Label;
-import org.apache.wicket.markup.html.link.BookmarkablePageLink;
 import org.apache.wicket.markup.html.link.Link;
 import org.apache.wicket.markup.html.list.ListItem;
 import org.apache.wicket.markup.html.list.ListView;
@@ -183,7 +181,16 @@ public class BasicNavigationPanel extends BasePanel {
         {
             NavLink navLink = item.getModelObject();
 
-            Link link = new BookmarkablePageLink("link", navLink.getPage());
+            Link link = new Link("link") {
+                private static final long serialVersionUID = -8090786267968428596L;
+
+                @Override
+                public void onClick() {
+                    setResponsePage(navLink.getPage());
+                }
+
+            };
+
             link.add(new AttributeModifier("id", navLink.getId()));
             link.add(new Label("text", navLink.getLinkText(BasicNavigationPanel.this)));
 
