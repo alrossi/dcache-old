@@ -1,5 +1,6 @@
 package org.dcache.webadmin.view.panels.userpanel;
 
+import org.apache.wicket.Component;
 import org.apache.wicket.Session;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.link.Link;
@@ -52,7 +53,11 @@ public class UserPanel extends BasePanel {
 
             @Override
             public void onClick() {
-                basePage.redirectToInterceptPage(new LogIn());
+                redirectToInterceptPage(new LogIn());
+            }
+
+            public Component getAnchor() {
+                return basePage;
             }
 
             @Override
