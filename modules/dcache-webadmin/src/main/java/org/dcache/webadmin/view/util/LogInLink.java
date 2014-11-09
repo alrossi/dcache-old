@@ -67,9 +67,9 @@ import org.dcache.webadmin.view.pages.login.LinkedLogIn;
 /**
  * A link which sends the user to a login page which
  * returns to the page on which this link is found.
- * Uses a parameterized implementation of the login page
+ * Uses the session to store the current page reference
  * instead of relying on the redirect exception control flow
- * that is mean for intercepting links to authenticated pages.
+ * that is meant for intercepting links to authenticated pages.
  *
  * @author arossi
  */
