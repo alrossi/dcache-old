@@ -74,9 +74,9 @@ public class LinkedLogIn extends AbstractLogIn {
 
     private static final long serialVersionUID = 1L;
 
-    private final BasePage page;
+    private final Class<? extends BasePage> page;
 
-    public LinkedLogIn(BasePage page) {
+    public LinkedLogIn(Class<? extends BasePage> page) {
         this.page = page;
     }
 

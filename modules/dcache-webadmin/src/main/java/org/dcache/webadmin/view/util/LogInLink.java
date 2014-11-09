@@ -73,11 +73,11 @@ import org.dcache.webadmin.view.pages.login.LinkedLogIn;
  *
  * @author arossi
  */
-public abstract class LoginLink extends Link {
+public abstract class LogInLink extends Link {
 
     private static final long serialVersionUID = 1L;
 
-    public LoginLink(String id) {
+    public LogInLink(String id) {
         super(id);
     }
 
@@ -86,5 +86,5 @@ public abstract class LoginLink extends Link {
         setResponsePage(new LinkedLogIn(getReturnPage()));
     }
 
-    protected abstract BasePage getReturnPage();
+    protected abstract Class<? extends BasePage> getReturnPage();
 }

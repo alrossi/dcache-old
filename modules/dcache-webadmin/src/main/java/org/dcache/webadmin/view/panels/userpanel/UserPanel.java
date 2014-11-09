@@ -1,6 +1,5 @@
 package org.dcache.webadmin.view.panels.userpanel;
 
-import org.apache.wicket.Component;
 import org.apache.wicket.Session;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.link.Link;
@@ -9,8 +8,8 @@ import org.apache.wicket.model.PropertyModel;
 import org.dcache.webadmin.view.beans.WebAdminInterfaceSession;
 import org.dcache.webadmin.view.pages.basepage.BasePage;
 import org.dcache.webadmin.view.pages.dcacheservices.DCacheServices;
-import org.dcache.webadmin.view.pages.login.LogIn;
 import org.dcache.webadmin.view.panels.basepanel.BasePanel;
+import org.dcache.webadmin.view.util.LogInLink;
 
 /**
  *
@@ -22,10 +21,9 @@ import org.dcache.webadmin.view.panels.basepanel.BasePanel;
  * @author tanja
  */
 public class UserPanel extends BasePanel {
-
     private static final long serialVersionUID = -4419358909048041100L;
 
-    public UserPanel(String id, BasePage basePage) {
+    public UserPanel(String id, Class<? extends BasePage> currentPage) {
         super(id);
 
         add(new Label("username", new PropertyModel(this, "session.userName")));
@@ -47,24 +45,18 @@ public class UserPanel extends BasePanel {
             }
         });
 
-        add(new Link("login") {
-
-            private static final long serialVersionUID = -1031589310010810063L;
-
-            @Override
-            public void onClick() {
-                redirectToInterceptPage(new LogIn());
-            }
-
-            public Component getAnchor() {
-                return basePage;
-            }
+        add(new LogInLink("login") {
+            private static final long serialVersionUID = 1L;
 
             @Override
             public boolean isVisible() {
                 return !((WebAdminInterfaceSession) Session.get()).isSignedIn();
             }
-        });
 
+            @Override
+            protected Class<? extends BasePage> getReturnPage() {
+                return currentPage;
+            }
+        });
     }
 }
