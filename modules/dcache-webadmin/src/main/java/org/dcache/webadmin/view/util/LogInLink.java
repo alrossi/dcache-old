@@ -73,7 +73,7 @@ import org.dcache.webadmin.view.pages.login.LinkedLogIn;
  *
  * @author arossi
  */
-public abstract class LogInLink extends Link {
+public class LogInLink extends Link {
     private static final long serialVersionUID = -7690463969366711208L;
 
     public LogInLink(String id) {
