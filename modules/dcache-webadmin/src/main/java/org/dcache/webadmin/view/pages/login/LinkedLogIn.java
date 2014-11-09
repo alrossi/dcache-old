@@ -61,21 +61,27 @@ package org.dcache.webadmin.view.pages.login;
 
 import org.apache.wicket.protocol.https.RequireHttps;
 
+import org.dcache.webadmin.view.pages.basepage.BasePage;
+
 /**
- *  Implementation of the login page which relies on the
- *  normal intercept-redirect flow to return to the
- *  URL stored in the request.
+ *  Implementation of the login page called from a link
+ *  which passes in the page to return to.
  *
  *  @author arossi
  */
 @RequireHttps
-public class LogIn extends AbstractLogIn {
+public class LinkedLogIn extends AbstractLogIn {
 
     private static final long serialVersionUID = 1L;
 
+    private final BasePage page;
+
+    public LinkedLogIn(BasePage page) {
+        this.page = page;
+    }
+
     @Override
     protected void goToPage() {
-        continueToOriginalDestination();
-        setResponsePage(getWebadminApplication().getHomePage());
+       setResponsePage(page);
     }
 }
