@@ -70,8 +70,7 @@ import org.apache.wicket.protocol.https.RequireHttps;
  */
 @RequireHttps
 public class LogIn extends AbstractLogIn {
-
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 8123422450889040532L;
 
     @Override
     protected void goToPage() {

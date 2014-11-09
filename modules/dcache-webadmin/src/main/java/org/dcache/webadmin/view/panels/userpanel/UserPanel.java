@@ -46,7 +46,8 @@ public class UserPanel extends BasePanel {
         });
 
         add(new LogInLink("login") {
-            private static final long serialVersionUID = 1L;
+
+            private static final long serialVersionUID = 6704578675572299011L;
 
             @Override
             public boolean isVisible() {

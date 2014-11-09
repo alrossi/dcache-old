@@ -71,8 +71,7 @@ import org.dcache.webadmin.view.pages.basepage.BasePage;
  */
 @RequireHttps
 public class LinkedLogIn extends AbstractLogIn {
-
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 6259508987264618358L;
 
     private final Class<? extends BasePage> page;
 
