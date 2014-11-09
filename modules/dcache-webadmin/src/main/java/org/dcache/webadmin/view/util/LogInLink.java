@@ -57,24 +57,33 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.webadmin.view.pages.login;
+package org.dcache.webadmin.view.util;
 
-import org.apache.wicket.protocol.https.RequireHttps;
+import org.apache.wicket.markup.html.link.Link;
+
+import org.dcache.webadmin.view.pages.basepage.BasePage;
+import org.dcache.webadmin.view.pages.login.LinkedLogIn;
 
 /**
- *  Implementation of the login page which relies on the
- *  normal intercept-redirect flow to return to the
- *  URL stored in the request.
+ * A link which sends the user to a login page which
+ * returns to the page on which this link is found.
+ * Uses a parameterized implementation of the login page
+ * instead of relying on the redirect exception control flow
+ * that is mean for intercepting links to authenticated pages.
  *
- *  @author arossi
+ * @author arossi
  */
-@RequireHttps
-public class LogIn extends AbstractLogIn {
-    private static final long serialVersionUID = 8123422450889040532L;
+public abstract class LogInLink extends Link {
+    private static final long serialVersionUID = -7690463969366711208L;
+
+    public LogInLink(String id) {
+        super(id);
+    }
 
     @Override
-    protected void goToPage() {
-        continueToOriginalDestination();
-        setResponsePage(getWebadminApplication().getHomePage());
+    public void onClick() {
+        setResponsePage(new LinkedLogIn(getReturnPage()));
     }
+
+    protected abstract Class<? extends BasePage> getReturnPage();
 }
