@@ -61,7 +61,7 @@ package org.dcache.webadmin.view.util;
 
 import org.apache.wicket.markup.html.link.Link;
 
-import org.dcache.webadmin.view.pages.basepage.BasePage;
+import org.dcache.webadmin.view.beans.WebAdminInterfaceSession;
 import org.dcache.webadmin.view.pages.login.LinkedLogIn;
 
 /**
@@ -82,8 +82,8 @@ public abstract class LogInLink extends Link {
 
     @Override
     public void onClick() {
-        setResponsePage(new LinkedLogIn(getReturnPage()));
+        getWebSession().setAttribute(WebAdminInterfaceSession.RETURN_FROM_LOGIN,
+                                     getPage().getPageReference());
+        setResponsePage(new LinkedLogIn());
     }
-
-    protected abstract Class<? extends BasePage> getReturnPage();
 }

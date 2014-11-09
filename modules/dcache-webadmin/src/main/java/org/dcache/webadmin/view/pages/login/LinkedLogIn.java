@@ -59,9 +59,10 @@ documents or software obtained from this server.
  */
 package org.dcache.webadmin.view.pages.login;
 
-import org.apache.wicket.protocol.https.RequireHttps;
+import org.dcache.webadmin.view.beans.WebAdminInterfaceSession;
 
-import org.dcache.webadmin.view.pages.basepage.BasePage;
+import org.apache.wicket.PageReference;
+import org.apache.wicket.protocol.https.RequireHttps;
 
 /**
  *  Implementation of the login page called from a link
@@ -73,14 +74,11 @@ import org.dcache.webadmin.view.pages.basepage.BasePage;
 public class LinkedLogIn extends AbstractLogIn {
     private static final long serialVersionUID = 6259508987264618358L;
 
-    private final Class<? extends BasePage> page;
-
-    public LinkedLogIn(Class<? extends BasePage> page) {
-        this.page = page;
-    }
-
     @Override
     protected void goToPage() {
-       setResponsePage(page);
+       PageReference ref
+           = (PageReference)getWebadminSession()
+               .getAttribute(WebAdminInterfaceSession.RETURN_FROM_LOGIN);
+       setResponsePage(ref.getPage());
     }
 }

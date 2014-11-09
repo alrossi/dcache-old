@@ -23,7 +23,7 @@ import org.dcache.webadmin.view.util.LogInLink;
 public class UserPanel extends BasePanel {
     private static final long serialVersionUID = -4419358909048041100L;
 
-    public UserPanel(String id, Class<? extends BasePage> currentPage) {
+    public UserPanel(String id) {
         super(id);
 
         add(new Label("username", new PropertyModel(this, "session.userName")));
@@ -52,11 +52,6 @@ public class UserPanel extends BasePanel {
             @Override
             public boolean isVisible() {
                 return !((WebAdminInterfaceSession) Session.get()).isSignedIn();
-            }
-
-            @Override
-            protected Class<? extends BasePage> getReturnPage() {
-                return currentPage;
             }
         });
     }
