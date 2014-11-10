@@ -17,8 +17,6 @@ import org.dcache.webadmin.view.util.Role;
  * @author arossi
  */
 public class WebAdminInterfaceSession extends WebSession {
-    public static final String RETURN_FROM_LOGIN = "returnFromLoginPage";
-
     private static final long serialVersionUID = -941613160805323716L;
     private static final Logger logger = LoggerFactory.getLogger(WebAdminInterfaceSession.class);
 
