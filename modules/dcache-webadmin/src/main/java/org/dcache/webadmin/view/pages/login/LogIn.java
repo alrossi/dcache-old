@@ -31,8 +31,8 @@ import org.dcache.webadmin.view.util.DefaultFocusBehaviour;
 
 /**
  * Contains all the page construction and logic for servicing a login
- * request, but requires a specific implementation for proceeding to
- * the actual page.
+ * request, but may be extended to return to a referring page
+ * by overriding the #getReferrer() method.
  *
  * @author arossi
  */
