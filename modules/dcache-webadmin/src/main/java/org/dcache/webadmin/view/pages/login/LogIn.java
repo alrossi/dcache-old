@@ -182,23 +182,24 @@ public class LogIn extends BasePage {
     }
 
     protected void goToPage() {
-        /*
-         *  Covers the redirect from admin-authz page, noop in other cases
-         */
-        continueToOriginalDestination();
-
-        /*
-         *  Covers the user-clicking a the "Login" button
-         */
         PageReference ref = getReferrer();
         if (ref != null) {
+            /*
+             * Covers the user-clicking a the "Login" button.
+             * This must be done first.
+             */
             setResponsePage(ref.getPage());
-        }
+        } else {
+            /*
+             * Covers the redirect from admin-authz page, noop in other cases
+             */
+            continueToOriginalDestination();
 
-        /*
-         *  Covers case when user somehow jumps to login page directly
-         */
-        setResponsePage(getWebadminApplication().getHomePage());
+            /*
+             * Covers case when user somehow jumps to login page directly
+             */
+            setResponsePage(getWebadminApplication().getHomePage());
+        }
     }
 
     protected void initialize() {
