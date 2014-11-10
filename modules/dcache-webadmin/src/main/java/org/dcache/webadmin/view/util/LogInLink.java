@@ -59,15 +59,15 @@ documents or software obtained from this server.
  */
 package org.dcache.webadmin.view.util;
 
+import org.apache.wicket.PageReference;
 import org.apache.wicket.markup.html.link.Link;
 
-import org.dcache.webadmin.view.beans.WebAdminInterfaceSession;
-import org.dcache.webadmin.view.pages.login.LinkedLogIn;
+import org.dcache.webadmin.view.pages.login.LogIn;
 
 /**
  * A link which sends the user to a login page which
  * returns to the page on which this link is found.
- * Uses the session to store the current page reference
+ * Overrides the LogIn page getReferrer() to return the current page reference
  * instead of relying on the redirect exception control flow
  * that is meant for intercepting links to authenticated pages.
  *
@@ -82,8 +82,14 @@ public class LogInLink extends Link {
 
     @Override
     public void onClick() {
-        getWebSession().setAttribute(WebAdminInterfaceSession.RETURN_FROM_LOGIN,
-                                     getPage().getPageReference());
-        setResponsePage(new LinkedLogIn());
+        final PageReference responseRef = getPage().getPageReference();
+        setResponsePage(new LogIn() {
+            private static final long serialVersionUID = -7249427372922482262L;
+
+            @Override
+            protected PageReference getReferrer() {
+                return responseRef;
+            }
+        });
     }
 }

@@ -31,9 +31,9 @@ import org.dcache.auth.LoginStrategy;
 import org.dcache.cells.CellStub;
 import org.dcache.services.login.RemoteLoginStrategy;
 import org.dcache.webadmin.controller.ActiveTransfersService;
+import org.dcache.webadmin.controller.AlarmDisplayService;
 import org.dcache.webadmin.controller.CellAdminService;
 import org.dcache.webadmin.controller.CellsService;
-import org.dcache.webadmin.controller.AlarmDisplayService;
 import org.dcache.webadmin.controller.IBillingService;
 import org.dcache.webadmin.controller.InfoService;
 import org.dcache.webadmin.controller.LinkGroupsService;
@@ -58,7 +58,6 @@ import org.dcache.webadmin.view.pages.cellservices.CellServices;
 import org.dcache.webadmin.view.pages.dcacheservices.DCacheServices;
 import org.dcache.webadmin.view.pages.info.Info;
 import org.dcache.webadmin.view.pages.infoxml.InfoXml;
-import org.dcache.webadmin.view.pages.login.LinkedLogIn;
 import org.dcache.webadmin.view.pages.login.LogIn;
 import org.dcache.webadmin.view.pages.pooladmin.PoolAdmin;
 import org.dcache.webadmin.view.pages.poolgroupview.PoolGroupView;
@@ -341,7 +340,6 @@ public class WebAdminInterface extends WebApplication {
          * changes
          */
         mountPage("login", LogIn.class);
-        mountPage("linkedLogin", LinkedLogIn.class);
         mountPage("info", Info.class);
         mountPage("cellinfo", CellServices.class);
         mountPage("queueinfo", PoolQueues.class);
