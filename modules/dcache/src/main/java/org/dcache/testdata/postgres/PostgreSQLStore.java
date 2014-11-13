@@ -49,6 +49,5 @@ public class PostgreSQLStore extends Store {
         properties.setProperty("datanucleus.validateTables", "false");
         properties.setProperty("datanucleus.validateConstraints", "false");
         properties.setProperty("datanucleus.autoCreateColumns", "true");
-        properties.setProperty("datanucleus.connectionPoolingType", "None");
     }
 }

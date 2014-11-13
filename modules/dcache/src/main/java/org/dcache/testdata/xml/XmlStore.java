@@ -35,6 +35,24 @@ public class XmlStore extends Store {
 
     @Override
     protected void setOptionalProperties(Properties properties) {
-        // NO-OP
+        properties.setProperty("javax.jdo.option.DetachAllOnCommit", "false");
+        properties.setProperty("javax.jdo.option.Optimistic", "true");
+        properties.setProperty("javax.jdo.option.NontransactionalRead", "false");
+        properties.setProperty("javax.jdo.option.RetainValues", "true");
+        properties.setProperty("javax.jdo.option.Multithreaded", "true");
+        properties.setProperty("datanucleus.autoCreateSchema", "false");
+        properties.setProperty("datanucleus.validateTables", "false");
+        properties.setProperty("datanucleus.validateConstraints", "false");
+        properties.setProperty("datanucleus.autoCreateColumns", "false");
+        properties.setProperty("datanucleus.connectionPoolingType", "None");
+        properties.setProperty("datanucleus.rdbms.CheckExistTablesOrViews", "false");
+        properties.setProperty("datanucleus.rdbms.initializeColumnInfo", "None");
+        properties.setProperty("datanucleus.identifier.case", "LowerCase");
+        properties.setProperty("datanucleus.autoStartMechanism", "false");
+        properties.setProperty("datanucleus.manageRelationships", "false");
+        properties.setProperty("datanucleus.rdbms.statementBatchLimit", "1");
+        properties.setProperty("datanucleus.persistenceByReachabilityAtCommit", "false");
+        properties.setProperty("datanucleus.rdbms.stringLengthExceededAction", "TRUNCATE");
+        properties.setProperty("datanucleus.query.jdoql.allowAll", "true");
     }
 }
