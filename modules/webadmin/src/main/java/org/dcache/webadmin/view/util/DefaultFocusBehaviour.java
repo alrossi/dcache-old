@@ -3,6 +3,7 @@ package org.dcache.webadmin.view.util;
 import org.apache.wicket.Component;
 import org.apache.wicket.behavior.Behavior;
 import org.apache.wicket.markup.head.IHeaderResponse;
+import org.apache.wicket.markup.head.JavaScriptHeaderItem;
 import org.apache.wicket.markup.html.form.FormComponent;
 
 /**
@@ -29,9 +30,9 @@ public class DefaultFocusBehaviour extends Behavior {
     @Override
     public void renderHead(Component component, IHeaderResponse iHeaderResponse) {
         super.renderHead(component, iHeaderResponse);
-        iHeaderResponse.renderOnLoadJavaScript(
-                "document.getElementById('" + component.getMarkupId() +
-                "').focus();");
+        iHeaderResponse.render(JavaScriptHeaderItem.forScript(
+                        "document.getElementById('" + component.getMarkupId()
+                                        + "').focus();", null));
     }
 }
 

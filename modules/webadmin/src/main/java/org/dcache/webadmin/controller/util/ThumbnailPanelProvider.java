@@ -139,7 +139,7 @@ public final class ThumbnailPanelProvider extends
     }
 
     @Override
-    public void setSort(SortParam param) {
+    public void setSort(SortParam<String> param) {
         getPoolPlotBean().setSort(param);
     }
 
