@@ -75,7 +75,7 @@ public class CellAdmin extends BasePage implements AuthenticatedWebPage {
             @Override
             protected void onUpdate(AjaxRequestTarget target) {
                 if (target != null) {
-                    target.addComponent(cells);
+                    target.add(cells);
                 } else {
 //                implement fallback for non javascript clients
                     cells.updateModel();

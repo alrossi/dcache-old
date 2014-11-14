@@ -82,7 +82,7 @@ import org.dcache.webadmin.view.beans.WebAdminInterfaceSession;
  * @author arossi
  */
 public class AlarmTableProvider extends
-                AbstractRegexFilteringProvider<LogEntry> {
+                AbstractRegexFilteringProvider<LogEntry, String> {
     private static final long serialVersionUID = 402824287543303781L;
 
     public Date getAfter() {
@@ -171,7 +171,7 @@ public class AlarmTableProvider extends
 
             @Override
             public int compare(LogEntry alarm0, LogEntry alarm1) {
-                SortParam sort = getSort();
+                SortParam<String> sort = getSort();
                 int dir;
                 String property;
                 if (sort == null) {
