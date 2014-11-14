@@ -60,48 +60,15 @@ documents or software obtained from this server.
 package org.dcache.services.billing.histograms.data;
 
 import java.io.Serializable;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
 
-import org.dcache.services.billing.histograms.TimeFrame;
-import org.dcache.vehicles.billing.HistogramRequestMessage;
+public final class HistogramRequest
+    extends AbstractBillingRequest<TimeFrameHistogramData[]> {
 
-/**
- * Proxied client handler to the {@link ITimeFrameHistogramDataService} service.
- * Constructs a {@link HistogramRequestMessage}.
- *
- * @author arossi
- */
-public class HistogramReflectionHandler implements InvocationHandler {
-    private static final Class[] ONE_PARAM = new Class[] { TimeFrame.class };
-    private static final Class[] TWO_PARAM = new Class[] { TimeFrame.class,
-                    Boolean.class };
+    private static final long serialVersionUID = 3177965600553243676L;
 
-    private HistogramRequestMessage message;
-
-    private void createRequestMessage(Method method, Object[] args) {
-        Class<Serializable>[] types;
-        Serializable[] serializable;
-        if (args.length == 1) {
-            types = ONE_PARAM;
-            serializable = new Serializable[] { (TimeFrame) args[0] };
-        } else {
-            types = TWO_PARAM;
-            serializable = new Serializable[] { (TimeFrame) args[0],
-                            (Boolean) args[1] };
-        }
-        message = new HistogramRequestMessage(method.getName(),
-                                              types,
-                                              serializable);
-    }
-
-    public HistogramRequestMessage getMessage() {
-        return message;
-    }
-
-    public Object invoke(Object proxy, Method method, Object[] args)
-                    throws Throwable {
-        createRequestMessage(method, args);
-        return null;
+    public HistogramRequest(String method,
+                            Class<? extends Serializable>[] parameterTypes,
+                            Serializable[] parameters) {
+        super(TimeFrameHistogramData[].class, method, parameterTypes, parameters);
     }
 }

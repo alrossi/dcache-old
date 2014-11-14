@@ -68,7 +68,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 import org.dcache.cells.CellStub;
-import org.dcache.vehicles.billing.BatchedHistogramRequestMessage;
+import org.dcache.vehicles.billing.HistogramRequestMessage;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -81,20 +81,20 @@ public class BatchedHistogramRequestTask implements Runnable {
 
     private final CellStub cell;
     private final Executor executor;
-    private BatchedHistogramRequestMessage message;
-    private ListenableFuture<? extends BatchedHistogramRequestMessage> future;
+    private HistogramRequestMessage message;
+    private ListenableFuture<? extends HistogramRequestMessage> future;
     private boolean isReady;
 
     public BatchedHistogramRequestTask(CellStub cell,
                                        Executor executor,
-                                       BatchedHistogramRequestMessage message) {
+                                       HistogramRequestMessage message) {
         this.cell = checkNotNull(cell);
         this.executor = checkNotNull(executor);
         this.message = message;
         isReady = false;
     }
 
-    public BatchedHistogramRequestMessage getMessage() throws InterruptedException {
+    public HistogramRequestMessage getMessage() throws InterruptedException {
         LOGGER.debug("Sending batched histogram request {}.", message);
 
         /*

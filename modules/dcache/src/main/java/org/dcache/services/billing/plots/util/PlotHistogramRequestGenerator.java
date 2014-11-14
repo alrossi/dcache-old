@@ -57,59 +57,110 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.services.billing.histograms.data;
+package org.dcache.services.billing.plots.util;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.dcache.cells.CellStub;
 import org.dcache.services.billing.histograms.TimeFrame;
-import org.dcache.util.CacheExceptionFactory;
-
-import static com.google.common.base.Preconditions.checkNotNull;
+import org.dcache.services.billing.histograms.data.HistogramRequest;
+import org.dcache.services.billing.histograms.data.ITimeFrameHistogramDataService;
+import org.dcache.services.billing.plots.util.TimeFramePlotProperties.PlotType;
+import org.dcache.vehicles.billing.HistogramRequestMessage;
 
 /**
  * Proxied client handler to the {@link ITimeFrameHistogramDataService} service.
+ * Constructs a {@link HistogramRequest}.
+ * <p>
+ * Not thread-safe.
  *
  * @author arossi
  */
-public class TimeFrameHistogramDataProxy implements InvocationHandler {
-
+public class PlotHistogramRequestGenerator implements InvocationHandler {
+    private static final Logger LOGGER
+        = LoggerFactory.getLogger(PlotHistogramRequestGenerator.class);
     private static final Class[] ONE_PARAM = new Class[] { TimeFrame.class };
     private static final Class[] TWO_PARAM = new Class[] { TimeFrame.class,
-                    Boolean.class };
+                                                           Boolean.class };
 
-    private final CellStub cell;
+    private final ITimeFrameHistogramDataService service;
+    private final HistogramRequestMessage reply;
+    private final List<HistogramRequest> list;
 
-    public TimeFrameHistogramDataProxy(CellStub cell) {
-        checkNotNull(cell);
-        this.cell = cell;
+    public PlotHistogramRequestGenerator(HistogramRequestMessage reply) {
+        this.reply = reply;
+        list = new ArrayList<>();
+        service = (ITimeFrameHistogramDataService)
+                        Proxy.newProxyInstance(Thread.currentThread()
+                                                     .getContextClassLoader(),
+                        new Class[] { ITimeFrameHistogramDataService.class },
+                        this);
+    }
+
+    public void add(PlotType plotType, TimeFrame timeFrame) {
+        LOGGER.debug("load {} {}", plotType, timeFrame);
+        switch (plotType) {
+            case BYTES_READ:
+                service.getDcBytesHistogram(timeFrame, false);
+                service.getHsmBytesHistogram(timeFrame, false);
+                break;
+            case BYTES_WRITTEN:
+                service.getDcBytesHistogram(timeFrame, true);
+                service.getHsmBytesHistogram(timeFrame, true);
+                break;
+            case BYTES_P2P:
+                service.getP2pBytesHistogram(timeFrame);
+                break;
+            case TRANSFERS_READ:
+                service.getDcTransfersHistogram(timeFrame, false);
+                service.getHsmTransfersHistogram(timeFrame, false);
+                break;
+            case TRANSFERS_WRITTEN:
+                service.getDcTransfersHistogram(timeFrame, true);
+                service.getHsmTransfersHistogram(timeFrame, true);
+                break;
+            case TRANSFERS_P2P:
+                service.getP2pTransfersHistogram(timeFrame);
+                break;
+            case CONNECTION_TIME:
+                service.getDcConnectTimeHistograms(timeFrame);
+                break;
+            case CACHE_HITS:
+                service.getHitHistograms(timeFrame);
+                break;
+        }
+        pack();
     }
 
     public Object invoke(Object proxy, Method method, Object[] args)
                     throws Throwable {
-        HistogramRequest request = createRequestMessage(method, args);
-        request = cell.sendAndWait(request, HistogramRequest.class);
-        int code = request.getReturnCode();
-        if (code != 0) {
-            throw CacheExceptionFactory.exceptionOf(code,
-                            String.valueOf(request.getErrorObject()));
-        }
-        return request.getReturnValue();
+        list.add(createRequest(method, args));
+        return null;
     }
 
-    private static HistogramRequest createRequestMessage(Method method, Object[] args) {
+    private HistogramRequest createRequest(Method method, Object[] args) {
         Class<Serializable>[] types;
         Serializable[] serializable;
         if (args.length == 1) {
             types = ONE_PARAM;
-            serializable = new Serializable[]{(TimeFrame)args[0]};
+            serializable = new Serializable[] { (TimeFrame) args[0] };
         } else {
             types = TWO_PARAM;
-            serializable = new Serializable[]{(TimeFrame)args[0], (Boolean)args[1]};
+            serializable = new Serializable[] { (TimeFrame) args[0],
+                                                (Boolean) args[1] };
         }
-
         return new HistogramRequest(method.getName(), types, serializable);
+    }
+
+    private void pack() {
+        reply.addRequests(list);
+        list.clear();
     }
 }

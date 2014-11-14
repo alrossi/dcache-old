@@ -138,13 +138,13 @@ import dmg.cells.nucleus.CellMessageReceiver;
 import dmg.cells.nucleus.CellMessageSender;
 import dmg.util.command.DelayedCommand;
 
+import org.dcache.services.billing.histograms.data.HistogramRequest;
 import org.dcache.services.billing.histograms.data.ITimeFrameHistogramDataService;
 import org.dcache.services.billing.histograms.data.TimeFrameHistogramData;
-import org.dcache.vehicles.billing.BatchedHistogramRequestMessage;
 import org.dcache.vehicles.billing.HistogramRequestMessage;
 
 /**
- * Serves up histogram data. The {@link HistogramRequestMessage} specifies an
+ * Serves up histogram data. The {@link HistogramRequest} specifies an
  * array of {@link TimeFrameHistogramData} containing arrays of doubles. The
  * underlying store is accessed through the
  * {@link ITimeFrameHistogramDataService} abstraction.
@@ -154,14 +154,13 @@ import org.dcache.vehicles.billing.HistogramRequestMessage;
 public class HistogramRequestReceiver implements CellMessageReceiver,
                 CellMessageSender {
     class HistogramQueryWorker extends FutureTask {
-        final List<HistogramRequestMessage> requests;
+        final List<HistogramRequest> requests;
 
-        public HistogramQueryWorker(final List<HistogramRequestMessage> requests) {
+        public HistogramQueryWorker(final List<HistogramRequest> requests) {
             super(new Callable<Void>() {
                 public Void call() throws Exception {
-                    for (HistogramRequestMessage request : requests) {
+                    for (HistogramRequest request : requests) {
                         Class<TimeFrameHistogramData[]> returnType = request.getReturnType();
-                        request.clearReply();
                         Method m = service.getClass().getMethod(
                                         request.getMethod(),
                                         request.getParameterTypes());
@@ -176,7 +175,6 @@ public class HistogramRequestReceiver implements CellMessageReceiver,
                         TimeFrameHistogramData[] data = (TimeFrameHistogramData[]) m.invoke(
                                         service, request.getParameterValues());
                         request.setReturnValue(data);
-                        request.setSucceeded();
                     }
                     return null;
                 }
@@ -189,25 +187,25 @@ public class HistogramRequestReceiver implements CellMessageReceiver,
     class HistogramRequestTask extends DelayedCommand {
         private static final long serialVersionUID = -2689884852516621339L;
 
-        final BatchedHistogramRequestMessage request;
+        final HistogramRequestMessage request;
 
-        HistogramRequestTask(BatchedHistogramRequestMessage request) {
+        HistogramRequestTask(HistogramRequestMessage request) {
             this.request = request;
         }
 
         @Override
         protected Serializable execute() throws Exception {
-            List<List<HistogramRequestMessage>> messages = request.getMessages();
+            List<List<HistogramRequest>> messages = request.getRequests();
             LOGGER.debug("Beginning execute(), number of messages {}",
                             messages.size());
 
             List<HistogramQueryWorker> workers = new ArrayList<>();
 
-            for (List<HistogramRequestMessage> list : messages) {
+            for (List<HistogramRequest> list : messages) {
                 workers.add(new HistogramQueryWorker(list));
             }
 
-            request.getMessages().clear();
+            request.getRequests().clear();
             request.clearReply();
 
             for (HistogramQueryWorker worker : workers) {
@@ -228,11 +226,11 @@ public class HistogramRequestReceiver implements CellMessageReceiver,
             }
 
             for (HistogramQueryWorker worker : workers) {
-                request.addMessages(worker.requests);
+                request.addRequests(worker.requests);
             }
 
             LOGGER.debug("request succeeded, number of messages {}",
-                            request.getMessages().size());
+                            request.getRequests().size());
 
             request.setSucceeded();
             return request;
@@ -251,7 +249,7 @@ public class HistogramRequestReceiver implements CellMessageReceiver,
     }
 
     public void messageArrived(CellMessage message,
-                    BatchedHistogramRequestMessage request) {
+                               HistogramRequestMessage request) {
         LOGGER.error("messageArrived " + request);
         try {
             message.revertDirection();

@@ -66,16 +66,15 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import diskCacheV111.vehicles.DoorRequestInfoMessage;
-import diskCacheV111.vehicles.InfoMessage;
 import diskCacheV111.vehicles.MoverInfoMessage;
 import diskCacheV111.vehicles.PoolHitInfoMessage;
 import diskCacheV111.vehicles.StorageInfoMessage;
 
+import dmg.cells.nucleus.CellCommandListener;
+import dmg.cells.nucleus.CellMessageReceiver;
 import dmg.util.command.Argument;
 import dmg.util.command.Command;
 
-import dmg.cells.nucleus.CellCommandListener;
-import dmg.cells.nucleus.CellMessageReceiver;
 import org.dcache.services.billing.db.IBillingInfoAccess;
 import org.dcache.services.billing.db.data.DoorRequestData;
 import org.dcache.services.billing.db.data.MoverData;
@@ -223,11 +222,5 @@ public class BillingInfoMessageReceiver implements CellMessageReceiver,
                 commitStatistics = null;
             }
         }
-    }
-
-    private static void processDroppedMessage(Exception e, InfoMessage info) {
-        logger.error("the following billing message could not be stored: {};"
-                        + "this data will be lost", info.toString());
-        logger.trace("{}; {}", info.toString(), e.getMessage());
     }
 }

@@ -57,14 +57,12 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.vehicles.billing;
+package org.dcache.services.billing.histograms.data;
 
 import com.google.common.base.Objects;
 
 import java.io.Serializable;
 import java.util.Arrays;
-
-import diskCacheV111.vehicles.Message;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -74,8 +72,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * @author arossi
  */
-public abstract class AbstractBillingRequestMessage<T extends Serializable>
-        extends Message {
+public abstract class AbstractBillingRequest<T extends Serializable>
+    implements Serializable {
 
     private static final long serialVersionUID = 6844476040265685511L;
 
@@ -85,10 +83,10 @@ public abstract class AbstractBillingRequestMessage<T extends Serializable>
     private final Class<T> returnType;
     private T returnValue;
 
-    public AbstractBillingRequestMessage(Class<T> returnType, String method,
-                    Class<? extends Serializable>[] parameterTypes,
-                    Serializable[] parameters) {
-        super(true);
+    public AbstractBillingRequest(Class<T> returnType,
+                                  String method,
+                                  Class<? extends Serializable>[] parameterTypes,
+                                  Serializable[] parameters) {
         this.returnType = returnType;
         checkNotNull(this.returnType);
         this.method = method;
@@ -111,7 +109,7 @@ public abstract class AbstractBillingRequestMessage<T extends Serializable>
           return false;
        }
 
-       AbstractBillingRequestMessage<?> other = (AbstractBillingRequestMessage<?>) obj;
+       AbstractBillingRequest<?> other = (AbstractBillingRequest<?>) obj;
 
        return   Objects.equal(method, other.method)
              && Objects.equal(parameters, other.parameters)

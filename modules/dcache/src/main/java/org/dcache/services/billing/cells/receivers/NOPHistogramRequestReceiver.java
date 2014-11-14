@@ -122,7 +122,6 @@ import diskCacheV111.util.ServiceUnavailableException;
 
 import dmg.cells.nucleus.CellMessageReceiver;
 
-import org.dcache.vehicles.billing.BatchedHistogramRequestMessage;
 import org.dcache.vehicles.billing.HistogramRequestMessage;
 
 /**
@@ -133,11 +132,6 @@ import org.dcache.vehicles.billing.HistogramRequestMessage;
  */
 public class NOPHistogramRequestReceiver implements CellMessageReceiver {
     public HistogramRequestMessage messageArrived(HistogramRequestMessage request)
-                    throws ServiceUnavailableException {
-        throw new ServiceUnavailableException("Billing Database is not enabled");
-    }
-
-    public BatchedHistogramRequestMessage messageArrived(BatchedHistogramRequestMessage request)
                     throws ServiceUnavailableException {
         throw new ServiceUnavailableException("Billing Database is not enabled");
     }

@@ -59,23 +59,22 @@ documents or software obtained from this server.
  */
 package org.dcache.webadmin.controller.impl;
 
-import com.google.common.base.Throwables;
 import com.google.common.util.concurrent.RateLimiter;
-import org.apache.wicket.util.lang.Exceptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Proxy;
-import java.lang.reflect.UndeclaredThrowableException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import diskCacheV111.util.ServiceUnavailableException;
@@ -89,15 +88,17 @@ import org.dcache.services.billing.histograms.TimeFrame;
 import org.dcache.services.billing.histograms.TimeFrame.BinType;
 import org.dcache.services.billing.histograms.TimeFrame.Type;
 import org.dcache.services.billing.histograms.config.HistogramWrapper;
-import org.dcache.services.billing.histograms.data.ITimeFrameHistogramDataService;
+import org.dcache.services.billing.histograms.data.BatchedHistogramRequestTask;
+import org.dcache.services.billing.histograms.data.HistogramRequest;
 import org.dcache.services.billing.histograms.data.TimeFrameHistogramData;
-import org.dcache.services.billing.histograms.data.TimeFrameHistogramDataProxy;
 import org.dcache.services.billing.plots.util.ITimeFramePlot;
 import org.dcache.services.billing.plots.util.ITimeFramePlotGenerator;
 import org.dcache.services.billing.plots.util.PlotGridPosition;
+import org.dcache.services.billing.plots.util.PlotHistogramRequestGenerator;
 import org.dcache.services.billing.plots.util.PlotProperties;
 import org.dcache.services.billing.plots.util.TimeFramePlotProperties;
 import org.dcache.services.billing.plots.util.TimeFramePlotProperties.PlotType;
+import org.dcache.vehicles.billing.HistogramRequestMessage;
 import org.dcache.webadmin.controller.IBillingService;
 
 /**
@@ -110,7 +111,8 @@ import org.dcache.webadmin.controller.IBillingService;
  * @author arossi
  */
 public final class StandardBillingService implements IBillingService, Runnable {
-    private static final Logger logger = LoggerFactory.getLogger(StandardBillingService.class);
+    private static final Logger logger
+        = LoggerFactory.getLogger(StandardBillingService.class);
     private static final double ERRORS_PER_SECOND = 1.0 / 120.0;
 
     /**
@@ -121,7 +123,7 @@ public final class StandardBillingService implements IBillingService, Runnable {
     private String plotsDir;
 
     private String imgType;
-    private ITimeFrameHistogramDataService client;
+    private PlotHistogramRequestGenerator handler;
 
     /**
      * in default setup, these are implemented by same class
@@ -136,6 +138,7 @@ public final class StandardBillingService implements IBillingService, Runnable {
     private final List<String> plotTitles = new ArrayList<>();
     private final List<String> extTypes = new ArrayList<>();
     private final List<String> timeDescription = new ArrayList<>();
+    private Executor executor;
 
     /**
      * refreshing can be done periodically by the daemon, or forced
@@ -148,83 +151,6 @@ public final class StandardBillingService implements IBillingService, Runnable {
     private int popupHeight;
     private long lastUpdate = System.currentTimeMillis();
     private Thread refresher;
-
-    public List<TimeFrameHistogramData> load(PlotType plotType,
-                    TimeFrame timeFrame) throws NoRouteToCellException,
-                                                ServiceUnavailableException {
-        logger.debug("remote fetch of {} {}", plotType, timeFrame);
-        List<TimeFrameHistogramData> histograms = new ArrayList<>();
-        try {
-            switch (plotType) {
-                case BYTES_READ:
-                    add(client.getDcBytesHistogram(timeFrame, false),
-                                    histograms);
-                    add(client.getHsmBytesHistogram(timeFrame, false),
-                                    histograms);
-                    break;
-                case BYTES_WRITTEN:
-                    add(client.getDcBytesHistogram(timeFrame, true),
-                                    histograms);
-                    add(client.getHsmBytesHistogram(timeFrame, true),
-                                    histograms);
-                    break;
-                case BYTES_P2P:
-                    add(client.getP2pBytesHistogram(timeFrame),
-                                    histograms);
-                    break;
-                case TRANSFERS_READ:
-                    add(client.getDcTransfersHistogram(timeFrame, false),
-                                    histograms);
-                    add(client.getHsmTransfersHistogram(timeFrame, false),
-                                    histograms);
-                    break;
-                case TRANSFERS_WRITTEN:
-                    add(client.getDcTransfersHistogram(timeFrame, true),
-                                    histograms);
-                    add(client.getHsmTransfersHistogram(timeFrame, true),
-                                    histograms);
-                    break;
-                case TRANSFERS_P2P:
-                    add(client.getP2pTransfersHistogram(timeFrame),
-                                    histograms);
-                    break;
-                case CONNECTION_TIME:
-                    add(client.getDcConnectTimeHistograms(timeFrame),
-                                    histograms);
-                    break;
-                case CACHE_HITS:
-                    add(client.getHitHistograms(timeFrame),
-                                    histograms);
-                    break;
-            }
-        } catch (UndeclaredThrowableException ute) {
-            Throwable cause
-                = Exceptions.findCause(ute, ServiceUnavailableException.class);
-            if (cause != null) {
-                throw (ServiceUnavailableException)cause;
-            }
-            cause = Exceptions.findCause(ute, NoRouteToCellException.class);
-            if (cause != null) {
-                throw (NoRouteToCellException)cause;
-            }
-            cause = ute.getCause();
-            Throwables.propagateIfPossible(cause);
-            throw new RuntimeException("Unexpected error: "
-                                        + "this is probably a bug. Please report "
-                                        + "to the dCache team.",
-                                        cause);
-        }
-        return histograms;
-    }
-
-    private static void add(TimeFrameHistogramData[] returned,
-                    List<TimeFrameHistogramData> histograms) {
-        if (returned != null) {
-            for (TimeFrameHistogramData d : returned) {
-                histograms.add(d);
-            }
-        }
-    }
 
     /**
      * for daily, weekly, monthly and yearly
@@ -314,42 +240,72 @@ public final class StandardBillingService implements IBillingService, Runnable {
         factory.setProperties(jProperties);
         generator.initialize(jProperties);
 
-        client = (ITimeFrameHistogramDataService) Proxy.newProxyInstance(
-                        Thread.currentThread().getContextClassLoader(),
-                        new Class[] { ITimeFrameHistogramDataService.class },
-                        new TimeFrameHistogramDataProxy(cell));
-
         refresher = new Thread(this, "StandardBillingServiceRefresher");
         refresher.start();
     }
 
     @Override
     public void refresh() throws NoRouteToCellException,
-                                 ServiceUnavailableException{
+                                 ServiceUnavailableException,
+                                 InterruptedException {
         TimeFrame[] timeFrames = generateTimeFrames();
+        HistogramRequestMessage reply = new HistogramRequestMessage();
+
+        /*
+         * Handler is not thread safe, but we use one instance per invocation
+         * on a thread, which is then called serially.
+         */
+        handler = new PlotHistogramRequestGenerator(reply);
+
+        for (int tFrame = 0; tFrame < timeFrames.length; tFrame++) {
+            for (PlotType type : PlotType.values()) {
+                handler.add(type, timeFrames[tFrame]);
+            }
+        }
+
+        reply = new BatchedHistogramRequestTask(cell, executor, reply)
+                  .getMessage();
+
+        List<List<HistogramRequest>> messages = reply.getRequests();
+        if (timeFrames.length * PlotType.values().length > messages.size()) {
+            logger.error("Incomplete data set returned; error: {}",
+                            reply.getErrorObject());
+            return;
+        }
+
+        Iterator<List<HistogramRequest>> iterator = messages.iterator();
+
         for (int tFrame = 0; tFrame < timeFrames.length; tFrame++) {
             Date low = timeFrames[tFrame].getLow();
             for (PlotType type : PlotType.values()) {
                 String fileName = getFileName(type.ordinal(), tFrame);
-                generatePlot(type, timeFrames[tFrame], fileName,
-                                getTitle(type.ordinal(), tFrame, low));
+                List<HistogramRequest> list = iterator.next();
+                List<TimeFrameHistogramData> data = new ArrayList<>();
+                for (HistogramRequest message: list) {
+                    TimeFrameHistogramData[] rvalue = message.getReturnValue();
+                    for (TimeFrameHistogramData d: rvalue) {
+                        data.add(d);
+                    }
+                }
+                generatePlot(type,
+                             timeFrames[tFrame],
+                             fileName,
+                             getTitle(type.ordinal(), tFrame, low),
+                             data);
             }
         }
+
         lastUpdate = System.currentTimeMillis();
     }
 
     @Override
     public void run() {
         try {
+            executor = Executors.newFixedThreadPool(1);
             while (true) {
                 try {
                     refresh();
                     Thread.sleep(timeout);
-                } catch (ServiceUnavailableException e) {
-                    logger.error("The billing database has been disabled."
-                                    + "  To generate plots, please restart the service when"
-                                    + " the billing database is once again available");
-                    break;
                 } catch (NoRouteToCellException e) {
                     if (rate.tryAcquire()) {
                         logger.warn("No route to the billing service yet; "
@@ -358,6 +314,10 @@ public final class StandardBillingService implements IBillingService, Runnable {
                     Thread.sleep(TimeUnit.SECONDS.toMillis(10));
                 }
             }
+        } catch (ServiceUnavailableException e) {
+            logger.error("The billing database has been disabled."
+                            + "  To generate plots, please restart the service when"
+                            + " the billing database is once again available");
         } catch (InterruptedException interrupted) {
             logger.trace("{} interrupted; exiting ...", refresher);
         }
@@ -393,10 +353,13 @@ public final class StandardBillingService implements IBillingService, Runnable {
         }
     }
 
-    private void generatePlot(PlotType type, TimeFrame timeFrame,
-                    String fileName, String title) throws ServiceUnavailableException,
-                                                          NoRouteToCellException {
-        List<TimeFrameHistogramData> data = load(type, timeFrame);
+    private void generatePlot(PlotType type,
+                              TimeFrame timeFrame,
+                              String fileName,
+                              String title,
+                              List<TimeFrameHistogramData> data)
+                                              throws ServiceUnavailableException,
+                                                     NoRouteToCellException {
         List<HistogramWrapper<?>> config = new ArrayList<>();
         int i = 0;
         for (TimeFrameHistogramData d : data) {
@@ -428,7 +391,7 @@ public final class StandardBillingService implements IBillingService, Runnable {
     }
 
     /**
-     * makes sure overwritten properties (if any) are correctly propagated and
+     * Makes sure overwritten properties (if any) are correctly propagated and
      * that internal properties correspond to those in the definition file if
      * the former are undefined.
      */
