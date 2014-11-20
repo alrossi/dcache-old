@@ -19,11 +19,11 @@
     <persistence-unit name="AlarmsRDBMS">
       <mapping-file>org/dcache/alarms/dao/package.jdo</mapping-file>
     </persistence-unit>
- 
+
     <persistence-unit name="Billing">
       <mapping-file>org/dcache/services/billing/db/data/package.jdo</mapping-file>
     </persistence-unit>
- 
+
     <persistence-unit name="TransferManager">
       <mapping-file>diskCacheV111/services/package.jdo</mapping-file>
     </persistence-unit>
