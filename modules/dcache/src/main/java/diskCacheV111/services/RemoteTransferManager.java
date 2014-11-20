@@ -7,6 +7,8 @@ import diskCacheV111.vehicles.IpProtocolInfo;
 import diskCacheV111.vehicles.transferManager.RemoteTransferManagerMessage;
 import diskCacheV111.vehicles.transferManager.TransferManagerMessage;
 
+import org.dcache.services.transfermanager.TransferManager;
+
 public class RemoteTransferManager extends TransferManager
 {
     private static final Logger log =
