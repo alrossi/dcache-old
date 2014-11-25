@@ -1,23 +1,17 @@
-/* -*- c-basic-offset: 8; indent-tabs-mode: nil -*- */
 package diskCacheV111.services;
 
-import com.google.common.collect.Maps;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-import org.datanucleus.api.jdo.JDOPersistenceManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.jdo.PersistenceManager;
+import javax.jdo.PersistenceManagerFactory;
 import javax.jdo.Transaction;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -25,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -45,7 +40,6 @@ import dmg.cells.nucleus.SerializationException;
 import dmg.util.TimebasedCounter;
 
 import org.dcache.cells.CellStub;
-import org.dcache.db.AlarmEnabledDataSource;
 import org.dcache.util.Args;
 import org.dcache.util.CDCExecutorServiceDecorator;
 
@@ -62,10 +56,6 @@ public abstract class TransferManager extends AbstractCellComponent
                                                  CellMessageReceiver
 {
     private static final Logger log = LoggerFactory.getLogger(TransferManager.class);
-    private String _jdbcUrl = "jdbc:postgresql://localhost/srmdcache";
-    private String _user = "srmdcache";
-    private String _password;
-    private PersistenceManager _pm;
     private final Map<Long, TransferManagerHandler> _activeTransfers =
             new ConcurrentHashMap<>();
     private int _maxTransfers;
@@ -79,7 +69,7 @@ public abstract class TransferManager extends AbstractCellComponent
     private CellStub _poolStub;
     private CellStub _billingStub;
     private boolean _overwrite;
-    private boolean _doDatabaseLogging;
+    private AtomicBoolean _doDatabaseLogging = new AtomicBoolean(false);
     private int _maxNumberOfDeleteRetries;
     // this is the timer which will timeout the
     // transfer requests
@@ -87,38 +77,17 @@ public abstract class TransferManager extends AbstractCellComponent
     private final Map<Long, TimerTask> _moverTimeoutTimerTasks =
             new ConcurrentHashMap<>();
     private String _ioQueueName; // multi io queue option
-    private AlarmEnabledDataSource ds;
     private TimebasedCounter idGenerator = new TimebasedCounter();
     public final Set<PnfsId> justRequestedIDs = new HashSet<>();
     private String _poolProxy;
     private ExecutorService executor =
             new CDCExecutorServiceDecorator<>(Executors.newCachedThreadPool());
-
-    public void init()
-    {
-        if (doDbLogging()) {
-            try {
-                _pm = createPersistenceManager();
-            } catch (Exception e) {
-                log.error("Failed to initialize Data Base connection using "
-                                + "default values (url {}, user {}, passwd {}): {}.",
-                                _jdbcUrl, _user, _password, e.getMessage());
-                _pm = null;
-                setDbLogging(false);
-            }
-        }
-        log.debug("Pool Proxy {}",
-                   (_poolProxy == null ? "not set" : ("set to " + _poolProxy)));
-    }
+    private PersistenceManagerFactory _pmf;
 
     public void cleanUp()
     {
-        if (ds != null) {
-            try {
-                ds.close();
-            } catch (IOException e) {
-                log.debug("Failed to shutdown database connection pool: {}", e.getMessage());
-            }
+        if (_pmf != null) {
+            _pmf.close();
         }
         executor.shutdown();
     }
@@ -129,8 +98,6 @@ public abstract class TransferManager extends AbstractCellComponent
         pw.printf("    %s\n", getClass().getName());
         pw.println("---------------------------------");
         pw.printf("Name   : %s\n", getCellName());
-        pw.printf("jdbcUrl : %s\n", _jdbcUrl);
-        pw.printf("jdbcUser : %s\n", _user);
         if (doDbLogging()) {
             pw.println("dblogging=true");
         } else {
@@ -159,73 +126,22 @@ public abstract class TransferManager extends AbstractCellComponent
     public String ac_set_dblogging_$_1(Args args)
     {
         String logString = args.argv(0);
-        StringBuilder sb = new StringBuilder();
         if (logString.equalsIgnoreCase("true") || logString.equalsIgnoreCase("t")) {
             setDbLogging(true);
-            sb.append("remote ftp transaction db logging is on\n");
+            return "Remote ftp transaction db logging is on.\n";
         } else if (logString.equalsIgnoreCase("false") || logString.equalsIgnoreCase("f")) {
             setDbLogging(false);
-            sb.append("remote ftp transaction db logging is off\n");
+            return "Remote ftp transaction db logging is off.\n";
         } else {
-            return "unrecognized value : \"" + logString + "\" only true or false are allowed";
+            return "unrecognized value : \"" + logString
+                            + "\" (only true or false are allowed).";
         }
-        if (doDbLogging() == true && _pm == null) {
-            sb.append(getCellName()).append(" has been started w/ db logging disabled\n");
-            sb.append("Attempting to initialize JDO Persistence Manager using parameters provided at startup\n");
-            try {
-                _pm = createPersistenceManager();
-                sb.append("Success...\n");
-            } catch (Exception e) {
-                log.error(e.toString());
-                sb.append("Failure...\n");
-                sb.append("setting doDbLog back to false. \n");
-                sb.append("Try to set correct Jdbc driver, username or password for DB connection.\n");
-                _pm = null;
-                setDbLogging(false);
-            }
-        }
-        return sb.toString();
-    }
-
-    private PersistenceManager createPersistenceManager()
-    {
-        // FIXME: Close connection pool and pmf
-        Properties properties = new Properties();
-        properties.setProperty("datanucleus.PersistenceUnitName", "TransferManager");
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(_jdbcUrl);
-        config.setUsername(_user);
-        config.setPassword(_password);
-        JDOPersistenceManagerFactory pmf = new JDOPersistenceManagerFactory(
-                Maps.<String, Object>newHashMap(Maps.fromProperties(properties)));
-        pmf.setConnectionFactory(new AlarmEnabledDataSource(_jdbcUrl,
-                                                            TransferManager.class.getSimpleName(),
-                                                            new HikariDataSource(config)));
-        return pmf.getPersistenceManager();
     }
 
     public String ac_set_maxNumberOfDeleteRetries_$_1(Args args)
     {
         _maxNumberOfDeleteRetries = Integer.parseInt(args.argv(0));
         return "setting maxNumberOfDeleteRetries " + _maxNumberOfDeleteRetries;
-    }
-
-    public String ac_set_jdbcUrl_$_1(Args args)
-    {
-        _jdbcUrl = args.argv(0);
-        return "setting jdbcUrl to " + _jdbcUrl;
-    }
-
-    public String ac_set_dbUser_$_1(Args args)
-    {
-        _user = args.argv(0);
-        return "setting db to " + _user;
-    }
-
-    public String ac_set_dbpass_$_1(Args args)
-    {
-        _password = args.argv(0);
-        return "OK";
     }
 
     public final static String hh_set_tlog = "<direcory for ftp logs or \"null\" for none>";
@@ -530,54 +446,42 @@ public abstract class TransferManager extends AbstractCellComponent
         tt.cancel();
     }
 
-    public void addActiveTransfer(long id, TransferManagerHandler handler)
-    {
+    public void addActiveTransfer(long id, TransferManagerHandler handler) {
         _activeTransfers.put(id, handler);
-
-        // pm is not final, so better make a final local copy
-        // before we synchronize on it and use it
-        final PersistenceManager persistanceManager = _pm;
-        if (doDbLogging() && persistanceManager != null) {
-            synchronized (persistanceManager) {
-                Transaction tx = persistanceManager.currentTransaction();
-                try {
-                    tx.begin();
-                    persistanceManager.makePersistent(handler);
-                    // Detach the handler for use
-                    // working_handler = (TransferManagerHandler)pm.detachCopy(handler);
-                    tx.commit();
-                    log.debug("Recording new handler into database.");
-                } catch (Exception e) {
-                    log.error(e.toString());
-                } finally {
-                    rollbackIfActive(tx);
-                }
+        if (doDbLogging()) {
+            PersistenceManager pm = _pmf.getPersistenceManager();
+            Transaction tx = pm.currentTransaction();
+            try {
+                tx.begin();
+                pm.makePersistent(handler);
+                tx.commit();
+                log.debug("Recording new handler into database.");
+            } catch (Exception e) {
+                log.error(e.toString());
+            } finally {
+                rollbackIfActive(tx);
             }
         }
     }
 
-    public void removeActiveTransfer(long id)
-    {
+    public void removeActiveTransfer(long id) {
         TransferManagerHandler handler = _activeTransfers.remove(id);
-        // pm is not final, so better make a final local copy
-        // before we synchronize on it and use it
-        final PersistenceManager persistanceManager = _pm;
-        if (doDbLogging() && persistanceManager != null) {
-            synchronized (persistanceManager) {
-                TransferManagerHandlerBackup handlerBackup = new TransferManagerHandlerBackup(handler);
-                Transaction tx = persistanceManager.currentTransaction();
-                try {
-                    tx.begin();
-                    persistanceManager.makePersistent(handler);
-                    persistanceManager.deletePersistent(handler);
-                    persistanceManager.makePersistent(handlerBackup);
-                    tx.commit();
-                    log.debug("handler removed from db");
-                } catch (Exception e) {
-                    log.error(e.toString());
-                } finally {
-                    rollbackIfActive(tx);
-                }
+        if (doDbLogging()) {
+            PersistenceManager pm = _pmf.getPersistenceManager();
+            Transaction tx = pm.currentTransaction();
+            TransferManagerHandlerBackup handlerBackup
+                = new TransferManagerHandlerBackup(handler);
+            try {
+                tx.begin();
+                pm.makePersistent(handler);
+                pm.deletePersistent(handler);
+                pm.makePersistent(handlerBackup);
+                tx.commit();
+                log.debug("handler removed from db");
+            } catch (Exception e) {
+                log.error(e.toString());
+            } finally {
+                rollbackIfActive(tx);
             }
         }
     }
@@ -626,12 +530,12 @@ public abstract class TransferManager extends AbstractCellComponent
 
     public boolean doDbLogging()
     {
-        return _doDatabaseLogging;
+        return _doDatabaseLogging.get();
     }
 
     public void setDbLogging(boolean yes)
     {
-        _doDatabaseLogging = yes;
+        _doDatabaseLogging.set(yes);
     }
 
     public int getMaxNumberOfDeleteRetries()
@@ -639,25 +543,21 @@ public abstract class TransferManager extends AbstractCellComponent
         return _maxNumberOfDeleteRetries;
     }
 
-    public void persist(Object o)
-    {
-        // pm is not final, so better make a final local copy
-        // before we synchronize on it and use it
-        final PersistenceManager persistanceManager = _pm;
-        if (doDbLogging() && persistanceManager != null) {
-            synchronized (persistanceManager) {
-                Transaction tx = persistanceManager.currentTransaction();
-                try {
-                    tx.begin();
-                    persistanceManager.makePersistent(o);
-                    tx.commit();
-                    log.debug("[" + o.toString() + "]: Recording new state of handler into database.");
-                } catch (Exception e) {
-                    log.error("[" + o.toString() + "]: failed to persist obhject " + o.toString());
-                    log.error(e.toString());
-                } finally {
-                    rollbackIfActive(tx);
-                }
+    public void persist(Object o) {
+        if (doDbLogging()) {
+            PersistenceManager pm = _pmf.getPersistenceManager();
+            Transaction tx = pm.currentTransaction();
+            try {
+                tx.begin();
+                pm.makePersistent(o);
+                tx.commit();
+                log.debug("[{}]: Recording new state of handler into database.",
+                                o.toString());
+            } catch (Exception e) {
+                log.error("[{}]: failed to persist object: {}."
+                                + o.toString(), e.getMessage());
+            } finally {
+                rollbackIfActive(tx);
             }
         }
     }
@@ -704,18 +604,6 @@ public abstract class TransferManager extends AbstractCellComponent
         _ioQueueName = ioQueueName;
     }
 
-    public void setJdbcUrl(String jdbcUrl) {
-        _jdbcUrl = jdbcUrl;
-    }
-
-    public void setUser(String user) {
-        _user = user;
-    }
-
-    public void setPassword(String password) {
-        _password = password;
-    }
-
     public void setPoolProxy(String poolProxy) {
         _poolProxy = poolProxy;
     }
@@ -726,6 +614,10 @@ public abstract class TransferManager extends AbstractCellComponent
 
     public void setOverwrite(boolean overwrite) {
         _overwrite = overwrite;
+    }
+
+    public void setPmf(PersistenceManagerFactory pmf) {
+        _pmf = pmf;
     }
 
     public void setTLogRoot(String tLogRoot) {
