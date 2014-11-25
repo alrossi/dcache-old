@@ -511,14 +511,6 @@ public class CopyManager extends AbstractCellComponent
         return null;
     }
 
-    public String getCellName() {
-        return super.getCellName();
-    }
-
-    public String getCellDomainName() {
-        return super.getCellDomainName();
-    }
-
     public void setPoolManager(CellStub poolManager) {
         _poolManager = poolManager;
     }
