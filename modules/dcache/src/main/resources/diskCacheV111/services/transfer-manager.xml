@@ -32,7 +32,6 @@
 
   <bean id="transferManager" class="diskCacheV111.services.RemoteTransferManager"
         init-method="init" destroy-method="cleanUp">
-    <property name="cellName" value="${transfermanagers.cell.name}"/>
     <property name="poolManager" ref="poolmanager"/>
     <property name="pnfsManager" ref="pnfsmanager"/>
     <property name="pool" ref="pool"/>

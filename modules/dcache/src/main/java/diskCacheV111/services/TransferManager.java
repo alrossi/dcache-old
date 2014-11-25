@@ -36,13 +36,10 @@ import diskCacheV111.vehicles.transferManager.CancelTransferMessage;
 import diskCacheV111.vehicles.transferManager.TransferManagerMessage;
 import diskCacheV111.vehicles.transferManager.TransferStatusQueryMessage;
 
+import dmg.cells.nucleus.AbstractCellComponent;
 import dmg.cells.nucleus.CellCommandListener;
-import dmg.cells.nucleus.CellEndpoint;
-import dmg.cells.nucleus.CellInfo;
-import dmg.cells.nucleus.CellInfoProvider;
 import dmg.cells.nucleus.CellMessage;
 import dmg.cells.nucleus.CellMessageReceiver;
-import dmg.cells.nucleus.CellMessageSender;
 import dmg.cells.nucleus.NoRouteToCellException;
 import dmg.cells.nucleus.SerializationException;
 import dmg.util.TimebasedCounter;
@@ -60,10 +57,9 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * Base class for services that transfer files on behalf of SRM. Used to
  * implement server-side srmCopy.
  */
-public abstract class TransferManager implements CellCommandListener,
-                                                 CellMessageReceiver,
-                                                 CellMessageSender,
-                                                 CellInfoProvider
+public abstract class TransferManager extends AbstractCellComponent
+                                      implements CellCommandListener,
+                                                 CellMessageReceiver
 {
     private static final Logger log = LoggerFactory.getLogger(TransferManager.class);
     private String _jdbcUrl = "jdbc:postgresql://localhost/srmdcache";
@@ -97,8 +93,6 @@ public abstract class TransferManager implements CellCommandListener,
     private String _poolProxy;
     private ExecutorService executor =
             new CDCExecutorServiceDecorator<>(Executors.newCachedThreadPool());
-    private CellEndpoint _endpoint;
-    private String _cellName;
 
     public void init()
     {
@@ -130,16 +124,11 @@ public abstract class TransferManager implements CellCommandListener,
     }
 
     @Override
-    public CellInfo getCellInfo(CellInfo info) {
-        return info;
-    }
-
-    @Override
     public void getInfo(PrintWriter pw)
     {
         pw.printf("    %s\n", getClass().getName());
         pw.println("---------------------------------");
-        pw.printf("Name   : %s\n", _cellName);
+        pw.printf("Name   : %s\n", getCellName());
         pw.printf("jdbcUrl : %s\n", _jdbcUrl);
         pw.printf("jdbcUser : %s\n", _user);
         if (doDbLogging()) {
@@ -673,30 +662,22 @@ public abstract class TransferManager implements CellCommandListener,
         }
     }
 
-    public String getPoolProxy()
-    {
-        return _poolProxy;
-    }
-
     public String getCellName() {
-        return _cellName;
+       return super.getCellName();
     }
 
     public String getCellDomainName() {
-        return _endpoint.getCellInfo().getDomainName();
+        return super.getCellDomainName();
     }
 
-    public void sendMessage(CellMessage message)
-                    throws SerializationException, NoRouteToCellException {
-        _endpoint.sendMessage(message);
+    public void sendMessage(CellMessage envelope) throws SerializationException,
+                                                         NoRouteToCellException {
+        super.sendMessage(envelope);
     }
 
-    public void setCellEndpoint(CellEndpoint endpoint) {
-        _endpoint = endpoint;
-    }
-
-    public void setCellName(String cellName) {
-        _cellName = cellName;
+    public String getPoolProxy()
+    {
+        return _poolProxy;
     }
 
     public void setPoolManager(CellStub poolManager) {

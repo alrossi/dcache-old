@@ -25,13 +25,9 @@ import diskCacheV111.vehicles.DCapProtocolInfo;
 import diskCacheV111.vehicles.DoorTransferFinishedMessage;
 import diskCacheV111.vehicles.ProtocolInfo;
 
-import dmg.cells.nucleus.CellEndpoint;
-import dmg.cells.nucleus.CellInfo;
-import dmg.cells.nucleus.CellInfoProvider;
+import dmg.cells.nucleus.AbstractCellComponent;
 import dmg.cells.nucleus.CellMessage;
-import dmg.cells.nucleus.CellMessageSender;
 import dmg.cells.nucleus.NoRouteToCellException;
-import dmg.cells.nucleus.SerializationException;
 
 import org.dcache.cells.CellStub;
 import org.dcache.util.Args;
@@ -39,7 +35,7 @@ import org.dcache.util.RedirectedTransfer;
 import org.dcache.util.Transfer;
 import org.dcache.util.TransferRetryPolicy;
 
-public class CopyManager implements CellMessageSender, CellInfoProvider
+public class CopyManager extends AbstractCellComponent
 {
     private final static Logger _log =
         LoggerFactory.getLogger(CopyManager.class);
@@ -59,9 +55,6 @@ public class CopyManager implements CellMessageSender, CellInfoProvider
     private PnfsHandler _pnfsHandler;
     private CellStub _poolManager;
     private CellStub _poolStub;
-
-    private CellEndpoint _endpoint;
-    private String _cellName;
 
     public void init()
         throws Exception
@@ -173,7 +166,7 @@ public class CopyManager implements CellMessageSender, CellInfoProvider
     {
         pw.println("    CopyManager");
         pw.println("---------------------------------");
-        pw.printf("Name   : %s\n", _cellName);
+        pw.printf("Name   : %s\n", getCellName());
         pw.printf("number of active transfers : %d\n",
                   _numTransfers);
         pw.printf("number of queuedrequests : %d\n",
@@ -518,29 +511,12 @@ public class CopyManager implements CellMessageSender, CellInfoProvider
         return null;
     }
 
-    public void setCellEndpoint(CellEndpoint endpoint) {
-        _endpoint = endpoint;
-    }
-
     public String getCellName() {
-        return _cellName;
+        return super.getCellName();
     }
 
     public String getCellDomainName() {
-        return _endpoint.getCellInfo().getDomainName();
-    }
-
-    public void sendMessage(CellMessage message)
-                    throws SerializationException, NoRouteToCellException {
-        _endpoint.sendMessage(message);
-    }
-
-    public CellInfo getCellInfo(CellInfo info) {
-        return info;
-    }
-
-    public void setCellName(String cellName) {
-       _cellName = cellName;
+        return super.getCellDomainName();
     }
 
     public void setPoolManager(CellStub poolManager) {

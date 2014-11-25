@@ -36,7 +36,6 @@
 
   <bean id="copyManager" class="diskCacheV111.doors.CopyManager"
         init-method="init">
-    <property name="cellName" value="CopyManager"/>
     <property name="poolManager" ref="poolmanager"/>
     <property name="pool" ref="pool"/>
     <property name="pnfsHandler" ref="pnfshandler"/>
