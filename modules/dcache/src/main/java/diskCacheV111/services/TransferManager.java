@@ -68,7 +68,7 @@ public abstract class TransferManager extends AbstractCellComponent
     private CellStub _poolStub;
     private CellStub _billingStub;
     private boolean _overwrite;
-    private boolean _doDatabaseLogging = false;
+    private volatile boolean _doDatabaseLogging;
     private int _maxNumberOfDeleteRetries;
     // this is the timer which will timeout the
     // transfer requests
@@ -446,20 +446,20 @@ public abstract class TransferManager extends AbstractCellComponent
         _activeTransfers.put(id, handler);
         if (doDbLogging()) {
             PersistenceManager pm = _pmf.getPersistenceManager();
-            Transaction tx = pm.currentTransaction();
             try {
-                tx.begin();
-                pm.makePersistent(handler);
-                tx.commit();
-                log.debug("Recording new handler into database.");
-            } catch (Exception e) {
-                log.error(e.toString());
-            } finally {
+                Transaction tx = pm.currentTransaction();
                 try {
-                    rollbackIfActive(tx);
+                    tx.begin();
+                    pm.makePersistent(handler);
+                    tx.commit();
+                    log.debug("Recording new handler into database.");
+                } catch (Exception e) {
+                    log.error(e.toString());
                 } finally {
-                    pm.close();
+                        rollbackIfActive(tx);
                 }
+            } finally {
+                    pm.close();
             }
         }
     }
@@ -468,24 +468,24 @@ public abstract class TransferManager extends AbstractCellComponent
         TransferManagerHandler handler = _activeTransfers.remove(id);
         if (doDbLogging()) {
             PersistenceManager pm = _pmf.getPersistenceManager();
-            Transaction tx = pm.currentTransaction();
-            TransferManagerHandlerBackup handlerBackup
-                = new TransferManagerHandlerBackup(handler);
             try {
-                tx.begin();
-                pm.makePersistent(handler);
-                pm.deletePersistent(handler);
-                pm.makePersistent(handlerBackup);
-                tx.commit();
-                log.debug("handler removed from db");
-            } catch (Exception e) {
-                log.error(e.toString());
-            } finally {
+                Transaction tx = pm.currentTransaction();
+                TransferManagerHandlerBackup handlerBackup
+                    = new TransferManagerHandlerBackup(handler);
                 try {
-                    rollbackIfActive(tx);
+                    tx.begin();
+                    pm.makePersistent(handler);
+                    pm.deletePersistent(handler);
+                    pm.makePersistent(handlerBackup);
+                    tx.commit();
+                    log.debug("handler removed from db");
+                } catch (Exception e) {
+                    log.error(e.toString());
                 } finally {
-                    pm.close();
+                    rollbackIfActive(tx);
                 }
+            } finally {
+                    pm.close();
             }
         }
     }
@@ -550,22 +550,22 @@ public abstract class TransferManager extends AbstractCellComponent
     public void persist(Object o) {
         if (doDbLogging()) {
             PersistenceManager pm = _pmf.getPersistenceManager();
-            Transaction tx = pm.currentTransaction();
             try {
-                tx.begin();
-                pm.makePersistent(o);
-                tx.commit();
-                log.debug("[{}]: Recording new state of handler into database.",
-                                o);
-            } catch (Exception e) {
-                log.error("[{}]: failed to persist object: {}.",
-                                o, e.getMessage());
-            } finally {
+                Transaction tx = pm.currentTransaction();
                 try {
-                    rollbackIfActive(tx);
+                    tx.begin();
+                    pm.makePersistent(o);
+                    tx.commit();
+                    log.debug("[{}]: Recording new state of handler into database.",
+                                o);
+                } catch (Exception e) {
+                    log.error("[{}]: failed to persist object: {}.",
+                                o, e.getMessage());
                 } finally {
-                    pm.close();
+                    rollbackIfActive(tx);
                 }
+            } finally {
+                pm.close();
             }
         }
     }
