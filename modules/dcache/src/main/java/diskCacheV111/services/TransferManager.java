@@ -69,7 +69,7 @@ public abstract class TransferManager extends AbstractCellComponent
     private CellStub _poolStub;
     private CellStub _billingStub;
     private boolean _overwrite;
-    private AtomicBoolean _doDatabaseLogging = new AtomicBoolean(false);
+    private boolean _doDatabaseLogging = false;
     private int _maxNumberOfDeleteRetries;
     // this is the timer which will timeout the
     // transfer requests
@@ -86,9 +86,6 @@ public abstract class TransferManager extends AbstractCellComponent
 
     public void cleanUp()
     {
-        if (_pmf != null) {
-            _pmf.close();
-        }
         executor.shutdown();
     }
 
@@ -460,6 +457,7 @@ public abstract class TransferManager extends AbstractCellComponent
                 log.error(e.toString());
             } finally {
                 rollbackIfActive(tx);
+                pm.close();
             }
         }
     }
@@ -482,6 +480,7 @@ public abstract class TransferManager extends AbstractCellComponent
                 log.error(e.toString());
             } finally {
                 rollbackIfActive(tx);
+                pm.close();
             }
         }
     }
@@ -530,12 +529,12 @@ public abstract class TransferManager extends AbstractCellComponent
 
     public boolean doDbLogging()
     {
-        return _doDatabaseLogging.get();
+        return _doDatabaseLogging;
     }
 
     public void setDbLogging(boolean yes)
     {
-        _doDatabaseLogging.set(yes);
+        _doDatabaseLogging = yes;
     }
 
     public int getMaxNumberOfDeleteRetries()
@@ -552,12 +551,13 @@ public abstract class TransferManager extends AbstractCellComponent
                 pm.makePersistent(o);
                 tx.commit();
                 log.debug("[{}]: Recording new state of handler into database.",
-                                o.toString());
+                                o);
             } catch (Exception e) {
-                log.error("[{}]: failed to persist object: {}."
-                                + o.toString(), e.getMessage());
+                log.error("[{}]: failed to persist object: {}.",
+                                o, e.getMessage());
             } finally {
                 rollbackIfActive(tx);
+                pm.close();
             }
         }
     }
