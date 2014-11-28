@@ -19,7 +19,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -456,8 +455,11 @@ public abstract class TransferManager extends AbstractCellComponent
             } catch (Exception e) {
                 log.error(e.toString());
             } finally {
-                rollbackIfActive(tx);
-                pm.close();
+                try {
+                    rollbackIfActive(tx);
+                } finally {
+                    pm.close();
+                }
             }
         }
     }
@@ -479,8 +481,11 @@ public abstract class TransferManager extends AbstractCellComponent
             } catch (Exception e) {
                 log.error(e.toString());
             } finally {
-                rollbackIfActive(tx);
-                pm.close();
+                try {
+                    rollbackIfActive(tx);
+                } finally {
+                    pm.close();
+                }
             }
         }
     }
@@ -556,8 +561,11 @@ public abstract class TransferManager extends AbstractCellComponent
                 log.error("[{}]: failed to persist object: {}.",
                                 o, e.getMessage());
             } finally {
-                rollbackIfActive(tx);
-                pm.close();
+                try {
+                    rollbackIfActive(tx);
+                } finally {
+                    pm.close();
+                }
             }
         }
     }
