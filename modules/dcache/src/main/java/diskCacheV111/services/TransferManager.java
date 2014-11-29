@@ -534,7 +534,7 @@ public abstract class TransferManager extends AbstractCellComponent
 
     public boolean doDbLogging()
     {
-        return _doDatabaseLogging;
+        return _pmf != null && _doDatabaseLogging;
     }
 
     public void setDbLogging(boolean yes)

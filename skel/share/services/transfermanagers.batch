@@ -36,7 +36,8 @@ check transfermanagers.mover.queue
 
 create org.dcache.cells.UniversalSpringCell ${transfermanagers.cell.name} \
         "classpath:diskCacheV111/services/transfer-manager.xml \
-        -export=${transfermanagers.cell.export}"
+        -export=${transfermanagers.cell.export} \
+        -profiles=db.enabled-${transfermanagers.persistence.enable}"
 
 create org.dcache.cells.UniversalSpringCell CopyManager \
         "classpath:diskCacheV111/doors/copy-manager.xml \
