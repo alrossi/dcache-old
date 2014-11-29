@@ -30,7 +30,7 @@
     <property name="timeoutUnit" value="${transfermanagers.service.pool.timeout.unit}"/>
   </bean>
 
-  <beans profile="db.enabled-true">
+  <beans profile="db.enabled-false">
     <bean id="transferManager" class="diskCacheV111.services.RemoteTransferManager"
             destroy-method="cleanUp">
         <property name="poolManager" ref="poolmanager"/>
