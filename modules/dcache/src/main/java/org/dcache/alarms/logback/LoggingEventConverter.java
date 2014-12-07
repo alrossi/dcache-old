@@ -71,6 +71,8 @@ import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import dmg.cells.nucleus.CDC;
+
 import org.dcache.alarms.Alarm;
 import org.dcache.alarms.AlarmDefinition;
 import org.dcache.alarms.AlarmDefinitionsMap;
@@ -188,7 +190,7 @@ final class LoggingEventConverter {
         String service = mdc.get(Alarm.SERVICE_TAG);
 
         if (service == null) {
-            service = mdc.get(RemoteMDCFilter.CELL);
+            service = mdc.get(CDC.MDC_CELL);
         }
 
         if (serviceName.equals(service)) {
@@ -205,7 +207,7 @@ final class LoggingEventConverter {
 
         String domain = mdc.get(Alarm.DOMAIN_TAG);
         if (domain == null) {
-            domain = mdc.get(RemoteMDCFilter.DOMAIN);
+            domain = mdc.get(CDC.MDC_DOMAIN);
         }
 
         LogEntry entry = new LogEntry();

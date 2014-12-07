@@ -25,6 +25,7 @@
     </bean>
 
     <bean id="logEntryAppender" class="org.dcache.alarms.logback.LogEntryAppender">
+        <property name="numberOfWorkers" value="${alarms.service.limits.number-of-concurrent-workers}"/>
         <property name="rootLevel" value="${alarms.log.root-level}"/>
         <property name="priorityMap" ref="priorityMap"/>
         <property name="converter" ref="logEventConverter"/>

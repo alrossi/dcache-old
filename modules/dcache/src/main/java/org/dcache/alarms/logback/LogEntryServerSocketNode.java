@@ -77,115 +77,94 @@ COPYRIGHT STATUS:
  */
 package org.dcache.alarms.logback;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.net.ServerSocketFactory;
-
+import java.io.BufferedInputStream;
+import java.io.EOFException;
 import java.io.IOException;
-import java.net.ServerSocket;
+import java.io.ObjectInputStream;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.net.SocketAddress;
+import java.net.SocketException;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
+import dmg.cells.nucleus.CDC;
+
+import org.dcache.alarms.Alarm;
 
 /**
- * This implementation adapts {@link ch.qos.logback.classic.net.SimpleSocketServer}
- * to run directly as a dCache cell component and to bypass re-entry of
- * the remotely sent logging event into the logging context.
+ * Reads {@link ILoggingEvent} objects sent from a remote client using Sockets
+ * (TCP). These logging events are passed directly to the LogEntryAppender,
+ * bypassing the logger tree.
  * <p>
- * This is achieved by a special implementation of the ServerSocketNode
- * which calls the LogEntryAppender directly.
  *
- * @author arossi
+ * This class has been adapted from {@link ch.qos.logback.classic.net.SimpleSocketServer}.
+ *
  * @author Ceki G&uuml;lc&uuml;
  * @author S&eacute;bastien Pennec
+ * @author Moses Hohman <mmhohman@rainbow.uchicago.edu>
+ * @author arossi
  */
-public final class LogEntryServer implements Runnable {
-    private static final Logger LOGGER = LoggerFactory.getLogger(LogEntryServer.class);
+public class LogEntryServerSocketNode implements Runnable {
+    private static final Logger LOGGER
+        = LoggerFactory.getLogger(LogEntryServerSocketNode.class);
 
-    private final List<LogEntryServerSocketNode> socketNodeList
-        = Collections.synchronizedList(new ArrayList<>());
-    private final AtomicBoolean closed = new AtomicBoolean(true);
+    private final ObjectInputStream ois;
+    private final SocketAddress remoteSocketAddress;
+    private final LogEntryServer server;
+    private final AtomicBoolean closed;
+    private final String hostName;
 
-    private LogEntryAppender appender;
-    private Integer port;
-    private ServerSocket serverSocket;
-
-    public void close() {
-        if (!closed.getAndSet(true)) {
-            if (serverSocket != null) {
-                try {
-                    serverSocket.close();
-                } catch (IOException e) {
-                    LOGGER.error("Failed to close serverSocket: {}.",
-                                    e.getMessage());
-                } finally {
-                    serverSocket = null;
-                }
-            }
-
-            LOGGER.debug("closing {}.", this);
-            for (LogEntryServerSocketNode sn : socketNodeList) {
-                sn.close();
-            }
-
-            if (socketNodeList.size() != 0) {
-                LOGGER.warn("Was expecting a 0-sized socketNodeList "
-                                + "after server shutdown.");
-            }
-        }
-    }
-
-    public LogEntryAppender getAppender() {
-        return appender;
-    }
-
-    public void initialize() {
-        if (closed.getAndSet(false)) {
-            new Thread(this).start();
-        }
+    LogEntryServerSocketNode(LogEntryServer socketServer, Socket socket)
+                    throws IOException  {
+        this.server = socketServer;
+        remoteSocketAddress = socket.getRemoteSocketAddress();
+        hostName = socket.getInetAddress().getCanonicalHostName();
+        closed = new AtomicBoolean(false);
+        ois = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()));
     }
 
     public void run() {
         try {
-            LOGGER.info("Listening on port " + port);
-            serverSocket
-                = ServerSocketFactory.getDefault().createServerSocket(port);
             while (!closed.get()) {
-                LOGGER.debug("Waiting to accept a new client.");
-                Socket socket = serverSocket.accept();
-                LOGGER.debug("Connected to client at {}.", socket.getInetAddress());
-                LOGGER.info("Starting new socket node.");
-                LogEntryServerSocketNode newSocketNode
-                    = new LogEntryServerSocketNode(this, socket);
-                socketNodeList.add(newSocketNode);
-                new Thread(newSocketNode).start();
+                ILoggingEvent event = (ILoggingEvent)ois.readObject();
+                Map<String, String> mdc = event.getMDCPropertyMap();
+                mdc.put(Alarm.HOST_TAG, hostName);
+                mdc.put(Alarm.SERVICE_TAG, mdc.get(CDC.MDC_CELL));
+                mdc.put(Alarm.DOMAIN_TAG, mdc.get(CDC.MDC_DOMAIN));
+                server.getAppender().append(event);
             }
+        } catch (EOFException e) {
+            LOGGER.debug("Caught java.io.EOFException closing connection.");
+        } catch (SocketException e) {
+            LOGGER.debug("Caught java.net.SocketException closing connection.");
+        } catch (IOException e) {
+            LOGGER.debug("Caught java.io.IOException. Closing connection.", e);
         } catch (Exception e) {
-            if (closed.get()) {
-                LOGGER.debug("Exception in run method for a closed server. This is normal.");
-            } else {
-                LOGGER.error("Unexpected failure in run method", e);
-            }
+            LOGGER.error("Unexpected exception. Closing connection.", e);
         }
+        server.socketNodeClosing(this);
+        close();
     }
 
-    public void setAppender(LogEntryAppender appender) {
-        this.appender = checkNotNull(appender);
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName()
+                        + ": " + remoteSocketAddress.toString();
     }
 
-    public void setPort(Integer port) {
-        checkArgument(port != null && port > 0);
-        this.port = port;
-    }
+    void close() {
+        if (closed.getAndSet(true)) {
+            return;
+        }
 
-    public void socketNodeClosing(LogEntryServerSocketNode sn) {
-        LOGGER.debug("Removing {}.", sn);
-        socketNodeList.remove(sn);
+        try {
+            ois.close();
+        } catch (IOException e) {
+            LOGGER.warn("Could not close connection.", e);
+        }
     }
 }

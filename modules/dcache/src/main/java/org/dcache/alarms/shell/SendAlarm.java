@@ -69,7 +69,8 @@ import org.slf4j.MDC;
 
 import java.net.URL;
 
-import org.dcache.alarms.Alarm;
+import dmg.cells.nucleus.CDC;
+
 import org.dcache.alarms.PredefinedAlarm;
 import org.dcache.util.Args;
 
@@ -169,9 +170,8 @@ public class SendAlarm {
     private static String sendAlarm(AlarmArguments alarmArgs,
                                     org.slf4j.Logger logger)
                    throws JoranException {
-        MDC.put(Alarm.HOST_TAG, alarmArgs.sourceHost);
-        MDC.put(Alarm.DOMAIN_TAG, alarmArgs.sourceDomain);
-        MDC.put(Alarm.SERVICE_TAG, alarmArgs.sourceService);
+        MDC.put(CDC.MDC_DOMAIN, alarmArgs.sourceDomain);
+        MDC.put(CDC.MDC_CELL, alarmArgs.sourceService);
         if (logger == null) {
             logger = configureLogger(alarmArgs.destinationHost,
                                      alarmArgs.destinationPort);
