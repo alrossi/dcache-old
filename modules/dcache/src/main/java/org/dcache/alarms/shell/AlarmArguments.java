@@ -76,7 +76,6 @@ import java.util.Map;
 import org.dcache.alarms.AlarmMarkerFactory;
 import org.dcache.alarms.PredefinedAlarm;
 import org.dcache.util.Args;
-import org.dcache.util.NetworkUtils;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -92,7 +91,6 @@ public final class AlarmArguments {
      * Command-line options for properties when sending an alarm.
      */
     public static final String TYPE_OPT = "t";
-    public static final String SRC_HOST_OPT = "h";
     public static final String SRC_DOMAIN_OPT = "d";
     public static final String SRC_SERVICE_OPT = "s";
 
@@ -107,12 +105,10 @@ public final class AlarmArguments {
     static final Map<String, String> HELP_MESSAGES
         = ImmutableMap.of
             (TYPE_OPT,        "-t=<type>        (optional): predefined alarm subtype tag",
-             SRC_HOST_OPT,    "-h=<host>        (optional): source host name",
              SRC_DOMAIN_OPT,  "-d=<domain>      (optional): source domain name",
              SRC_SERVICE_OPT, "-s=<service>     (optional): source service/cell name");
 
     final Marker marker;
-    final String sourceHost;
     final String sourceService;
     final String sourceDomain;
     final String destinationHost;
@@ -135,13 +131,6 @@ public final class AlarmArguments {
             destinationPort = arg;
         } else {
             destinationPort = DEFAULT_PORT;
-        }
-
-        arg = parsed.getOption(SRC_HOST_OPT);
-        if (arg != null) {
-            sourceHost = arg;
-        } else {
-            sourceHost = NetworkUtils.getCanonicalHostName();
         }
 
         arg = parsed.getOption(SRC_DOMAIN_OPT);

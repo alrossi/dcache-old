@@ -123,7 +123,7 @@ public class LogEntryAppenderTest {
     @Before
     public void setup() throws Exception {
         clearLast();
-        LogEntryAppender appender = new LogEntryAppender();
+        LogEntryHandler appender = new LogEntryHandler();
         appender.setContext(new LoggerContext());
         appender.setEmailEnabled(false);
         appender.setHistoryEnabled(false);

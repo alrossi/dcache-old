@@ -69,7 +69,8 @@ import org.slf4j.MDC;
 
 import java.net.URL;
 
-import org.dcache.alarms.Alarm;
+import dmg.cells.nucleus.CDC;
+
 import org.dcache.alarms.PredefinedAlarm;
 import org.dcache.util.Args;
 
@@ -107,12 +108,6 @@ import org.dcache.util.Args;
  *             <br>If no type is specified, an attempt to infer the type
  *             from definitions will be made by the server; failing that,
  *             the type will be 'GENERIC'.</td>
- *     </tr>
- *     <tr>
- *         <td>h [source host]</td>
- *         <td>NO</td>
- *         <td>host where alarm originates; defaults to canonical
- *             name of local host.</td>
  *     </tr>
  *     <tr>
  *         <td>d [source domain]</td>
@@ -169,9 +164,13 @@ public class SendAlarm {
     private static String sendAlarm(AlarmArguments alarmArgs,
                                     org.slf4j.Logger logger)
                    throws JoranException {
-        MDC.put(Alarm.HOST_TAG, alarmArgs.sourceHost);
-        MDC.put(Alarm.DOMAIN_TAG, alarmArgs.sourceDomain);
-        MDC.put(Alarm.SERVICE_TAG, alarmArgs.sourceService);
+        /*
+         * This is called from either the shell or the admin CLI.
+         * In the former case, there is no cell or domain; in
+         * the latter, these are overridden by the flagged values.
+         */
+        MDC.put(CDC.MDC_DOMAIN, alarmArgs.sourceDomain);
+        MDC.put(CDC.MDC_CELL, alarmArgs.sourceService);
         if (logger == null) {
             logger = configureLogger(alarmArgs.destinationHost,
                                      alarmArgs.destinationPort);

@@ -64,7 +64,7 @@ COPYRIGHT STATUS:
   documents or software obtained from this server.
  */
 /*
- * Logback: the reliable, generic, fast and flexible logging framework.
+  Logback: the reliable, generic, fast and flexible logging framework.
   Copyright (C) 1999-2013, QOS.ch. All rights reserved.
 
   This program and the accompanying materials are dual-licensed under
@@ -78,140 +78,108 @@ COPYRIGHT STATUS:
  */
 package org.dcache.alarms.logback;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.net.ServerSocketFactory;
-
+import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.net.ServerSocket;
+import java.io.ObjectInputStream;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
+import dmg.cells.nucleus.CDC;
+
+import org.dcache.alarms.Alarm;
 
 /**
- * This implementation adapts {@link ch.qos.logback.classic.net.SimpleSocketServer}
- * to run directly as a dCache cell component and to bypass re-entry of
- * the remotely sent logging event into the logging context.
+ * Reads {@link ILoggingEvent} objects sent from a remote client using Sockets
+ * (TCP). These logging events are passed directly to the LogEntryAppender,
+ * bypassing the logger tree.
  * <p>
- * This is achieved by a special implementation of the ServerSocketNode
- * which calls the LogEntryHandler (was LogEntryAppender) directly.
  *
- * @author arossi
+ * This class has been adapted from {@link ch.qos.logback.classic.net.SocketNode}.
+ *
  * @author Ceki G&uuml;lc&uuml;
  * @author S&eacute;bastien Pennec
+ * @author Moses Hohman <mmhohman@rainbow.uchicago.edu>
+ * @author arossi
  */
-public final class LogEntryServer implements Runnable {
-    private static final Logger LOGGER = LoggerFactory.getLogger(LogEntryServer.class);
+final class LogEntryServerSocketNode implements Runnable {
+    private static final Logger LOGGER
+        = LoggerFactory.getLogger(LogEntryServerSocketNode.class);
+    private final Lock lock;
+    private final ObjectInputStream ois;
+    private final Socket socket;
+    private final LogEntryServer server;
+    private final LogEntryHandler handler;
+    private final String hostName;
 
-    private final List<LogEntryServerSocketNode> socketNodeList
-        = Collections.synchronizedList(new ArrayList<>());
-    private final Lock lock = new ReentrantLock();
-
-    private LogEntryHandler handler;
-    private Integer port;
-    private ServerSocket serverSocket;
     private boolean running = false;
 
-    public LogEntryHandler getHandler() {
-        return handler;
+    LogEntryServerSocketNode(LogEntryServer socketServer, Socket socket)
+                    throws IOException  {
+        this.server = socketServer;
+        this.socket = socket;
+        this.handler = socketServer.getHandler();
+        lock = new ReentrantLock();
+        hostName = socket.getInetAddress().getCanonicalHostName();
+        ois = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()));
     }
 
     public void run() {
-        LOGGER.info("Listening on port {}.", port);
-
-        try {
-            serverSocket = ServerSocketFactory.getDefault()
-                                              .createServerSocket(port);
-        } catch (IOException t) {
-            LOGGER.error("There was a problem creating the server socket: {}; "
-                            + "cause {}.",  t.getMessage(), t.getCause());
-            stop();
-            return;
-        }
-
-        while (true) {
-            lock.lock();
-            try {
-                if (!running) {
-                    break;
-                }
-
-                LOGGER.debug("Waiting to accept a new client.");
-                Socket socket = serverSocket.accept();
-                LOGGER.debug("Connected to client at {}.",
-                              socket.getInetAddress());
-                LOGGER.debug("Starting new socket node.");
-                LogEntryServerSocketNode newSocketNode
-                    = new LogEntryServerSocketNode(this, socket);
-                socketNodeList.add(newSocketNode);
-                new Thread(newSocketNode).start();
-            } catch (IOException t) {
-                LOGGER.error("There was a problem connecting to client: {}; "
-                                + "cause {}.",  t.getMessage(), t.getCause());
-            } finally {
-                lock.unlock();
-            }
-        }
-    }
-
-    public void setHandler(LogEntryHandler appender) {
-        this.handler = checkNotNull(appender);
-    }
-
-    public void setPort(Integer port) {
-        checkArgument(port != null && port > 0);
-        this.port = port;
-    }
-
-    public void socketNodeClosing(LogEntryServerSocketNode sn) {
-        LOGGER.debug("Removing {}.", sn);
-        socketNodeList.remove(sn);
-    }
-
-    public void start() {
         lock.lock();
         try {
-            if (!running) {
-                running = true;
-                new Thread(this).start();
-            }
+            running = true;
         } finally {
             lock.unlock();
         }
+
+        try {
+            while (true) {
+                lock.lock();
+                try {
+                    if (!running) {
+                        break;
+                    }
+                    ILoggingEvent event = (ILoggingEvent) ois.readObject();
+                    Map<String, String> mdc = event.getMDCPropertyMap();
+                    mdc.put(Alarm.HOST_TAG, hostName);
+                    mdc.put(Alarm.SERVICE_TAG, mdc.remove(CDC.MDC_CELL));
+                    mdc.put(Alarm.DOMAIN_TAG, mdc.remove(CDC.MDC_DOMAIN));
+                    handler.handle(event);
+                } finally {
+                    lock.unlock();
+                }
+            }
+        } catch (ClassNotFoundException | IOException t) {
+            LOGGER.error("Terminal error on socket node {}: {}, cause {}.",
+                            this, t.getMessage(), t.getCause());
+        }
+
+        server.socketNodeClosing(this);
+        close();
     }
 
-    public void stop() {
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName()
+                        + ": " + socket.getRemoteSocketAddress().toString()
+                        + " (" + hostName + ")";
+    }
+
+    void close() {
         lock.lock();
         try {
             if (running) {
                 running = false;
-                if (serverSocket != null) {
-                    try {
-                        serverSocket.close();
-                    } catch (IOException e) {
-                        LOGGER.error("Failed to close serverSocket: {}.",
-                                        e.getMessage());
-                    } finally {
-                        serverSocket = null;
-                    }
-                }
-
-                LOGGER.debug("closing {}.", this);
-                for (LogEntryServerSocketNode sn : socketNodeList) {
-                    sn.close();
-                }
-
-                if (socketNodeList.size() != 0) {
-                    LOGGER.debug("Was expecting an empty socket node list "
-                                    + "after server shutdown, but list is {}.",
-                                    socketNodeList);
+                try {
+                    ois.close();
+                } catch (IOException e) {
+                    LOGGER.debug("Could not close connection: {}, cause: {}.",
+                                    e.getMessage(), e.getCause());
                 }
             }
         } finally {

@@ -72,7 +72,7 @@ import java.io.IOException;
  *
  * @author arossi
  */
-public class LogEntryXMLInitializer {
+public final class LogEntryXMLInitializer {
     private static final String EMPTY_XML_STORE =
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<entries></entries>\n";
 
