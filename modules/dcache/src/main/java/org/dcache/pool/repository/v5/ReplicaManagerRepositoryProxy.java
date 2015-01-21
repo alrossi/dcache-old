@@ -306,6 +306,4 @@ public class ReplicaManagerRepositoryProxy {
 
         return state;
     }
-
-
 }
