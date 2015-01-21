@@ -73,7 +73,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Iterator;
 import java.util.MissingResourceException;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Predicate;
 
 import static diskCacheV111.util.CacheException.*;
 
@@ -94,13 +93,6 @@ public class ReplicaManagerRepositoryProxy {
      */
     private static final String SYSTEM_OWNER = "system";
     private static final String REPLICA_MANAGER_OWNER = "replica-manager";
-    private static final Predicate<StickyRecord> BELONGS_TO_REPLICA_MANAGER
-                    = new Predicate<StickyRecord>() {
-                        @Override
-                        public boolean test(StickyRecord record) {
-                            return record.owner().equals(REPLICA_MANAGER_OWNER);
-                        }
-    };
 
     /*
      *  Hardcoded for the moment.
@@ -248,8 +240,9 @@ public class ReplicaManagerRepositoryProxy {
         while(pnfsIds.hasNext()) {
             PnfsId pnfsId = pnfsIds.next();
             try {
-                repository.getEntry(pnfsId).getStickyRecords()
-                                           .removeIf(BELONGS_TO_REPLICA_MANAGER);
+                repository.getEntry(pnfsId)
+                          .getStickyRecords()
+                          .removeIf((record) -> record.owner().equals(REPLICA_MANAGER_OWNER));
                 pnfsIds.remove();
             } catch (IllegalArgumentException | InterruptedException | CacheException t) {
                 LOGGER.error("failed to remove {}: {}.", pnfsId, t.getMessage());

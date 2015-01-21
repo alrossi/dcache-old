@@ -669,8 +669,8 @@ public class CacheRepositoryV5
                          * Fail if this file is currently owned by the
                          * replica manager.
                          */
-                        ReplicaManagerRepositoryProxy.assertNoReplicaStickyRecord(
-                                        entry, getPoolName());
+                        ReplicaManagerRepositoryProxy
+                             .assertNoReplicaStickyRecord(entry, getPoolName());
                         /*
                          * Otherwise, fall through to setState().
                          */
