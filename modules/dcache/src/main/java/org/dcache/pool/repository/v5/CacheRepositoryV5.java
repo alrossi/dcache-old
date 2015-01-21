@@ -665,6 +665,15 @@ public class CacheRepositoryV5
                 case BROKEN:
                     switch (state) {
                     case REMOVED:
+                        /*
+                         * Fail if this file is currently owned by the
+                         * replica manager.
+                         */
+                        ReplicaManagerRepositoryProxy.assertNoReplicaStickyRecord(
+                                        entry, getPoolName());
+                        /*
+                         * Otherwise, fall through to setState().
+                         */
                     case CACHED:
                     case PRECIOUS:
                     case BROKEN:
@@ -839,6 +848,58 @@ public class CacheRepositoryV5
         updateRemovable(newEntry);
         StickyChangeEvent event = new StickyChangeEvent(oldEntry, newEntry, record);
         _stateChangeListeners.stickyChanged(event);
+    }
+
+    /*
+     *  Package local method for access by the ReplicaManagerProxy
+     *  in order not to expose as part of the repository API the ability
+     *  to force removal if there is a sticky record belonging to the replica
+     *  manager itself.  This is to ensure that other removal actions initiated
+     *  elsewhere do not interfere with the Replica Manager's elimination
+     *  of redundant copies.
+     */
+    void remove(PnfsId id) throws IllegalTransitionException,
+                    IllegalArgumentException,
+                    InterruptedException,
+                    CacheException
+    {
+        if (id == null) {
+            throw new IllegalArgumentException("id is null");
+        }
+
+        assertOpen();
+
+        try {
+            MetaDataRecord entry = getMetaDataRecord(id);
+            synchronized (entry) {
+                EntryState source = entry.getState();
+                switch (source) {
+                    case PRECIOUS:
+                    case CACHED:
+                    case BROKEN:
+                        setState(entry, EntryState.REMOVED);
+                        return;
+                    /*
+                     * Note that removed should also not be the case,
+                     * as it would imply that a file which is under the control
+                     * of the replica manager has been deleted.
+                     */
+                    default:
+                        break;
+                }
+                throw new IllegalTransitionException(id, source, EntryState.REMOVED);
+            }
+        } catch (FileNotInCacheException e) {
+            /* File disappeared before we could change the
+             * state. Again, this should not be the case, as it would
+             * imply that a file which is under the control
+             * of the replica manager has been deleted.
+             */
+            throw new IllegalTransitionException(id, NEW, EntryState.REMOVED);
+        } catch (DiskErrorCacheException e) {
+            fail(FaultAction.READONLY,"Internal repository error", e);
+            throw e;
+        }
     }
 
     /**
