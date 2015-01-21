@@ -73,6 +73,7 @@ import java.util.concurrent.Executor;
  * Manipulates a sticky record indicating that the replica currently is
  * under the control of the replica manager and cannot be removed.
  * The replica manager removes the record when its operation has finished.
+ * Calls {@link org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy}.
  *
  * @author arossi
  */
@@ -82,7 +83,6 @@ public final class StickyReplicasTask extends InnerCommandTask {
 
     private final StickyReplicasMessage message;
     private final ReplicaManagerRepositoryProxy repository;
-
 
     public StickyReplicasTask(StickyReplicasMessage message,
                               ReplicaManagerRepositoryProxy repository,

@@ -73,6 +73,7 @@ import java.util.concurrent.Executor;
  * Attempts to set the cache entry to REMOVED for each pnfsid in the
  * message list. If successful, the pnfsid is removed from the list.
  * Hence success is denoted by a message returning with an empty list.
+ * Calls {@link org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy}.
  *
  * @author arossi
  */

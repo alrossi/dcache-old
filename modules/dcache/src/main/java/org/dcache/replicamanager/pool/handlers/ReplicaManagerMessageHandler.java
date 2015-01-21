@@ -96,8 +96,7 @@ public class ReplicaManagerMessageHandler implements CellMessageReceiver,
     private CDCFixedPoolTaskExecutor cacheInfoTaskExecutor;
     private CDCFixedPoolTaskExecutor repRmTaskExecutor;
 
-    public void messageArrived(CellMessage message,
-                               CacheEntryInfoMessage info)
+    public void messageArrived(CellMessage message, CacheEntryInfoMessage info)
                     throws CacheException, InterruptedException {
         info.setPool(repositoryProxy.getPoolName());
 
