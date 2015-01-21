@@ -149,6 +149,7 @@
     <property name="repository" ref="rep"/>
     <property name="checksumModule" ref="csm"/>
     <property name="scrubberStateFile" value="${pool.path}/scrubber.state"/>
+    <property name="broadcast" ref="broadcast-stub"/>
   </bean>
 
   <bean id="csm" class="org.dcache.pool.classic.ChecksumModuleV1">
@@ -204,6 +205,11 @@
   <bean id="billing-stub" class="org.dcache.cells.CellStub">
       <description>Billing communication stub</description>
       <property name="destination" value="${pool.service.billing}"/>
+  </bean>
+
+  <bean id="broadcast-stub" class="org.dcache.cells.CellStub">
+        <description>Broadcast communication stub</description>
+        <property name="destination" value="${pool.service.broadcast}"/>
   </bean>
 
   <bean id="pnfsStub" class="org.dcache.cells.CellStub">
