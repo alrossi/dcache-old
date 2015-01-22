@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <changeSet author="arossi" id="20">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <not>
+                    <indexExists indexName="i_locationinfo_ilocation"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>read optimization</comment>
+        <createIndex indexName="i_locationinfo_ilocation" tableName="t_locationinfo">
+            <column name="ilocation"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet author="arossi" id="21">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <not>
+                    <indexExists indexName="i_locationinfo_itype"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>read optimization</comment>
+        <createIndex indexName="i_locationinfo_itype" tableName="t_locationinfo">
+            <column name="itype"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

@@ -16,7 +16,10 @@
  */
 package org.dcache.chimera;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Multimap;
 import com.google.common.io.ByteStreams;
 import com.google.common.primitives.Ints;
 import org.slf4j.Logger;
@@ -1359,6 +1362,50 @@ class FsSqlDriver {
             SqlHelper.tryToClose(stClearInodeLocations);
         }
     }
+
+    private static final String sqlGetAllReplicasForLocation =
+                    "SELECT t1.ipnfsid, t1.ilocation "
+                    + "FROM t_locationinfo t1, t_locationinfo t2 "
+                    + "WHERE t1.itype = 1 AND t2.itype = 1 "
+                    + "AND t1.ipnfsid = t2.ipnfsid "
+                    + "AND t2.ilocation = ? "
+                    + "ORDER BY t1.ipnfsid";
+
+    /**
+     * Added on support of replica manager querying for all tuples
+     * (pnfsid, ilocation) where at least one tuple exists with
+     * ilocation = to the parameter.
+     *
+     * @param dbConnection
+     * @param location to match
+     * @return multimap (ipnfsid, ilocation)
+     * @throws SQLException
+     */
+    public Multimap<String, String> getLocations(Connection dbConnection,
+                                                 String location)
+                    throws SQLException {
+        PreparedStatement stGetLocations = null;
+        ResultSet getGetLocationsResultSet = null;
+        Multimap<String, String> result = HashMultimap.create();
+
+        try {
+            stGetLocations = dbConnection.prepareStatement(sqlGetAllReplicasForLocation);
+            stGetLocations.setString(1, location);
+            getGetLocationsResultSet = stGetLocations.executeQuery();
+
+            while (getGetLocationsResultSet.next()) {
+                String ipnfsid = getGetLocationsResultSet.getString(1);
+                String ilocation = getGetLocationsResultSet.getString(2);
+                result.put(ipnfsid, ilocation);
+            }
+        } finally {
+            SqlHelper.tryToClose(getGetLocationsResultSet);
+            SqlHelper.tryToClose(stGetLocations);
+        }
+
+        return result;
+    }
+
     /////////////////////////////////////////////////////////////////////
     ////
     ////   Directory tags handling
