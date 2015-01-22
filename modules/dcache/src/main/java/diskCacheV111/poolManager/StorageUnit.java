@@ -73,15 +73,15 @@ public class StorageUnit extends Unit {
 
     private Integer minReplicas;
     private Integer maxReplicas;
-    private Boolean sameHostEnabled;
+    private Boolean sameDeviceIdsEnabled;
 
     public StorageUnit(String name)
     {
         super(name, PoolSelectionUnitV2.STORE);
     }
 
-    public Boolean areSameHostReplicasEnabled() {
-        return sameHostEnabled;
+    public Boolean areSameDeviceIdsEnabled() {
+        return sameDeviceIdsEnabled;
     }
 
     public Integer getMaxReplicas() {
@@ -102,8 +102,8 @@ public class StorageUnit extends Unit {
         this.minReplicas = minReplicas;
     }
 
-    public void setSameHostReplicasEnabled(boolean sameHostEnabled) {
-        this.sameHostEnabled = sameHostEnabled;
+    public void setSameDeviceIdsEnabled(boolean sameDeviceIdsEnabled) {
+        this.sameDeviceIdsEnabled = sameDeviceIdsEnabled;
     }
 
     public void validate() throws IllegalStateException {
@@ -126,7 +126,7 @@ public class StorageUnit extends Unit {
         return super.toString()
                         + "(minReplicas=" + minReplicas
                         + "; maxReplicas=" + maxReplicas
-                        + "; sameHostEnabled=" + sameHostEnabled + ")";
+                        + "; sameDeviceIdsEnabled=" + sameDeviceIdsEnabled + ")";
     }
 
 }

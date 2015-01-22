@@ -1045,7 +1045,7 @@ public class PoolSelectionUnitV2
 
             tmp = args.getOpt("sameHostEnabled");
             if (tmp != null) {
-                group.setSameHostReplicasEnabled(Boolean.parseBoolean(tmp));
+                group.setSameDeviceIdsEnabled(Boolean.parseBoolean(tmp));
             }
 
             group.validate();
@@ -1343,7 +1343,7 @@ public class PoolSelectionUnitV2
 
             tmp = args.getOpt("sameHostEnabled");
             if (tmp != null) {
-                sUnit.setSameHostReplicasEnabled(new Boolean(tmp));
+                sUnit.setSameDeviceIdsEnabled(new Boolean(tmp));
             }
 
             sUnit.validate();
@@ -1418,7 +1418,7 @@ public class PoolSelectionUnitV2
                 result[2] = group._linkList.keySet().toArray();
                 result[3] = group.getMinReplicas();
                 result[4] = group.getMaxReplicas();
-                result[5] = group.areSameHostReplicasEnabled();
+                result[5] = group.areSameDeviceIdsEnabled();
                 xlsResult = result;
             }
         } finally {
@@ -1698,7 +1698,7 @@ public class PoolSelectionUnitV2
                 if (detail) {
                     sb.append(" minReplicas = ").append(group.getMinReplicas())
                       .append(", maxReplicas = ").append(group.getMaxReplicas())
-                      .append(", sameHostEnabled = ").append(group.areSameHostReplicasEnabled())
+                      .append(", sameHostEnabled = ").append(group.areSameDeviceIdsEnabled())
                       .append("\n")
                       .append(" linkList :\n");
                     for (Link link : group._linkList.values()) {

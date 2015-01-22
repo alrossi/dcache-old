@@ -151,7 +151,7 @@ public interface PoolSelectionUnit  {
     public interface SelectionPoolGroup extends SelectionEntity {
         int getMaxReplicas();
         int getMinReplicas();
-        boolean areSameHostReplicasEnabled();
+        boolean areSameDeviceIdsEnabled();
     }
    public interface SelectionLinkGroup extends SelectionEntity{
 	   public void add(SelectionLink link);
