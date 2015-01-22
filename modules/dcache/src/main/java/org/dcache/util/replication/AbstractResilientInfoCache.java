@@ -1,9 +1,9 @@
 package org.dcache.util.replication;
 
-import java.util.concurrent.TimeUnit;
-
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by arossi on 1/22/15.

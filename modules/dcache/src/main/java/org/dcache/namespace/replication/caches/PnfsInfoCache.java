@@ -57,68 +57,64 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.namespace.replication;
+package org.dcache.namespace.replication.caches;
 
-import java.io.Serializable;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
-import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPool;
-import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPoolGroup;
-import diskCacheV111.poolManager.StorageUnit;
+import diskCacheV111.namespace.NameSpaceProvider;
+import diskCacheV111.util.CacheException;
+import diskCacheV111.util.PnfsId;
+import org.dcache.auth.Subjects;
+import org.dcache.namespace.FileAttribute;
+import org.dcache.util.replication.AbstractResilientInfoCache;
+import org.dcache.vehicles.FileAttributes;
 
 /**
- * Encapsulates the pool group data obtainable from the pool selection unit.
- * This includes a map of all storage unit types found in the pool group.
+ * Because replica handling may involve many calls to both the namespace
+ * and to the Pool Monitor and Pool Manager services, precautions must be
+ * taken to avoid DOS on these components.  This component assumes that
+ * the values asked for are reasonably stable within the limits defined
+ * for each timeout.  All information needed by the replica manager
+ * concerning file attributes and pool/group metadata should pass through
+ * this cache.
  *
  * @author arossi
  */
-public class PoolGroupInfo implements Serializable {
-    private static final long serialVersionUID = 1L;
+public class PnfsInfoCache extends
+                AbstractResilientInfoCache<PnfsId, FileAttributes> {
+    private static final Set<FileAttribute> requiredAttributes
+                    = Collections.unmodifiableSet(
+                    EnumSet.of(FileAttribute.ACCESS_LATENCY,
+                                    FileAttribute.STORAGECLASS,
+                                    FileAttribute.HSM));
+    private NameSpaceProvider namespace;
 
-    private final Map<String, StorageUnit> storageUnits;
-    private final Set<SelectionPool> pools;
-
-    private SelectionPoolGroup poolGroup;
-
-    public PoolGroupInfo() {
-        storageUnits = new HashMap<>();
-        pools = new HashSet<>();
+    public List<String> getAllLocationsFor(PnfsId pnfsId) throws CacheException {
+        return namespace.getCacheLocation(Subjects.ROOT, pnfsId);
     }
 
-    public void addStorageUnit(StorageUnit storageUnit) {
-        storageUnits.put(storageUnit.getName(), storageUnit);
+    public FileAttributes getAttributes(PnfsId pnfsId)
+                    throws ExecutionException {
+        FileAttributes attributes = cache.get(pnfsId, ()-> load(pnfsId));
+        if (attributes != null) {
+            return attributes;
+        }
+        throw new NoSuchElementException(pnfsId.toString()
+                        + " has no mapped attributes.");
     }
 
-    public SelectionPoolGroup getPoolGroup() {
-        return poolGroup;
+    public void setNamespace(NameSpaceProvider namespace) {
+        this.namespace = namespace;
     }
 
-    public Collection<SelectionPool> getPools() {
-        return pools;
-    }
-
-    public StorageUnit getStorageUnit(String unitName) {
-        return storageUnits.get(unitName);
-    }
-
-    public boolean isResilient() {
-        return poolGroup != null;
-    }
-
-    public void setPoolGroup(SelectionPoolGroup poolGroup) {
-        this.poolGroup = poolGroup;
-    }
-
-    public void setPools(Collection<SelectionPool> pools) {
-        this.pools.addAll(pools);
-    }
-
-    public Iterator<StorageUnit> storageUnits() {
-        return storageUnits.values().iterator();
+    private FileAttributes load(PnfsId pnsfId) throws CacheException {
+        return namespace.getFileAttributes(Subjects.ROOT,
+                                           pnsfId,
+                                           requiredAttributes);
     }
 }
