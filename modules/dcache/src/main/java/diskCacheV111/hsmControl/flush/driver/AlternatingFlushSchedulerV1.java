@@ -58,7 +58,7 @@ import org.dcache.util.Args;
        *
        *-----------------------------------------------------------------------------------
        *
-       *            OUR INTERNAL POOL REPRESENTATION
+       *            OUR INTERNAL CACHEENTRYINFO REPRESENTATION
        *
        */
      private class Pool implements HsmFlushControlCore.DriverHandle {

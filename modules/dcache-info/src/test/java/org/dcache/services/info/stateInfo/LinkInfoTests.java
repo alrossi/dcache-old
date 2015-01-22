@@ -64,7 +64,7 @@ public class LinkInfoTests {
 
     @Test
     public void testAddPool() {
-        String poolName = "TEST POOL";
+        String poolName = "TEST CACHEENTRYINFO";
         _info.addPool( poolName);
 
         Set<String> pools = _info.getPools();
@@ -76,7 +76,7 @@ public class LinkInfoTests {
 
     @Test
     public void testAddPoolTwice() {
-        String poolName = "TEST POOL";
+        String poolName = "TEST CACHEENTRYINFO";
         _info.addPool( poolName);
         _info.addPool( poolName);
 
@@ -89,8 +89,8 @@ public class LinkInfoTests {
 
     @Test
     public void testAddTwoPools() {
-        String poolName1 = "TEST POOL 1";
-        String poolName2 = "TEST POOL 2";
+        String poolName1 = "TEST CACHEENTRYINFO 1";
+        String poolName2 = "TEST CACHEENTRYINFO 2";
         _info.addPool( poolName1);
         _info.addPool( poolName2);
 
