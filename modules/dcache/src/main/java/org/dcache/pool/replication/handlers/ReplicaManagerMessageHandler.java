@@ -67,7 +67,7 @@ import dmg.cells.nucleus.CellMessageReceiver;
 import dmg.cells.nucleus.CellMessageSender;
 
 import org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy;
-import org.dcache.util.executors.CDCFixedPoolTaskExecutor;
+import org.dcache.util.replication.CDCFixedPoolTaskExecutor;
 import org.dcache.pool.replication.tasks.CacheEntryInfoTask;
 import org.dcache.pool.replication.tasks.RemoveReplicasTask;
 import org.dcache.pool.replication.tasks.StickyReplicasTask;

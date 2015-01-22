@@ -230,7 +230,7 @@ public class UniversalSpringCell
         createContext();
 
         /* Cell threading is configurable through arguments to
-         * UniversalSpringCell. The executors have to be created as
+         * UniversalSpringCell. The replication have to be created as
          * beans in the Spring file, however the names of the beans
          * are provided as cell arguments.
          */
