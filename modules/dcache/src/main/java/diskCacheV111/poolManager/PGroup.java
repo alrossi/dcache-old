@@ -12,15 +12,15 @@ class PGroup extends PoolCore implements SelectionPoolGroup {
 
     private int minReplicas = 1;
     private int maxReplicas = 1;
-    private boolean sameDeviceIdsEnabled = true;
+    private String onlyOneCopyPer;
 
     PGroup(String name) {
         super(name);
     }
 
     @Override
-    public boolean areSameDeviceIdsEnabled() {
-        return sameDeviceIdsEnabled;
+    public String getOnlyOneCopyPer() {
+        return onlyOneCopyPer;
     }
 
     @Override
@@ -48,8 +48,8 @@ class PGroup extends PoolCore implements SelectionPoolGroup {
         return _poolList.keySet().toArray(new String[_poolList.size()]);
     }
 
-    public void setSameDeviceIdsEnabled(boolean sameDeviceIdsEnabled) {
-        this.sameDeviceIdsEnabled = sameDeviceIdsEnabled;
+    public void setOnlyOneCopyPer(String onlyOneCopyPer) {
+        this.onlyOneCopyPer = onlyOneCopyPer;
     }
 
     public void validate() throws IllegalStateException {
@@ -67,6 +67,6 @@ class PGroup extends PoolCore implements SelectionPoolGroup {
                         + ";pools=" + _poolList.size()
                         + "; minReplicas=" + minReplicas
                         + "; maxReplicas=" + maxReplicas
-                        + "; sameDeviceIdsEnabled=" + sameDeviceIdsEnabled + ")";
+                        + "; onlyOneCopyPer=" + onlyOneCopyPer + ")";
     }
 }

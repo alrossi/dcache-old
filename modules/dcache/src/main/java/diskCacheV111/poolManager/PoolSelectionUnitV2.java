@@ -1020,7 +1020,7 @@ public class PoolSelectionUnitV2
     }
 
     public final static String hh_psu_set_pgroup = "<pool group> [-minreplicas=<minreplicas>] "
-                    + "[-maxreplicas=<maxreplicas>] [-sameHostEnabled=<true/false>]";
+                    + "[-maxreplicas=<maxreplicas>] [-onlyOneCopyPer=<and/or expression using tags>]";
 
     public String ac_psu_set_pgroup_$_1(Args args) {
 
@@ -1043,9 +1043,9 @@ public class PoolSelectionUnitV2
                 group.setMaxReplicas(Integer.parseInt(tmp));
             }
 
-            tmp = args.getOpt("sameHostEnabled");
+            tmp = args.getOpt("onlyOneCopyPer");
             if (tmp != null) {
-                group.setSameDeviceIdsEnabled(Boolean.parseBoolean(tmp));
+                group.setOnlyOneCopyPer(tmp);
             }
 
             group.validate();
@@ -1311,7 +1311,7 @@ public class PoolSelectionUnitV2
     }
 
     public final static String hh_psu_set_storage_unit = "<storage unit> [-minreplicas=<minreplicas>] "
-                    + "[-maxreplicas=<maxreplicas>] [-sameHostEnabled=<true/false>]";
+                    + "[-maxreplicas=<maxreplicas>] [-onlyOneCopyPer=<and/or expression using tags>]";
 
     public String ac_psu_set_storage_unit_$_1(Args args) {
 
@@ -1341,9 +1341,9 @@ public class PoolSelectionUnitV2
                 sUnit.setMaxReplicas(new Integer(tmp));
             }
 
-            tmp = args.getOpt("sameHostEnabled");
+            tmp = args.getOpt("onlyOneCopyPer");
             if (tmp != null) {
-                sUnit.setSameDeviceIdsEnabled(new Boolean(tmp));
+                sUnit.setOnlyOneCopyPer(tmp);
             }
 
             sUnit.validate();
@@ -1418,7 +1418,7 @@ public class PoolSelectionUnitV2
                 result[2] = group._linkList.keySet().toArray();
                 result[3] = group.getMinReplicas();
                 result[4] = group.getMaxReplicas();
-                result[5] = group.areSameDeviceIdsEnabled();
+                result[5] = group.getOnlyOneCopyPer();
                 xlsResult = result;
             }
         } finally {
@@ -1698,7 +1698,7 @@ public class PoolSelectionUnitV2
                 if (detail) {
                     sb.append(" minReplicas = ").append(group.getMinReplicas())
                       .append(", maxReplicas = ").append(group.getMaxReplicas())
-                      .append(", sameHostEnabled = ").append(group.areSameDeviceIdsEnabled())
+                      .append(", sameHostEnabled = ").append(group.getOnlyOneCopyPer())
                       .append("\n")
                       .append(" linkList :\n");
                     for (Link link : group._linkList.values()) {
