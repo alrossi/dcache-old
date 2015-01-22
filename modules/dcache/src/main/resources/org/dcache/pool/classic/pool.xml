@@ -390,11 +390,11 @@
       </property>
   </bean>
 
-  <bean id="cache-info-executor" class="org.dcache.replicamanager.executors.CDCFixedPoolTaskExecutor">
+  <bean id="cache-info-executor" class="org.dcache.util.executors.CDCFixedPoolTaskExecutor">
       <property name="numberOfThreads" value="${pool.service.replicamanager.limits.max-cache-info-workers}"/>
   </bean>
 
-  <bean id="rep-rm-executor" class="org.dcache.replicamanager.executors.CDCFixedPoolTaskExecutor">
+  <bean id="rep-rm-executor" class="org.dcache.util.executors.CDCFixedPoolTaskExecutor">
       <property name="numberOfThreads" value="${pool.service.replicamanager.limits.max-rep-rm-workers}"/>
   </bean>
 
@@ -402,7 +402,7 @@
         <property name="repository" ref="rep"/>
   </bean>
 
-  <bean id="rm-message-handler" class="org.dcache.replicamanager.pool.handlers.ReplicaManagerMessageHandler">
+  <bean id="rm-message-handler" class="org.dcache.pool.replication.handlers.ReplicaManagerMessageHandler">
         <description>For communication with the replica manager</description>
         <property name="cacheInfoTaskExecutor" ref="cache-info-executor"/>
         <property name="repRmTaskExecutor" ref="rep-rm-executor"/>

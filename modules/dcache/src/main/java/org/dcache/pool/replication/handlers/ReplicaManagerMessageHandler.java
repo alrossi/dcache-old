@@ -57,7 +57,7 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.replicamanager.pool.handlers;
+package org.dcache.pool.replication.handlers;
 
 import diskCacheV111.util.CacheException;
 
@@ -67,10 +67,10 @@ import dmg.cells.nucleus.CellMessageReceiver;
 import dmg.cells.nucleus.CellMessageSender;
 
 import org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy;
-import org.dcache.replicamanager.executors.CDCFixedPoolTaskExecutor;
-import org.dcache.replicamanager.pool.tasks.CacheEntryInfoTask;
-import org.dcache.replicamanager.pool.tasks.RemoveReplicasTask;
-import org.dcache.replicamanager.pool.tasks.StickyReplicasTask;
+import org.dcache.util.executors.CDCFixedPoolTaskExecutor;
+import org.dcache.pool.replication.tasks.CacheEntryInfoTask;
+import org.dcache.pool.replication.tasks.RemoveReplicasTask;
+import org.dcache.pool.replication.tasks.StickyReplicasTask;
 import org.dcache.vehicles.replicamanager.CacheEntryInfoMessage;
 import org.dcache.vehicles.replicamanager.RemoveReplicasMessage;
 import org.dcache.vehicles.replicamanager.StickyReplicasMessage;

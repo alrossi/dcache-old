@@ -57,11 +57,11 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.replicamanager.pool.tasks;
+package org.dcache.pool.replication.tasks;
 
 import dmg.util.command.DelayedCommand;
 import org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy;
-import org.dcache.replicamanager.InnerCommandTask;
+import org.dcache.pool.replication.InnerCommandTask;
 import org.dcache.vehicles.replicamanager.CacheEntryInfoMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

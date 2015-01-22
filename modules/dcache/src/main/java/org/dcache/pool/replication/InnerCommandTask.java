@@ -57,91 +57,27 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.replicamanager.executors;
+package org.dcache.pool.replication;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import dmg.util.command.DelayedCommand;
+
+import java.util.concurrent.Executor;
 
 /**
- * Parent class of the replica manager thread pool executors.  These
- * all need to maintain and pass along the CDC, particularly the session
- * id.
+ * Base class for DelayedCommand tasks.  Abstracts out the Serializable command.
  *
- * @author arossi
+ * Created by arossi on 1/13/15.
  */
-public abstract class CDCTaskExecutor<E extends ExecutorService> implements
-                ExecutorService {
-    protected E delegate;
-    protected int numberOfThreads;
+public abstract class InnerCommandTask {
+    protected DelayedCommand innerCommand;
 
-    public boolean awaitTermination(long timeout, TimeUnit unit)
-                    throws InterruptedException {
-        return delegate.awaitTermination(timeout, unit);
+    public DelayedCommand getCommand() {
+        return innerCommand;
     }
 
-    public void execute(Runnable command) {
-        delegate.execute(command);
+    protected InnerCommandTask(Executor executor) {
+        innerCommand = createCommand(executor);
     }
 
-    public abstract void initialize();
-
-    public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks)
-                    throws InterruptedException {
-        return delegate.invokeAll(tasks);
-    }
-
-    public <T> List<Future<T>> invokeAll(
-                    Collection<? extends Callable<T>> tasks, long timeout,
-                    TimeUnit unit) throws InterruptedException {
-        return delegate.invokeAll(tasks, timeout, unit);
-    }
-
-    public <T> T invokeAny(Collection<? extends Callable<T>> tasks)
-                    throws InterruptedException, ExecutionException {
-        return delegate.invokeAny(tasks);
-    }
-
-    public <T> T invokeAny(Collection<? extends Callable<T>> tasks,
-                    long timeout, TimeUnit unit) throws InterruptedException,
-                    ExecutionException, TimeoutException {
-        return delegate.invokeAny(tasks, timeout, unit);
-    }
-
-    public boolean isShutdown() {
-        return delegate.isShutdown();
-    }
-
-    public boolean isTerminated() {
-        return delegate.isTerminated();
-    }
-
-    public void setNumberOfThreads(int numberOfThreads) {
-        this.numberOfThreads = numberOfThreads;
-    }
-
-    public void shutdown() {
-        delegate.shutdown();
-    }
-
-    public List<Runnable> shutdownNow() {
-        return delegate.shutdownNow();
-    }
-
-    public <T> Future<T> submit(Callable<T> task) {
-        return delegate.submit(task);
-    }
-
-    public Future<?> submit(Runnable task) {
-        return delegate.submit(task);
-    }
-
-    public <T> Future<T> submit(Runnable task, T result) {
-        return delegate.submit(task, result);
-    }
+    protected abstract DelayedCommand createCommand(Executor executor);
 }

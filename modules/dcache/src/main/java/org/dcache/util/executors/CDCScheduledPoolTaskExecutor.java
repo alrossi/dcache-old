@@ -57,51 +57,49 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.replicamanager.pool.tasks;
+package org.dcache.util.executors;
 
-import dmg.util.command.DelayedCommand;
-import org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy;
-import org.dcache.replicamanager.InnerCommandTask;
-import org.dcache.vehicles.replicamanager.RemoveReplicasMessage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
-import java.io.Serializable;
-import java.util.concurrent.Executor;
+import org.dcache.util.CDCScheduledExecutorServiceDecorator;
 
 /**
- * Attempts to set the cache entry to REMOVED for each pnfsid in the
- * message list. If successful, the pnfsid is removed from the list.
- * Hence success is denoted by a message returning with an empty list.
- * Calls {@link org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy}.
+ * Child class in support of the scheduled executor required by the
+ * migration task.
  *
  * @author arossi
  */
-public final class RemoveReplicasTask extends InnerCommandTask {
-    private static final Logger LOGGER
-        = LoggerFactory.getLogger(RemoveReplicasTask.class);
+public final class CDCScheduledPoolTaskExecutor
+                    extends CDCTaskExecutor<CDCScheduledExecutorServiceDecorator>
+                    implements ScheduledExecutorService {
 
-    private final RemoveReplicasMessage message;
-    private final ReplicaManagerRepositoryProxy repository;
-
-    public RemoveReplicasTask(RemoveReplicasMessage message,
-                              ReplicaManagerRepositoryProxy repository,
-                              Executor executor) {
-        super(executor);
-        this.message = message;
-        this.repository = repository;
+    public void initialize() {
+        ScheduledExecutorService executor
+            = Executors.newScheduledThreadPool(numberOfThreads);
+        delegate = new CDCScheduledExecutorServiceDecorator(executor);
     }
 
-    @Override
-    protected DelayedCommand createCommand(Executor executor) {
-        return new DelayedCommand(executor) {
-            private static final long serialVersionUID = 1L;
+    public <V> ScheduledFuture<V> schedule(Callable<V> callable, long delay,
+                    TimeUnit unit) {
+        return delegate.schedule(callable, delay, unit);
+    }
 
-            @Override
-            protected Serializable execute() throws Exception {
-                repository.remove(message);
-                return message;
-            }
-        };
+    public ScheduledFuture<?> schedule(Runnable command, long delay,
+                    TimeUnit unit) {
+        return delegate.schedule(command, delay, unit);
+    }
+
+    public ScheduledFuture<?> scheduleAtFixedRate(Runnable command,
+                    long initialDelay, long period, TimeUnit unit) {
+        return delegate.scheduleAtFixedRate(command, initialDelay, period, unit);
+    }
+
+    public ScheduledFuture<?> scheduleWithFixedDelay(Runnable command,
+                    long initialDelay, long delay, TimeUnit unit) {
+        return delegate.scheduleWithFixedDelay(command, initialDelay, delay, unit);
     }
 }

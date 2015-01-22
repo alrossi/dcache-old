@@ -57,7 +57,7 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.replicamanager.executors;
+package org.dcache.util.executors;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
