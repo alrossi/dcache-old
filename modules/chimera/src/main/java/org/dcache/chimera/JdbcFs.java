@@ -16,6 +16,8 @@
  */
 package org.dcache.chimera;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Multimap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -2808,5 +2810,37 @@ public class JdbcFs implements FileSystemProvider {
     @Override
     public void unpin(String pnfsid) throws ChimeraFsException {
        throw new ChimeraFsException(NOT_IMPL);
+    }
+
+    /**
+     * This is not really part of the FileSystem API in that it<br>
+     * <ul><li> is not based on a single PnfsId;</li>
+     *     <li> bypasses the FsInode abstraction.</li></ul>
+     *
+     * But given that the FsSqlDriver is constructed (and is
+     * not injected) here, the replica manager component call must
+     * pass through this class.
+     *
+     * @param location having the requested pnfsids.
+     * @return map of all (pnfsid, location) for all pnfsids at this location.
+     */
+    public Multimap<String, String> getCacheLocations(String location)
+                    throws ChimeraFsException {
+        Connection dbConnection;
+        try {
+            dbConnection = _dbConnectionsPool.getConnection();
+        } catch (SQLException e) {
+            throw new BackEndErrorHimeraFsException(e.getMessage());
+        }
+
+        try {
+            dbConnection.setAutoCommit(true);
+            return _sqlDriver.getLocations(dbConnection, location);
+        } catch (SQLException e) {
+            _log.error("getCacheLocations", e);
+            throw new IOHimeraFsException(e.getMessage());
+        } finally {
+            tryToClose(dbConnection);
+        }
     }
 }
