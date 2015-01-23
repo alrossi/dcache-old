@@ -132,10 +132,12 @@ public final class PnfsCacheLocationHandler implements CellMessageReceiver {
             return;
         }
 
-        /*
-         * Offload request for resilient pool information onto separate thread.
-         */
         String pool = locations.iterator().next();
+
+        /*
+         * When run() is called in the START state, the worker immediately
+         * queues itself onto the first executor queue.
+         */
         new PnfsUpdateWorker(pool, pnfsId, hub).run();
         LOGGER.debug("launched PoolGroupInfoTask for {}.", pool);
     }

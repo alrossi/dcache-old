@@ -57,76 +57,20 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.namespace.replication.data;
+package org.dcache.namespace.replication;
 
-import java.io.Serializable;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-
-import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPool;
-import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPoolGroup;
-import diskCacheV111.poolManager.StorageUnit;
+import diskCacheV111.util.PnfsId;
 
 /**
- * Encapsulates the pool group data obtainable from the pool selection unit.
- * This includes a map of all storage unit types found in the pool group.
+ * For use during pool-wide status checks or scans.
  *
- * @author arossi
+ * Created by arossi on 1/23/15.
  */
-public class PoolGroupInfo implements Serializable {
-    private static final long serialVersionUID = 1L;
-
-    private final Map<String, StorageUnit> storageUnits;
-    private final Set<SelectionPool> pools;
-
-    private SelectionPoolGroup poolGroup;
-
-    public PoolGroupInfo() {
-        storageUnits = new HashMap<>();
-        pools = new HashSet<>();
-    }
-
-    public void addPool(SelectionPool pool) {
-        pools.add(pool);
-    }
-
-    public void addStorageUnit(StorageUnit storageUnit) {
-        storageUnits.put(storageUnit.getName(), storageUnit);
-    }
-
-    public SelectionPoolGroup getPoolGroup() {
-        return poolGroup;
-    }
-
-    public Collection<SelectionPool> getPools() {
-        return pools;
-    }
-
-    public Set<String> getPoolNames() {
-        Set<String> names = new HashSet<>();
-        for (SelectionPool p: pools) {
-            names.add(p.getName());
-        }
-        return names;
-    }
-
-    public StorageUnit getStorageUnit(String unitName) {
-        return storageUnits.get(unitName);
-    }
-
-    public boolean isResilient() {
-        return poolGroup != null;
-    }
-
-    public void setPoolGroup(SelectionPoolGroup poolGroup) {
-        this.poolGroup = poolGroup;
-    }
-
-    public Iterator<StorageUnit> storageUnits() {
-        return storageUnits.values().iterator();
-    }
+public interface PoolStatusCallback {
+    /**
+     * Provides for notification of completed pnfsId operation.
+     * @param pnfsId to replicate
+     * @param message optional
+     */
+    void finished(PnfsId pnfsId, String message);
 }

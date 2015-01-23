@@ -57,76 +57,38 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.namespace.replication.data;
+package org.dcache.namespace.replication.workers;
 
-import java.io.Serializable;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-
-import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPool;
-import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPoolGroup;
-import diskCacheV111.poolManager.StorageUnit;
+import diskCacheV111.util.PnfsId;
+import org.dcache.namespace.replication.PoolStatusCallback;
 
 /**
- * Encapsulates the pool group data obtainable from the pool selection unit.
- * This includes a map of all storage unit types found in the pool group.
- *
- * @author arossi
+ * Created by arossi on 1/23/15.
  */
-public class PoolGroupInfo implements Serializable {
-    private static final long serialVersionUID = 1L;
-
-    private final Map<String, StorageUnit> storageUnits;
-    private final Set<SelectionPool> pools;
-
-    private SelectionPoolGroup poolGroup;
-
-    public PoolGroupInfo() {
-        storageUnits = new HashMap<>();
-        pools = new HashSet<>();
+public class PoolStatusUpdateWorker implements Runnable, PoolStatusCallback {
+    @Override public void run() {
+    /*
+     * 1. Check that pool is resilient
+     * 2. Register the pool?
+     * 3. Issue query, get back multimap (pnfs, location)
+     * 4. Process: for count, by pool (binned)
+     * 5. For all pnfsids with only one copy on this pool, send alarm
+     * [  It would be better if we could batch the pnfsids by storage group.]
+     * 6. Now check the individual storage constraints for each and just issue
+     *    create a PnfsUpdateWorer by selecting randomly from
+     *    remaing sources, providing the PnfsUpdateWorker with this worker
+     *    as callback.
+     * 7. Wait for all callbacks.
+     * 8. Unregister.
+     *
+     *    Note, the expense of reprocessing the pool group and file attribute
+     *    is mitigated by the caches.
+     *    Note that pool group should return the ACTIVE pools.
+     */
     }
 
-    public void addPool(SelectionPool pool) {
-        pools.add(pool);
-    }
+    @Override
+    public void finished(PnfsId pnfsId, String message) {
 
-    public void addStorageUnit(StorageUnit storageUnit) {
-        storageUnits.put(storageUnit.getName(), storageUnit);
-    }
-
-    public SelectionPoolGroup getPoolGroup() {
-        return poolGroup;
-    }
-
-    public Collection<SelectionPool> getPools() {
-        return pools;
-    }
-
-    public Set<String> getPoolNames() {
-        Set<String> names = new HashSet<>();
-        for (SelectionPool p: pools) {
-            names.add(p.getName());
-        }
-        return names;
-    }
-
-    public StorageUnit getStorageUnit(String unitName) {
-        return storageUnits.get(unitName);
-    }
-
-    public boolean isResilient() {
-        return poolGroup != null;
-    }
-
-    public void setPoolGroup(SelectionPoolGroup poolGroup) {
-        this.poolGroup = poolGroup;
-    }
-
-    public Iterator<StorageUnit> storageUnits() {
-        return storageUnits.values().iterator();
     }
 }

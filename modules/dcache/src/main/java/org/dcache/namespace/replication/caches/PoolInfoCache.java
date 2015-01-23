@@ -59,9 +59,12 @@ documents or software obtained from this server.
  */
 package org.dcache.namespace.replication.caches;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import diskCacheV111.poolManager.PoolSelectionUnit.SelectionLink;
@@ -119,11 +122,20 @@ public class PoolInfoCache extends
             Collection<SelectionPool> pools
                             = poolMonitor.getPoolSelectionUnit()
                                          .getPoolsByPoolGroup(poolGroup);
-            info.setPools(pools);
+
             getStorageUnitsInGroup(info, poolGroup);
+
+            String[] active = poolMonitor.getPoolSelectionUnit()
+                            .getActivePools();
+            Set<String> valid = new HashSet<>(Arrays.asList(active));
+
             for (SelectionPool pool : pools) {
-                if (!pool.equals(poolName)) {
-                    cache.put(pool.getName(), info);
+                String name = pool.getName();
+                if (valid.contains(name)) {
+                    info.addPool(pool);
+                    if (!name.equals(poolName)) {
+                        cache.put(pool.getName(), info);
+                    }
                 }
             }
         }
