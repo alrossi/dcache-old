@@ -57,32 +57,37 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.vehicles;
+
+import diskCacheV111.util.PnfsId;
+import diskCacheV111.vehicles.Message;
+
+import org.dcache.util.Checksum;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Used to communicate a bad checksum or mismatched file size.
  *
  * @author arossi
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public class CorruptFileMessage extends Message {
+    private static final long serialVersionUID = -637754740160107244L;
 
-   @Override
-   public String getType() {
-       return toString();
+    public final String pool;
+    public final PnfsId pnfsid;
+    public final Iterable<Checksum> checksum;
+    public final long size;
+
+    public CorruptFileMessage(String pool,
+                              String pnfsid,
+                              Iterable<Checksum> checksum,
+                              long size) {
+        this.pool = pool;
+        this.pnfsid = new PnfsId(pnfsid);
+        this.checksum = checksum;
+        this.size = size;
+    }
+
+    public String toString() {
+        return pool + "." + pnfsid + ".INVALID_FILE";
     }
 }
