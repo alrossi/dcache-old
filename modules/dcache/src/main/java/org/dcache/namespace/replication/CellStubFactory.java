@@ -57,76 +57,48 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.namespace.replication.data;
+package org.dcache.namespace.replication;
 
-import java.io.Serializable;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
-import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPool;
-import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPoolGroup;
-import diskCacheV111.poolManager.StorageUnit;
+import dmg.cells.nucleus.CellEndpoint;
+import dmg.cells.nucleus.CellMessageSender;
+
+import org.dcache.cells.CellStub;
 
 /**
- * Encapsulates the pool group data obtainable from the pool selection unit.
- * This includes a map of all storage unit types found in the pool group.
+ * Convenience factory for constructing CellStubs, particularly for
+ * messaging with pools.
  *
  * @author arossi
  */
-public class PoolGroupInfo implements Serializable {
-    private static final long serialVersionUID = 1L;
+public final class CellStubFactory implements CellMessageSender {
+    private CellEndpoint endpoint;
+    private Long timeout;
+    private TimeUnit timeoutUnit;
 
-    private final Map<String, StorageUnit> storageUnits;
-    private final Set<SelectionPool> pools;
-
-    private SelectionPoolGroup poolGroup;
-
-    public PoolGroupInfo() {
-        storageUnits = new HashMap<>();
-        pools = new HashSet<>();
-    }
-
-    public void addStorageUnit(StorageUnit storageUnit) {
-        storageUnits.put(storageUnit.getName(), storageUnit);
-    }
-
-    public SelectionPoolGroup getPoolGroup() {
-        return poolGroup;
-    }
-
-    public Collection<SelectionPool> getPools() {
-        return pools;
-    }
-
-    public Set<String> getPoolNames() {
-        Set<String> names = new HashSet<>();
-        for (SelectionPool p: pools) {
-            names.add(p.getName());
+    public CellStub getCellStub(String destination) {
+        CellStub stub = new CellStub();
+        stub.setDestination(destination);
+        stub.setCellEndpoint(endpoint);
+        if (timeout != null) {
+            stub.setTimeout(timeout);
         }
-        return names;
+        if (timeoutUnit != null) {
+            stub.setTimeoutUnit(timeoutUnit);
+        }
+        return stub;
     }
 
-    public StorageUnit getStorageUnit(String unitName) {
-        return storageUnits.get(unitName);
+    public void setCellEndpoint(CellEndpoint endpoint) {
+        this.endpoint = endpoint;
     }
 
-    public boolean isResilient() {
-        return poolGroup != null;
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
     }
 
-    public void setPoolGroup(SelectionPoolGroup poolGroup) {
-        this.poolGroup = poolGroup;
-    }
-
-    public void setPools(Collection<SelectionPool> pools) {
-        this.pools.addAll(pools);
-    }
-
-    public Iterator<StorageUnit> storageUnits() {
-        return storageUnits.values().iterator();
+    public void setTimeoutUnit(TimeUnit timeoutUnit) {
+        this.timeoutUnit = timeoutUnit;
     }
 }
