@@ -36,37 +36,40 @@ import org.dcache.vehicles.replicamanager.StickyReplicasMessage;
 /**
  * A worker responsible for all phases of the replication task for
  * a single pnfsid.
- * <br>
- *
+ * <p/>
  * Written as a state machine.  Queues itself to run on the appropriate
  * queues for each phase.
- * <br>
- *
- * Implements complete handler as required by the migration Task API.
- * If that task succeeds, initiates a post-processing task run on a
- * separate thread pool to eliminate any excess replicas.
- * <br>
- *
- * If the task failure is not permanent, makes a best effort to find
+ * <p/>
+ * A check is first done to make sure the source pool belongs to a resilient
+ * group.  The pool group information is retrieved via a cache based on a periodic
+ * refresh of the pool monitor. Similarly, file attributes are retrieved
+ * from a cache loaded from the namespace database.
+ * <p/>
+ * Implements completion handler API as required by the migration Task.
+ * If that task succeeds, initiates post-processing run on a
+ * separate thread pool to eliminate any excess replicas.  Note that
+ * the migration Task is idempotent, so even if no further copies are
+ * made, this worker will subsequently check for excess copies since it
+ * will consider the migration Task successful.
+ * <p/>
+ * If the migration task failure is not permanent, makes a best effort to find
  * another pool in the group with a copy of the file and initiate replication
  * there.  Taking this branch will usually only be possible during a replication
  * triggered by a pool status change or watchdog scan (and not during the
  * original attempt to replicate a new file).
- * <br>
- *
+ * <p/>
  * Any redundant copies are removed via a call to the replica manager
- * handler on the pool in question.  The entry is actually removed from
- * the repository (as if rep rm -f were called), because of the policy
+ * hook on the pool in question.  The cache entry state is actually set to removed
+ * in the repository (as if rep rm -f were called), because of the policy
  * enforced concerning the presence of a sticky record owned by system for
  * all files on resilient pools (if removal were left to the sweeper, the
  * pool would be in an inconsistent state for some interval).  All replicas
  * of the file are first pinned by the replica manager so that any externally
  * initiated removal during this phase will not succeed; those sticky records
  * are removed when the operation completes.
- * <br>
- *
+ * <p/>
  * All permanent failures raise an alarm.
- *
+ * <p/>
  * Created by arossi on 1/22/15.
  */
 public final class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
@@ -150,9 +153,9 @@ public final class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
             case POOLGROUPINFO:  getPoolGroupInfo();    nextState(); break;
             case FILEINFO:       getFileInfo();         nextState(); break;
             case CACHEENTRYINFO: getCacheEntryInfo();   nextState(); break;
-            case MIGRATION:      doMigration();         break;
+            case MIGRATION:      doMigration();                      break;
             case REDUCTION:      doReduction();         nextState(); break;
-            default:                                    break;
+            default:                                                 break;
         }
     }
 
@@ -397,7 +400,8 @@ public final class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
             case MIGRATION:
                 /*
                  * We do the preparation for task execution on
-                 * the current thread (pnfsInfoTaskExecutor).
+                 * the current thread (pnfsInfoTaskExecutor), since
+                 * it is inexpensive.
                  */
                 run();
                 break;
@@ -426,8 +430,8 @@ public final class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
             case FILEINFO:          state = State.CACHEENTRYINFO;   launch(); break;
             case CACHEENTRYINFO:    state = State.MIGRATION;        launch(); break;
             case MIGRATION:         state = State.REDUCTION;        launch(); break;
-            case REDUCTION:         done();                         break;
-            default:                                                break;
+            case REDUCTION:                                         done();   break;
+            default:                                                          break;
         }
     }
 
