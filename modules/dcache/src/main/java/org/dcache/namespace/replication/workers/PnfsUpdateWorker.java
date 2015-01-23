@@ -69,7 +69,7 @@ import org.dcache.vehicles.replicamanager.StickyReplicasMessage;
  *
  * Created by arossi on 1/22/15.
  */
-public class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
+public final class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
     private static final Logger LOGGER
                     = LoggerFactory.getLogger(PnfsUpdateWorker.class);
 
@@ -117,6 +117,7 @@ public class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
      * make this field final.
      */
     private String pool;
+
     private PoolGroupInfo poolGroupInfo;
     private FileAttributes attributes;
 
@@ -141,25 +142,25 @@ public class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
     public void run() {
         /*
          * NOTE that the MIGRATION logic is different in that the next
-         * phase is set by the completion handler.  This is because
+         * phase is set by the completion handler.  This is because the
          * migration task queues itself onto a separate scheduled executor.
          */
         switch (state) {
-            case START:                                 nextPhase(); break;
-            case POOLGROUPINFO:  getPoolGroupInfo();    nextPhase(); break;
-            case FILEINFO:       getFileInfo();         nextPhase(); break;
-            case CACHEENTRYINFO: getCacheEntryInfo();   nextPhase(); break;
+            case START:                                 nextState(); break;
+            case POOLGROUPINFO:  getPoolGroupInfo();    nextState(); break;
+            case FILEINFO:       getFileInfo();         nextState(); break;
+            case CACHEENTRYINFO: getCacheEntryInfo();   nextState(); break;
             case MIGRATION:      doMigration();         break;
-            case REDUCTION:      doReduction();         nextPhase(); break;
+            case REDUCTION:      doReduction();         nextState(); break;
             default:                                    break;
         }
     }
 
     @Override
     public void taskCancelled(Task task) {
-        LOGGER.warn("Migration task {} for {}, {} was cancelled", task.getId(),
-                        pool, pnfsId);
-        done();
+        failed(new Exception(
+                        String.format("Migration task %s on %s was cancelled.",
+                                        task.getId(), pool)));
     }
 
     @Override
@@ -207,7 +208,7 @@ public class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
                  * and cache entry info for the new source.
                  */
                 state = State.POOLGROUPINFO;
-                nextPhase();
+                nextState();
             }
         } catch (ExecutionException t) {
             taskFailedPermanently(task, rc, msg);
@@ -216,14 +217,14 @@ public class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
 
     @Override
     public void taskFailedPermanently(Task task, int rc, String msg) {
-        failed(new Exception("rc = " + rc + "; " + msg));
+        failed(new Exception(String.format("rc=%s; %s.", rc, msg)));
         done();
     }
 
     @Override
     public void taskCompleted(Task task) {
         /*
-         * XXX TODO we need this from Migration Task
+         * TODO we need this from the Migration Task
          */
         // confirmed = task.getConfirmedLocations();
         if (confirmed == null || confirmed.isEmpty() ) {
@@ -231,7 +232,7 @@ public class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
             return;
         }
 
-        nextPhase();
+        nextState();
     }
 
     private void doMigration() {
@@ -264,7 +265,8 @@ public class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
 
 
     /*
-     * The three methods pin, remove and unpin should act like barriers.
+     * The methods pin and remove act like barriers, so
+     * this method call is in effect synchronous.
      */
     private void doReduction() {
         List<PnfsId> pnfsIds = new ArrayList<>();
@@ -275,7 +277,7 @@ public class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
             List<String> allLocations = hub.getPnfsInfoCache()
                                            .getAllLocationsFor(pnfsId);
             pin(pnfsIds, allLocations, true, factory);
-            removeUnconfirmed(pnfsIds, allLocations, factory);
+            remove(pnfsIds, allLocations, factory);
         } catch (CacheException | InterruptedException | ExecutionException e) {
             /*
              * No alarm is necessary here, since only the reduction phase
@@ -309,10 +311,10 @@ public class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
         }
     }
 
+    /*
+     * Sends an alarm.
+     */
     private void failed(Exception e) {
-        /*
-         * Send an alarm.
-         */
         LOGGER.error(AlarmMarkerFactory.getMarker(PredefinedAlarm.FAILED_REPLICATION,
                                                   pnfsId.toString()),
                         ABORT_MESSAGE,
@@ -335,7 +337,7 @@ public class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
 
         try {
             /*
-             * should block until ready
+             * Should block until ready.
              */
             future.get();
         } catch (InterruptedException | ExecutionException t) {
@@ -415,7 +417,7 @@ public class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
         }
     }
 
-    private void nextPhase() {
+    private void nextState() {
         LOGGER.debug("completed phase {} for {} on {}.", state, pnfsId, pool);
 
         switch (state) {
@@ -443,6 +445,9 @@ public class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
         }
 
         for (Future<StickyReplicasMessage> future: toJoin) {
+            /*
+             * Should block until ready.
+             */
             msg = future.get();
             if (msg.iterator().hasNext()) {
                 Exception e = new Exception("Was unable to set replica manager "
@@ -453,9 +458,8 @@ public class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
         }
     }
 
-    private void removeUnconfirmed(Collection<PnfsId> pnfsIds,
-                                   Collection<String> locations,
-                                   CellStubFactory factory)
+    private void remove(Collection<PnfsId> pnfsIds,
+                    Collection<String> locations, CellStubFactory factory)
                     throws ExecutionException, InterruptedException {
         Collection<Future<RemoveReplicasMessage>> toJoin = new ArrayList<>();
         RemoveReplicasMessage msg = null;
@@ -468,8 +472,15 @@ public class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
         }
 
         for (Future<RemoveReplicasMessage> future: toJoin) {
+            /*
+             * Should block until ready.
+             */
             msg = future.get();
             if (msg.iterator().hasNext()) {
+                /*
+                 * Does not require an alarm.  Cleanup will be attempted
+                 * again at the next periodic watchdog scan.
+                 */
                 LOGGER.warn("Was unable to remove replica for {} on pool {}.",
                                 pnfsId, msg.pool);
             }
