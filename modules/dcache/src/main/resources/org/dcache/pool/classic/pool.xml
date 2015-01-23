@@ -390,6 +390,25 @@
       </property>
   </bean>
 
+  <bean id="cache-info-executor" class="org.dcache.util.replication.CDCFixedPoolTaskExecutor">
+      <property name="numberOfThreads" value="${pool.service.replicamanager.limits.max-cache-info-workers}"/>
+  </bean>
+
+  <bean id="rep-rm-executor" class="org.dcache.util.replication.CDCFixedPoolTaskExecutor">
+      <property name="numberOfThreads" value="${pool.service.replicamanager.limits.max-rep-rm-workers}"/>
+  </bean>
+
+  <bean id="repository-proxy" class="org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy">
+        <property name="repository" ref="rep"/>
+  </bean>
+
+  <bean id="rm-message-handler" class="org.dcache.pool.replication.handlers.ReplicaManagerMessageHandler">
+        <description>For communication with the replica manager</description>
+        <property name="cacheInfoTaskExecutor" ref="cache-info-executor"/>
+        <property name="repRmTaskExecutor" ref="rep-rm-executor"/>
+        <property name="proxy" ref="repository-proxy"/>
+    </bean>
+
   <beans profile="healthcheck-true">
     <bean id="healthcheck" class="org.dcache.pool.repository.v5.CheckHealthTask">
       <description>Periodic task for checking pool health</description>
