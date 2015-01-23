@@ -23,27 +23,6 @@ public class PnfsUpdateWorker implements Runnable {
         POOLGROUPINFO, FILEINFO, CACHEENTRYINFO, MIGRATION, REDUCTION, DONE
     }
 
-    class CacheEntryResultListener implements Runnable {
-        public void run() {
-            CacheEntryInfoMessage message = null;
-            try {
-                message = future.get();
-            } catch (InterruptedException | ExecutionException t) {
-                hub.getFileInfoTaskHandler()
-                                .taskFailed(message, t.getMessage());
-                return;
-            }
-
-            if (future.isCancelled()) {
-                hub.getFileInfoTaskHandler()
-                                .taskCancelled(message, "Future task was cancelled");
-            } else {
-                hub.getFileInfoTaskHandler()
-                                .taskCompleted(message, tried);
-            }
-        }
-    }
-
     private final String pool;
     private final PnfsId pnfsId;
     private final ReplicaManagerHub hub;
@@ -51,11 +30,12 @@ public class PnfsUpdateWorker implements Runnable {
     private PoolGroupInfo poolGroupInfo;
     private Set<String> triedPools;
     private FileAttributes attributes;
-    private ListenableFuture<CacheEntryInfoMessage> future;
+    CacheEntryInfoMessage cacheEntryInfoMessage;
+
 
     /*
-    * State.
-    */
+     * State.
+     */
     private Phase phase = Phase.POOLGROUPINFO;
 
     public PnfsUpdateWorker(String pool, PnfsId pnfsId, ReplicaManagerHub hub) {
@@ -193,12 +173,30 @@ public class PnfsUpdateWorker implements Runnable {
     }
 
     private void getCacheEntryInfo() {
-        future = hub.getPoolStubFactory()
-                        .getCellStub(pool)
-                        .send(new CacheEntryInfoMessage(pnfsId));
-        future.addListener(new CacheEntryResultListener(),
-                           hub.getPnfsInfoTaskExecutor());
+        cacheEntryInfoMessage = new CacheEntryInfoMessage(pnfsId);
+        future = hub.getPoolStubFactory().getCellStub(pool).send(cacheEntryInfoMessage);
+
         LOGGER.trace("Sent CacheEntryInfoMessage for {} to {}". pnfsId, pool);
+
+        try {
+            /*
+             * should block until ready
+             */
+            message = future.get();
+        } catch (InterruptedException | ExecutionException t) {
+
+
+        }
+
+        if (future.failed()) {
+
+        } else if (future.isCancelled()) {
+
+                            (message, "Future task was cancelled");
+        } else {
+
+                            (message, tried);
+        }
     }
 
     private void doMigration() {
