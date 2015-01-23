@@ -59,74 +59,36 @@ documents or software obtained from this server.
  */
 package org.dcache.namespace.replication.data;
 
-import java.io.Serializable;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import org.dcache.namespace.replication.caches.PoolManagerPoolInfoCache;
+import org.dcache.pool.migration.PoolListFromPoolManager;
 
-import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPool;
-import diskCacheV111.poolManager.PoolSelectionUnit.SelectionPoolGroup;
-import diskCacheV111.poolManager.StorageUnit;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Encapsulates the pool group data obtainable from the pool selection unit.
- * This includes a map of all storage unit types found in the pool group.
+ * Uses the PoolManagerPoolInfoCache cache so as to mitigate calls to PoolManager.
  *
- * @author arossi
+ * Created by arossi on 1/20/15.
  */
-public class PoolGroupInfo implements Serializable {
-    private static final long serialVersionUID = 1L;
+public class CachedPoolList extends PoolListFromPoolManager {
 
-    private final Map<String, StorageUnit> storageUnits;
-    private final Set<SelectionPool> pools;
+    private final PoolManagerPoolInfoCache infoCache;
+    private final String poolGroup;
 
-    private SelectionPoolGroup poolGroup;
-
-    public PoolGroupInfo() {
-        storageUnits = new HashMap<>();
-        pools = new HashSet<>();
+    public CachedPoolList(PoolManagerPoolInfoCache infoCache, String poolGroup)
+    {
+        this.infoCache = checkNotNull(infoCache);
+        this.poolGroup = checkNotNull(poolGroup);
+        _isValid = false;
     }
 
-    public void addStorageUnit(StorageUnit storageUnit) {
-        storageUnits.put(storageUnit.getName(), storageUnit);
+    @Override
+    public String toString()
+    {
+        return String.format("pool group %s, %d pools",
+                             poolGroup, _pools.size());
     }
 
-    public SelectionPoolGroup getPoolGroup() {
-        return poolGroup;
-    }
-
-    public Collection<SelectionPool> getPools() {
-        return pools;
-    }
-
-    public Set<String> getPoolNames() {
-        Set<String> names = new HashSet<>();
-        for (SelectionPool p: pools) {
-            names.add(p.getName());
-        }
-        return names;
-    }
-
-    public StorageUnit getStorageUnit(String unitName) {
-        return storageUnits.get(unitName);
-    }
-
-    public boolean isResilient() {
-        return poolGroup != null;
-    }
-
-    public void setPoolGroup(SelectionPoolGroup poolGroup) {
-        this.poolGroup = poolGroup;
-    }
-
-    public void setPools(Collection<SelectionPool> pools) {
-        this.pools.addAll(pools);
-    }
-
-    public Iterator<StorageUnit> storageUnits() {
-        return storageUnits.values().iterator();
+    @Override public void refresh() {
+        infoCache.refreshPoolManagerPoolInfo(poolGroup, this);
     }
 }
