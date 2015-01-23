@@ -122,7 +122,9 @@ public class PoolInfoCache extends
             info.setPools(pools);
             getStorageUnitsInGroup(info, poolGroup);
             for (SelectionPool pool : pools) {
-                cache.put(pool.getName(), info);
+                if (!pool.equals(poolName)) {
+                    cache.put(pool.getName(), info);
+                }
             }
         }
         return info;
