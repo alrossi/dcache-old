@@ -59,23 +59,57 @@ documents or software obtained from this server.
  */
 package org.dcache.namespace.replication.workers;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import diskCacheV111.util.PnfsId;
 import org.dcache.namespace.replication.PoolStatusCallback;
+import org.dcache.namespace.replication.ReplicaManagerHub;
 
 /**
+ * A worker responsible for all phases of the response to a pool DOWN message.
+ * <p/>
+ *
+ *
+ * <p/>
+ * Unlike the pool RESTORE state, which one can configure
+ * the replica manager to respond to or ignore, there will always be
+ * a response to the DOWN state.
+ *
  * Created by arossi on 1/23/15.
  */
-public class PoolStatusUpdateWorker implements Runnable, PoolStatusCallback {
-    @Override public void run() {
+public class PoolDownWorker implements Runnable, PoolStatusCallback {
+    private static final Logger LOGGER
+                    = LoggerFactory.getLogger(PoolDownWorker.class);
+
+
+    enum State {
+        START,                  // check registration of pool
+        POOLGROUPINFO,          // cache access, possibly calls pool manager
+        LOCATIONINFO,           // issues query to chimera
+        PNFS_UPDATE,            // either sends alarm or creates PnsfUpdateWorker
+        WAIT_FOR_COMPLETION,    // waits for callbacks from the workers
+        DONE                    // unregister pool
+    }
+
+    private final String pool;
+    private final ReplicaManagerHub hub;
+
+    public PoolDownWorker(String pool, ReplicaManagerHub hub) {
+        this.pool = pool;
+        this.hub = hub;
+    }
+
+    @Override
+    public void run() {
     /*
      * 1. Check that pool is resilient
      * 2. Register the pool?
      * 3. Issue query, get back multimap (pnfs, location)
      * 4. Process: for count, by pool (binned)
      * 5. For all pnfsids with only one copy on this pool, send alarm
-     * [  It would be better if we could batch the pnfsids by storage group.]
-     * 6. Now check the individual storage constraints for each and just issue
-     *    create a PnfsUpdateWorer by selecting randomly from
+     *    [It would be better if we could batch the pnfsids by storage group.]
+     * 6. Issue a PnfsUpdateWorker by selecting randomly from
      *    remaing sources, providing the PnfsUpdateWorker with this worker
      *    as callback.
      * 7. Wait for all callbacks.
