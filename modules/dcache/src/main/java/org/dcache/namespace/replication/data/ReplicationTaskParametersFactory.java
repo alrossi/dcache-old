@@ -100,22 +100,20 @@ public final class ReplicationTaskParametersFactory {
         }
 
          /*
-         * First determine replication contraints (number of copies required,
-         * and whether replicas can be in different pools on the same host).
+         * First determine replication contraints:  minimum copies required,
+         * and whether replicas have special constraints limiting them to
+         * one per category (such as host, rack, etc.).
          */
         SelectionPoolGroup poolGroup = poolInfo.getPoolGroup();
         int minimum = poolGroup.getMinReplicas();
-        int maximum = poolGroup.getMaxReplicas();
         String onlyOneCopyPer = poolGroup.getOnlyOneCopyPer(); // should be used in Task constructor TODO
 
         StorageUnit sunit = findStorageUnit(poolInfo, attributes);
 
         if (sunit != null) {
-            Integer smax = sunit.getMaxReplicas();
             Integer smin = sunit.getMinReplicas();
 
-            if (smax != null) { // both must be valid in this case
-                maximum = smax;
+            if (smin != null) {
                 minimum = smin;
             }
 
@@ -135,7 +133,7 @@ public final class ReplicationTaskParametersFactory {
                                   true, // eager
                                   false, // compute checksum on update
                                   false, // force source mode
-                                  hub.isUseGreedyRequests() ? maximum : minimum); // LACKS onlyOneCopyPer TODO
+                                  minimum); // LACKS onlyOneCopyPer TODO
     }
 
     private static StorageUnit findStorageUnit(PoolGroupInfo poolInfo,

@@ -91,6 +91,76 @@ public final class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
                     + "The sticky record belonging to the replica manager "
                     + "should be removed manually using the admin command.";
 
+    /*
+     * Available for direct use by pool status worker.
+     */
+    static void pin(Collection<PnfsId> pnfsIds,
+                    Collection<String> locations,
+                    boolean set,
+                    CellStubFactory factory) throws ExecutionException,
+                    InterruptedException {
+        Collection<Future<StickyReplicasMessage>> toJoin = new ArrayList<>();
+        StickyReplicasMessage msg = null;
+
+        for (String location: locations) {
+            msg = new StickyReplicasMessage(location, pnfsIds, set);
+            toJoin.add(factory.getCellStub(location).send(msg));
+        }
+
+        for (Future<StickyReplicasMessage> future: toJoin) {
+            /*
+             * Should block until ready.
+             */
+            msg = future.get();
+            Iterator<PnfsId> it = msg.iterator();
+            if (it.hasNext()) {
+                Collection<String> failed = new ArrayList<>();
+                do {
+                    failed.add(it.next().toString());
+                } while (it.hasNext());
+                Exception e = new Exception("Was unable to set replica manager "
+                                + "sticky record for " + failed + " to " + set
+                                + " on pool " + msg.pool);
+                throw new ExecutionException(e);
+            }
+        }
+    }
+
+    /*
+     * Available for direct use by pool status worker.
+     */
+    static void remove(Collection<PnfsId> pnfsIds,
+                    Collection<String> locations,
+                    Collection<String> exclude,
+                    CellStubFactory factory) throws ExecutionException,
+                    InterruptedException {
+        Collection<Future<RemoveReplicasMessage>> toJoin = new ArrayList<>();
+        RemoveReplicasMessage msg = null;
+
+        for (String location: locations) {
+            if (!exclude.contains(location)) {
+                msg = new RemoveReplicasMessage(location,pnfsIds);
+                toJoin.add(factory.getCellStub(location).send(msg));
+            }
+        }
+
+        for (Future<RemoveReplicasMessage> future: toJoin) {
+            /*
+             * Should block until ready.
+             */
+            msg = future.get();
+            Iterator<PnfsId> it = msg.iterator();
+            while (it.hasNext()) {
+                /*
+                 * Does not require an alarm.  Cleanup will be attempted
+                 * again at the next periodic watchdog scan.
+                 */
+                LOGGER.warn("Was unable to remove replica for {} on pool {}.",
+                                it.next(), msg.pool);
+            }
+        }
+    }
+
     enum State {
         START,
         POOLGROUPINFO,      // cache access, possibly calls pool manager
@@ -277,7 +347,7 @@ public final class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
             List<String> allLocations = hub.getPnfsInfoCache()
                                            .getAllLocationsFor(pnfsId);
             pin(pnfsIds, allLocations, true, factory);
-            remove(pnfsIds, allLocations, factory);
+            remove(pnfsIds, allLocations, confirmed, factory);
         } catch (CacheException | InterruptedException | ExecutionException e) {
             /*
              * No alarm is necessary here, since only the reduction phase
@@ -428,62 +498,6 @@ public final class PnfsUpdateWorker implements Runnable, TaskCompletionHandler {
             case MIGRATION:         state = State.REDUCTION;        launch(); break;
             case REDUCTION:         done();                         break;
             default:                                                break;
-        }
-    }
-
-    private void pin(Collection<PnfsId> pnfsIds,
-                     Collection<String> locations,
-                     boolean set,
-                     CellStubFactory factory)
-                    throws ExecutionException, InterruptedException {
-        Collection<Future<StickyReplicasMessage>> toJoin = new ArrayList<>();
-        StickyReplicasMessage msg = null;
-
-        for (String location: locations) {
-            msg = new StickyReplicasMessage(location, pnfsIds, set);
-            toJoin.add(factory.getCellStub(location).send(msg));
-        }
-
-        for (Future<StickyReplicasMessage> future: toJoin) {
-            /*
-             * Should block until ready.
-             */
-            msg = future.get();
-            if (msg.iterator().hasNext()) {
-                Exception e = new Exception("Was unable to set replica manager "
-                                + "sticky record for " + pnfsId + " to " + set
-                                + " on pool " + msg.pool);
-                throw new ExecutionException(e);
-            }
-        }
-    }
-
-    private void remove(Collection<PnfsId> pnfsIds,
-                    Collection<String> locations, CellStubFactory factory)
-                    throws ExecutionException, InterruptedException {
-        Collection<Future<RemoveReplicasMessage>> toJoin = new ArrayList<>();
-        RemoveReplicasMessage msg = null;
-
-        for (String location: locations) {
-            if (!confirmed.contains(location)) {
-                msg = new RemoveReplicasMessage(location,pnfsIds);
-                toJoin.add(factory.getCellStub(location).send(msg));
-            }
-        }
-
-        for (Future<RemoveReplicasMessage> future: toJoin) {
-            /*
-             * Should block until ready.
-             */
-            msg = future.get();
-            if (msg.iterator().hasNext()) {
-                /*
-                 * Does not require an alarm.  Cleanup will be attempted
-                 * again at the next periodic watchdog scan.
-                 */
-                LOGGER.warn("Was unable to remove replica for {} on pool {}.",
-                                pnfsId, msg.pool);
-            }
         }
     }
 }

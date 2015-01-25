@@ -129,20 +129,6 @@ public final class ReplicaManagerHub {
     private PoolManagerPoolInfoCache poolManagerPoolInfoCache;
     private PoolStatusCache poolStatusCache;
 
-    /*
-     * System-wide setting.  If true, maximum is used for replication
-     * and minimum for reduction; else vice-versa.
-     */
-    private boolean useGreedyRequests;
-
-    public boolean isUseGreedyRequests() {
-        return useGreedyRequests;
-    }
-
-    public void setUseGreedyRequests(boolean useGreedyRequests) {
-        this.useGreedyRequests = useGreedyRequests;
-    }
-
     public PnfsInfoCache getPnfsInfoCache() {
         return pnfsInfoCache;
     }
@@ -163,8 +149,7 @@ public final class ReplicaManagerHub {
         return poolManagerPoolInfoCache;
     }
 
-    public void setPoolManagerPoolInfoCache(
-                    PoolManagerPoolInfoCache poolManagerPoolInfoCache) {
+    public void setPoolManagerPoolInfoCache(PoolManagerPoolInfoCache poolManagerPoolInfoCache) {
         this.poolManagerPoolInfoCache = poolManagerPoolInfoCache;
     }
 
