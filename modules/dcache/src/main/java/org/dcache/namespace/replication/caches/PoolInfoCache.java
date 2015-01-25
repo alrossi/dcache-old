@@ -97,10 +97,14 @@ public class PoolInfoCache extends
                 AbstractResilientInfoCache<String, PoolGroupInfo> {
     private PoolMonitor poolMonitor;
 
-    public void setPoolMonitor(PoolMonitor poolMonitor) {
-        this.poolMonitor = poolMonitor;
-    }
-
+    /**
+     * Calls cache.get().
+     *
+     * @param pool to get group info for
+     * @return info object encapsulating pool group metadata, including
+     *         storage groups associated with it.
+     * @throws ExecutionException
+     */
     public PoolGroupInfo getPoolGroupInfo(String pool)
                     throws ExecutionException {
         PoolGroupInfo info = cache.get(pool, ()->load(pool));
@@ -111,6 +115,16 @@ public class PoolInfoCache extends
                                               + " for pool group.");
     }
 
+    public void setPoolMonitor(PoolMonitor poolMonitor) {
+        this.poolMonitor = poolMonitor;
+    }
+
+    /*
+     *  If the pool does not belong to a resilient group, the group
+     *  field on the info object remains <code>null</code>.  Otherwise,
+     *  the info object is populated with a list of pools and storage units
+     *  in the group.
+     */
     private PoolGroupInfo load(String poolName) throws Exception {
         PoolGroupInfo info = new PoolGroupInfo();
         getResilientPoolGroupOfPool(poolName, info);

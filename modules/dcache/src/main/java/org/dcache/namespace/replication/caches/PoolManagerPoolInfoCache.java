@@ -89,6 +89,14 @@ public class PoolManagerPoolInfoCache
                                                    PoolManagerGetPoolsByPoolGroupMessage> {
     private CellStub poolManager;
 
+    /**
+     * Note that the cache is not loaded directly when the entry is not
+     * found.  Delegation to a callback on a message sent to the pool is
+     * used, as prescribed by the Migration Task API.
+     *
+     * @param poolGroup from which to get the PoolManager info.
+     * @param callback object to which to redirect the message.
+     */
     public void refreshPoolManagerPoolInfo(String poolGroup,
                                            AbstractMessageCallback callback) {
         PoolManagerGetPoolsByPoolGroupMessage msg = cache.getIfPresent(poolGroup);

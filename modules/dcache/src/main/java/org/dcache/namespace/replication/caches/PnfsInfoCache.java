@@ -59,6 +59,7 @@ documents or software obtained from this server.
  */
 package org.dcache.namespace.replication.caches;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
@@ -74,14 +75,16 @@ import org.dcache.namespace.FileAttribute;
 import org.dcache.vehicles.FileAttributes;
 
 /**
- * Because replica handling may involve many calls to both the namespace
- * and to the Pool Monitor and Pool Manager services, precautions must be
- * taken to avoid DOS on these components.  This component assumes that
+ * Because replica handling may involve many calls to the namespace,
+ * precautions must be taken to avoid DOS.  This component assumes that
  * the values asked for are reasonably stable within the limits defined
  * for each timeout.  All information needed by the replica manager
- * concerning file attributes and pool/group metadata should pass through
+ * concerning file attributes should pass through
  * this cache.
- *
+ * <br>
+ * This class is thread-safe.  It is assumed that access to the cache
+ * will be on a dedicated thread.
+ * <br>
  * @author arossi
  */
 public class PnfsInfoCache extends
@@ -93,10 +96,24 @@ public class PnfsInfoCache extends
                                     FileAttribute.HSM));
     private NameSpaceProvider namespace;
 
+    /**
+     * This does not go through the cache, but is here for convenience.
+     *
+     * @param pnfsId of for which all locations should be returned.
+     * @return locations (replicas) of file.
+     * @throws CacheException
+     */
     public List<String> getAllLocationsFor(PnfsId pnfsId) throws CacheException {
         return namespace.getCacheLocation(Subjects.ROOT, pnfsId);
     }
 
+    /**
+     * Calls cache.get().
+     *
+     * @param pnfsId of file for which to retrieve attributes.
+     * @return ACCESS_LATENCY, STORAGECLASS and HSM name.
+     * @throws ExecutionException
+     */
     public FileAttributes getAttributes(PnfsId pnfsId)
                     throws ExecutionException {
         FileAttributes attributes = cache.get(pnfsId, ()-> load(pnfsId));
@@ -107,10 +124,31 @@ public class PnfsInfoCache extends
                         + " has no mapped attributes.");
     }
 
+    /**
+     * Depending on the size of the collection, this may
+     * take considerable time, and thus should be handled on a thread
+     * which will not block other operations.
+     *
+     * @param pnfsIds collection of files for which to load attributes into
+     *                the cache.
+     * @throws ExecutionException
+     */
+    public void loadAttributesFor(Collection<PnfsId> pnfsIds)
+                    throws ExecutionException {
+        for (PnfsId pnfsId: pnfsIds) {
+            cache.get(pnfsId, ()-> load(pnfsId));
+        }
+    }
+
     public void setNamespace(NameSpaceProvider namespace) {
         this.namespace = namespace;
     }
 
+    /*
+     *  Single call to namespace provider.  Note that the storageclass
+     *  attribute will go through the extractor which determines which
+     *  attributes constitute storage class.
+     */
     private FileAttributes load(PnfsId pnsfId) throws CacheException {
         return namespace.getFileAttributes(Subjects.ROOT,
                                            pnsfId,

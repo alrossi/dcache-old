@@ -57,40 +57,39 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.namespace.replication.caches;
+package org.dcache.namespace.replication.data;
 
 import diskCacheV111.vehicles.PoolStatusChangedMessage;
-import org.dcache.namespace.replication.data.PoolStatusNotifier;
 
 /**
- * A cache of pool status changes.
- * The timeout value should correspond to the length of the watchdog interval.
- * Used when pool status checks are run, in order to avoid redundant
- * operations and to throttle the processing of state change messages.
+ * To be implemented by the worker responsible for handling
+ * pool status messages.
  *
- * @author arossi
+ * Created by arossi on 1/25/15.
  */
-public class PoolStatusCache
-                extends AbstractResilientInfoCache<String, PoolStatusNotifier> {
-
-    public void clearPoolStatusCache() {
-        cache.invalidateAll();
+public interface PoolStatusNotifier {
+    /**
+     * These are the "external" states associated with the type of
+     * PoolStatusChangedMessage (DOWN, RESTART).  The worker implementation
+     * can have its own set of (sub)states, particularly inside the RUNNING
+     * states.
+     */
+    enum State {
+        DOWN_WAIT,          // worker waiting an interval before processing DOWN message
+        RESTART_WAIT,       // worker waiting an interval before processing RESTART message
+        DOWN_RUNNING,       // worker processing DOWN message
+        RESTART_RUNNING,    // worker processing RESTART message
+        DOWN_COMPLETED,     // worker finished processing DOWN message
+        RESTART_COMPLETED   // worker finished processing RESTART message
     }
 
-    public void registerPoolNotifier(PoolStatusNotifier notifier) {
-        cache.put(notifier.getPoolName(), notifier);
-    }
+    /**
+     * Should enact the transition appropriate from the current state
+     * and the message received.
+     *
+     * @param message either DOWN or RESTART
+     */
+    void invokeTransition(PoolStatusChangedMessage message);
 
-    public void unregisterPoolNotifier(PoolStatusNotifier notifier) {
-        cache.invalidate(notifier.getPoolName());
-    }
-
-    public boolean notifierReceivedMessage(PoolStatusChangedMessage message) {
-        PoolStatusNotifier notifier = cache.getIfPresent(message.getPoolName());
-        if (notifier == null) {
-            return false;
-        }
-        notifier.invokeTransition(message);
-        return true;
-    }
+    String getPoolName();
 }
