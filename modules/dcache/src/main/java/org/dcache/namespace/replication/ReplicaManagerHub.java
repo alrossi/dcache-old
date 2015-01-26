@@ -64,6 +64,7 @@ import java.util.Iterator;
 import java.util.Random;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.dcache.cells.CellStub;
 import org.dcache.namespace.replication.caches.PnfsInfoCache;
@@ -128,6 +129,39 @@ public final class ReplicaManagerHub {
     private PoolInfoCache poolInfoCache;
     private PoolManagerPoolInfoCache poolManagerPoolInfoCache;
     private PoolStatusCache poolStatusCache;
+
+    /*
+     * Worker settings.
+     */
+    private long poolStatusChangeWindow;
+    private TimeUnit poolStatusChangeWindowUnit;
+    private boolean isHandleRestartMessagesEnabled;
+
+    public long getPoolStatusChangeWindow() {
+        return poolStatusChangeWindow;
+    }
+
+    public void setPoolStatusChangeWindow(long poolStatusChangeWindow) {
+        this.poolStatusChangeWindow = poolStatusChangeWindow;
+    }
+
+    public TimeUnit getPoolStatusChangeWindowUnit() {
+        return poolStatusChangeWindowUnit;
+    }
+
+    public void setPoolStatusChangeWindowUnit(
+                    TimeUnit poolStatusChangeWindowUnit) {
+        this.poolStatusChangeWindowUnit = poolStatusChangeWindowUnit;
+    }
+
+    public boolean isHandleRestartMessagesEnabled() {
+        return isHandleRestartMessagesEnabled;
+    }
+
+    public void setHandleRestartMessagesEnabled(
+                    boolean isHandleRestartMessagesEnabled) {
+        this.isHandleRestartMessagesEnabled = isHandleRestartMessagesEnabled;
+    }
 
     public PnfsInfoCache getPnfsInfoCache() {
         return pnfsInfoCache;

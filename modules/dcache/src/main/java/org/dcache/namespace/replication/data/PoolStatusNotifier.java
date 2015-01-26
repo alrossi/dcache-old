@@ -84,12 +84,12 @@ public interface PoolStatusNotifier {
     }
 
     /**
-     * Should enact the transition appropriate from the current state
-     * and the message received.
+     * Should make any required state transition internal to the notifier
+     * on the basis of the type of the message.
      *
      * @param message either DOWN or RESTART
      */
-    void invokeTransition(PoolStatusChangedMessage message);
+    void messageArrived(PoolStatusChangedMessage message);
 
     String getPoolName();
 }
