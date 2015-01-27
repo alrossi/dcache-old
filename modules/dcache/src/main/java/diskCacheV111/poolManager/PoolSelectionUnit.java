@@ -149,6 +149,9 @@ public interface PoolSelectionUnit  {
         void setAddress(CellAddressCore address);
     }
     public interface SelectionPoolGroup extends SelectionEntity {
+        int getMaxReplicas();
+        int getMinReplicas();
+        String getOnlyOneCopyPer();
     }
    public interface SelectionLinkGroup extends SelectionEntity{
 	   public void add(SelectionLink link);
@@ -168,6 +171,7 @@ public interface PoolSelectionUnit  {
 	   public boolean isNearlineAllowed();
 	}
     public interface SelectionUnit extends SelectionEntity{
+        public int getType();
         public String getUnitType();
         public Collection<SelectionUnitGroup> getMemberOfUnitGroups();
     }
@@ -187,6 +191,7 @@ public interface PoolSelectionUnit  {
    public String    getVersion() ;
    public String getNetIdentifier( String address ) throws UnknownHostException;
    public String getProtocolUnit( String protocolUnitName ) ;
+   public StorageUnit getStorageUnit( String storageClass ) ;
    public SelectionLinkGroup getLinkGroupByName(String linkGroupName) throws NoSuchElementException ;
    public Collection<SelectionPool> getPoolsByPoolGroup(String poolGroup) throws NoSuchElementException;
    public Collection<SelectionPool> getAllDefinedPools( boolean enabledOnly ) ;
