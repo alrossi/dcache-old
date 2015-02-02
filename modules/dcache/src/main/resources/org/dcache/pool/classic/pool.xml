@@ -149,6 +149,7 @@
     <property name="repository" ref="rep"/>
     <property name="checksumModule" ref="csm"/>
     <property name="scrubberStateFile" value="${pool.path}/scrubber.state"/>
+    <property name="broadcast" ref="broadcast-stub"/>
   </bean>
 
   <bean id="csm" class="org.dcache.pool.classic.ChecksumModuleV1">
@@ -204,6 +205,11 @@
   <bean id="billing-stub" class="org.dcache.cells.CellStub">
       <description>Billing communication stub</description>
       <property name="destination" value="${pool.service.billing}"/>
+  </bean>
+
+  <bean id="broadcast-stub" class="org.dcache.cells.CellStub">
+        <description>Broadcast communication stub</description>
+        <property name="destination" value="${pool.service.broadcast}"/>
   </bean>
 
   <bean id="pnfsStub" class="org.dcache.cells.CellStub">
@@ -389,6 +395,34 @@
         </map>
       </property>
   </bean>
+
+  <!-- *************************** Replication ****************************** -->
+  <beans profile="replica-management-true">
+    <bean id="cache-info-executor" class="org.dcache.util.replication.CDCFixedPoolTaskExecutor">
+      <property name="numberOfThreads" value="1"/>
+    </bean>
+
+    <bean id="rep-rm-executor" class="org.dcache.util.replication.CDCFixedPoolTaskExecutor">
+      <property name="numberOfThreads" value="1"/>
+    </bean>
+
+    <bean id="repository-proxy" class="org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy">
+      <description>Specialized access to the repository</description>
+      <property name="repository" ref="rep"/>
+      <property name="cacheWait" value="${pool.replication.missing-cache-entry-wait}"/>
+      <property name="cacheWaitUnit" value="${pool.replication.missing-cache-entry-wait.unit}"/>
+      <property name="cacheMaxRetries" value="${pool.replication.missing-cache-entry-retries}"/>
+      <property name="replicaStickyExpiry" value="${pool.replication.sticky-lifetime}"/>
+      <property name="replicaStickyExpiryUnit" value="${pool.replication.sticky-lifetime.unit}"/>
+    </bean>
+
+    <bean id="rm-message-handler" class="org.dcache.pool.replication.handlers.ReplicaManagerMessageHandler">
+      <description>For communication with the replica manager</description>
+      <property name="cacheInfoTaskExecutor" ref="cache-info-executor"/>
+      <property name="repRmTaskExecutor" ref="rep-rm-executor"/>
+      <property name="proxy" ref="repository-proxy"/>
+    </bean>
+  </beans>
 
   <beans profile="healthcheck-true">
     <bean id="healthcheck" class="org.dcache.pool.repository.v5.CheckHealthTask">

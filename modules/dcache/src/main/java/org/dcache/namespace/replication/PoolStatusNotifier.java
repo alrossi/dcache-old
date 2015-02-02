@@ -57,32 +57,38 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.namespace.replication;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import diskCacheV111.vehicles.PoolStatusChangedMessage;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Object registered with the pool status cache which handles any
+ * intervening messages received.
  *
- * @author arossi
+ * Created by arossi on 1/25/15.
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public interface PoolStatusNotifier {
+    static final Logger LOGGER
+                    = LoggerFactory.getLogger(PoolStatusNotifier.class);
 
-   @Override
-   public String getType() {
-       return toString();
-    }
+    String getNotifierName();
+
+    String getPoolName();
+
+    /**
+     * Should make any required state transition internal to the notifier
+     * on the basis of the type of the message.
+     *
+     * @param message either DOWN or RESTART
+     */
+    void messageArrived(PoolStatusChangedMessage message);
+
+    /**
+     * This method is called by the worker when it has completed either
+     * successfully or with a failure.
+     */
+    void taskCompleted();
 }

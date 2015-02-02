@@ -57,32 +57,38 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.namespace.replication.data;
+
+import org.dcache.namespace.replication.caches.PoolManagerPoolInfoCache;
+import org.dcache.pool.migration.PoolListFromPoolManager;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Uses the PoolManagerPoolInfoCache cache so as to mitigate calls to PoolManager.
  *
- * @author arossi
+ * Created by arossi on 1/20/15.
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public class PoolManagerInfoList extends PoolListFromPoolManager {
 
-   @Override
-   public String getType() {
-       return toString();
+    private final PoolManagerPoolInfoCache infoCache;
+    private final String poolGroup;
+
+    public PoolManagerInfoList(PoolManagerPoolInfoCache infoCache,
+                    String poolGroup) {
+        this.infoCache = checkNotNull(infoCache);
+        this.poolGroup = checkNotNull(poolGroup);
+        _isValid = false;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("pool group %s, %d pools",
+                             poolGroup, _pools.size());
+    }
+
+    @Override
+    public void refresh() {
+        infoCache.refreshPoolManagerPoolInfo(poolGroup, this);
     }
 }

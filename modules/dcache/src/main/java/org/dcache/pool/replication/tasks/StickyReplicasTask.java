@@ -57,32 +57,55 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.pool.replication.tasks;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.Serializable;
+import java.util.concurrent.Executor;
+
+import dmg.util.command.DelayedCommand;
+import org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy;
+import org.dcache.pool.replication.vehicles.StickyReplicasMessage;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Manipulates a sticky record indicating that the replica currently is
+ * under the control of the replica manager and cannot be removed.
+ * The replica manager removes the record when its operation has finished.
+ * Calls {@link org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy}.
  *
- * @author arossi
+ * Created by arossi on 1/13/15.
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public final class StickyReplicasTask extends InnerCommandTask {
+    private static final Logger LOGGER
+        = LoggerFactory.getLogger(StickyReplicasTask.class);
 
-   @Override
-   public String getType() {
-       return toString();
+    private final StickyReplicasMessage message;
+    private final ReplicaManagerRepositoryProxy repository;
+
+    public StickyReplicasTask(StickyReplicasMessage message,
+                              ReplicaManagerRepositoryProxy repository,
+                              Executor executor) {
+        super(executor);
+        this.message = message;
+        this.repository = repository;
+    }
+
+    @Override
+    protected DelayedCommand createCommand(Executor executor) {
+        return new DelayedCommand(executor) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            protected Serializable execute() {
+                if (message.set) {
+                    repository.addReplicaManagerStickyRecord(message);
+                } else {
+                    repository.removeReplicaManagerStickyRecord(message);
+                }
+                return message;
+            }
+        };
     }
 }

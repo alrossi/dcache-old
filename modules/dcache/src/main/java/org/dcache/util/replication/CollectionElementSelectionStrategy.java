@@ -57,32 +57,15 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.util.replication;
+
+import java.util.Collection;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Generic interface for choosing element from a collection.
  *
  * @author arossi
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
-
-   @Override
-   public String getType() {
-       return toString();
-    }
+public interface CollectionElementSelectionStrategy<T> {
+    T select(Collection<T> collection);
 }

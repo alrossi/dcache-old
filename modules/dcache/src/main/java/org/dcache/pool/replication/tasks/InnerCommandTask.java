@@ -57,32 +57,27 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.pool.replication.tasks;
+
+import java.util.concurrent.Executor;
+
+import dmg.util.command.DelayedCommand;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Base class for DelayedCommand tasks.  Abstracts out the Serializable command.
  *
- * @author arossi
+ * Created by arossi on 1/13/15.
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public abstract class InnerCommandTask {
+    protected DelayedCommand innerCommand;
 
-   @Override
-   public String getType() {
-       return toString();
+    public DelayedCommand getCommand() {
+        return innerCommand;
     }
+
+    protected InnerCommandTask(Executor executor) {
+        innerCommand = createCommand(executor);
+    }
+
+    protected abstract DelayedCommand createCommand(Executor executor);
 }

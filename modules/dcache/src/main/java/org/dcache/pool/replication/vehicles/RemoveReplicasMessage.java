@@ -57,32 +57,39 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.pool.replication.vehicles;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+
+import diskCacheV111.util.PnfsId;
+import diskCacheV111.vehicles.Message;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Used by replica manager to request removal of cache entry from
+ * the pool repository.
  *
  * @author arossi
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public class RemoveReplicasMessage extends Message {
+    private static final long serialVersionUID = 1L;
 
-   @Override
-   public String getType() {
-       return toString();
+    public final String pool;
+
+    private final Collection<PnfsId> toRemove = new ArrayList<>();
+
+    public RemoveReplicasMessage(String pool, Collection<PnfsId> toRemove) {
+        this.pool = pool;
+        this.toRemove.addAll(toRemove);
+    }
+
+    public Iterator<PnfsId> iterator() {
+        return toRemove.iterator();
+    }
+
+    public String toString() {
+        return String.format("%s (pool %s) (toRemove %s) %s.",
+                        getMessageName(), pool, toRemove, super.toString());
     }
 }

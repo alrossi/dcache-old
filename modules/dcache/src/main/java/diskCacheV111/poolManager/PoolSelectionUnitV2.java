@@ -784,6 +784,25 @@ public class PoolSelectionUnitV2
     }
 
     @Override
+    public StorageUnit getStorageUnit(String storageClass) {
+        if ((storageClass == null) || (storageClass.length() == 0)) {
+            return null;
+        }
+
+        _psuReadLock.lock();
+        try {
+            Unit unit = _units.get(storageClass);
+            if (unit != null && unit.getType() == STORE) {
+                return (StorageUnit)unit;
+            }
+        } finally {
+            _psuReadLock.unlock();
+        }
+
+        return null;
+    }
+
+    @Override
     public String getNetIdentifier(String address) throws UnknownHostException {
 
         _psuReadLock.lock();
@@ -1000,6 +1019,42 @@ public class PoolSelectionUnitV2
         return "";
     }
 
+    public final static String hh_psu_set_pgroup = "<pool group> [-minreplicas=<minreplicas>] "
+                    + "[-maxreplicas=<maxreplicas>] [-onlyOneCopyPer=<and/or expression using tags>]";
+
+    public String ac_psu_set_pgroup_$_1(Args args) {
+
+        String groupName = args.argv(0);
+        _psuWriteLock.lock();
+
+        try {
+            PGroup group = _pGroups.get(groupName);
+            if (group == null) {
+                throw new IllegalArgumentException("Not found : " + groupName);
+            }
+
+            String tmp = args.getOpt("minreplicas");
+            if (tmp != null) {
+                group.setMinReplicas(Integer.parseInt(tmp));
+            }
+
+            tmp = args.getOpt("maxreplicas");
+            if (tmp != null) {
+                group.setMaxReplicas(Integer.parseInt(tmp));
+            }
+
+            tmp = args.getOpt("onlyOneCopyPer");
+            if (tmp != null) {
+                group.setOnlyOneCopyPer(tmp);
+            }
+
+            group.validate();
+        } finally {
+            _psuWriteLock.unlock();
+        }
+        return "";
+    }
+
     public final static String hh_psu_set_regex = "on | off";
 
     public String ac_psu_set_regex_$_1(Args args) {
@@ -1207,7 +1262,7 @@ public class PoolSelectionUnitV2
                 _netHandler.add(net);
                 unit = net;
             } else if (args.hasOption("store")) {
-                unit = new Unit(name, STORE);
+                unit = new StorageUnit(name);
             } else if (args.hasOption("dcache")) {
                 unit = new Unit(name, DCACHE);
             } else if (args.hasOption("protocol")) {
@@ -1252,6 +1307,49 @@ public class PoolSelectionUnitV2
             _psuWriteLock.unlock();
         }
 
+        return "";
+    }
+
+    public final static String hh_psu_set_storage_unit = "<storage unit> [-minreplicas=<minreplicas>] "
+                    + "[-maxreplicas=<maxreplicas>] [-onlyOneCopyPer=<and/or expression using tags>]";
+
+    public String ac_psu_set_storage_unit_$_1(Args args) {
+
+        String storageClass = args.argv(0);
+        _psuWriteLock.lock();
+
+        try {
+            Unit unit = _units.get(storageClass);
+            if (unit == null) {
+                throw new IllegalArgumentException("Not found : " + storageClass);
+            }
+
+            if (unit.getType() != STORE) {
+                throw new IllegalStateException("unit named "
+                                + storageClass + " is not of type STORE");
+            }
+
+            StorageUnit sUnit = (StorageUnit)unit;
+
+            String tmp = args.getOpt("minreplicas");
+            if (tmp != null) {
+                sUnit.setMinReplicas(new Integer(tmp));
+            }
+
+            tmp = args.getOpt("maxreplicas");
+            if (tmp != null) {
+                sUnit.setMaxReplicas(new Integer(tmp));
+            }
+
+            tmp = args.getOpt("onlyOneCopyPer");
+            if (tmp != null) {
+                sUnit.setOnlyOneCopyPer(tmp);
+            }
+
+            sUnit.validate();
+        } finally {
+            _psuWriteLock.unlock();
+        }
         return "";
     }
 
@@ -1314,10 +1412,13 @@ public class PoolSelectionUnitV2
                             + groupName);
                 }
 
-                Object[] result = new Object[3];
+                Object[] result = new Object[6];
                 result[0] = groupName;
                 result[1] = group._poolList.keySet().toArray();
                 result[2] = group._linkList.keySet().toArray();
+                result[3] = group.getMinReplicas();
+                result[4] = group.getMaxReplicas();
+                result[5] = group.getOnlyOneCopyPer();
                 xlsResult = result;
             }
         } finally {
@@ -1595,7 +1696,11 @@ public class PoolSelectionUnitV2
                 PGroup group = i.next();
                 sb.append(group.getName()).append("\n");
                 if (detail) {
-                    sb.append(" linkList :\n");
+                    sb.append(" minReplicas = ").append(group.getMinReplicas())
+                      .append(", maxReplicas = ").append(group.getMaxReplicas())
+                      .append(", sameHostEnabled = ").append(group.getOnlyOneCopyPer())
+                      .append("\n")
+                      .append(" linkList :\n");
                     for (Link link : group._linkList.values()) {
                         sb.append("   ").append(link.toString()).append(
                                 "\n");
@@ -2333,6 +2438,11 @@ public class PoolSelectionUnitV2
 
     public final static String hh_psu_add_link = "<link> <pool>|<pool group>";
 
+    /*
+     * Validation now needs to take place to ensure that non-resilient
+     * pools are not allowed to add storage classes for which resilience
+     * is defined.
+     */
     public String ac_psu_add_link_$_2(Args args) {
         String linkName = args.argv(0);
         String poolName = args.argv(1);
@@ -2347,9 +2457,16 @@ public class PoolSelectionUnitV2
             PoolCore core = _pools.get(poolName);
             if (core == null) {
                 core = _pGroups.get(poolName);
-            }
-            if (core == null) {
-                throw new IllegalArgumentException("Not found : " + poolName);
+                if (core == null) {
+                    throw new IllegalArgumentException("Not found : " + poolName);
+                }
+                validateStorageGroups((SelectionPoolGroup)core, link);
+            } else {
+                Collection<SelectionPoolGroup> groups
+                    = getPoolGroupsOfPool(poolName);
+                for (SelectionPoolGroup group: groups) {
+                    validateStorageGroups(group, link);
+                }
             }
 
             core._linkList.put(link.getName(), link);
@@ -2667,6 +2784,57 @@ public class PoolSelectionUnitV2
             return "One pool";
         default:
             return String.valueOf(count) + " pools";
+        }
+    }
+
+    /**
+     * Checks to make sure that resilient storage units are not associated
+     * with non-resilient pool groups.
+     */
+    private void validateStorageGroups(SelectionPoolGroup group,
+                                       Link link) {
+        if (group.getMinReplicas() > 1) {
+            /*
+             * A resilient group; allow any storage group;
+             * if the storage class has no min/max defined, it
+             * will be given the min/max of the group.
+             */
+            return;
+        }
+
+        Collection<SelectionUnitGroup> ugroups = link.getUnitGroupsTargetedBy();
+        for (SelectionUnitGroup ugroup: ugroups) {
+            Collection<SelectionUnit> units = ugroup.getMemeberUnits();
+            for (SelectionUnit unit: units) {
+                switch(unit.getType()) {
+                    case PoolSelectionUnitV2.STORE:
+                        StorageUnit sunit = (StorageUnit)unit;
+                        /*
+                         * We should not allow this, because the behavior
+                         * is undefined -- that is, the storage class is
+                         * attempting to turn the pool group into a resilient
+                         * one by overriding its (min,max)=(1,1) to something
+                         * greater.  This would defeat the use of pool
+                         * groups to determine the coarse replication
+                         * requirements, and would further require the
+                         * replica manager to scan every file, checking
+                         * its storage class to make sure it has been
+                         * correctly replicated.
+                         */
+                        if (sunit.getMinReplicas() != null) {
+                            throw new IllegalArgumentException("You cannot associate"
+                                            + " a non-resilient pool group ("
+                                            + group.getName()
+                                            + ") with a resilient storage class ("
+                                            + sunit.getName() + ")");
+                        }
+                        break;
+                    default:
+                        /*
+                         * ignore
+                         */
+                }
+            }
         }
     }
 }

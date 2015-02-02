@@ -57,32 +57,47 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.namespace.replication.caches;
+
+import diskCacheV111.vehicles.PoolStatusChangedMessage;
+import org.dcache.namespace.replication.PoolStatusNotifier;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * A cache of pool status changes.
+ * The timeout value should be at least the length of the watchdog interval.
+ * Used when pool status checks are run, in order to avoid redundant
+ * operations and to throttle the processing of state change messages.
  *
- * @author arossi
+ * Created by arossi on 1/22/15.
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public class PoolStatusCache
+                extends AbstractResilientInfoCache<String, PoolStatusNotifier> {
 
-   @Override
-   public String getType() {
-       return toString();
+    public synchronized void registerPoolNotifier(PoolStatusNotifier notifier) {
+        cache.put(notifier.getPoolName(), notifier);
+        cache.notifyAll();
+    }
+
+    public synchronized void unregisterPoolNotifier(PoolStatusNotifier notifier) {
+        cache.invalidate(notifier.getPoolName());
+        cache.notifyAll();
+    }
+
+    public boolean notifierReceivedMessage(PoolStatusChangedMessage message) {
+        PoolStatusNotifier notifier = cache.getIfPresent(message.getPoolName());
+        if (notifier == null) {
+            return false;
+        }
+        notifier.messageArrived(message);
+        return true;
+    }
+
+    public synchronized boolean isRegistered(String poolName) {
+        return cache.getIfPresent(poolName) != null;
+    }
+
+    @Override
+    protected void prettyPrint(PoolStatusNotifier value, StringBuilder builder) {
+        builder.append(value.getNotifierName());
     }
 }

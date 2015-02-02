@@ -57,32 +57,23 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.util.replication;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import org.dcache.util.CDCExecutorServiceDecorator;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Used for several thread pools internal to the replica manager.
  *
  * @author arossi
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public final class CDCFixedPoolTaskExecutor
+    extends CDCTaskExecutor<CDCExecutorServiceDecorator> {
 
-   @Override
-   public String getType() {
-       return toString();
+    public void initialize() {
+        ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
+        delegate = new CDCExecutorServiceDecorator(executor);
     }
 }

@@ -57,32 +57,42 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.pool.replication.vehicles;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+
+import diskCacheV111.util.PnfsId;
+import diskCacheV111.vehicles.Message;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Used by replica manager to add or remove a sticky record with itself as owner
+ * to the cache entry of the enumerated files.
  *
  * @author arossi
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public class StickyReplicasMessage extends Message {
+    private static final long serialVersionUID = 1L;
 
-   @Override
-   public String getType() {
-       return toString();
+    public final String pool;
+    public final boolean set;
+
+    private final Collection<PnfsId> pnfsIds = new ArrayList<>();
+
+    public StickyReplicasMessage(String pool, Collection<PnfsId> pnfsIds,
+                    boolean set) {
+        this.pool = pool;
+        this.pnfsIds.addAll(pnfsIds);
+        this.set = set;
+    }
+
+    public Iterator<PnfsId> iterator() {
+        return pnfsIds.iterator();
+    }
+
+    public String toString() {
+        return String.format("%s (pool %s) (pnfsids %s), set=%s, %s.",
+                        getMessageName(), pool, pnfsIds, set, super.toString());
     }
 }

@@ -57,32 +57,45 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.namespace.replication.workers;
+
+import diskCacheV111.vehicles.PoolStatusChangedMessage;
+import org.dcache.namespace.replication.PoolStatusNotifier;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Implementation of the object which is registered with the
+ * {@link org.dcache.namespace.replication.caches.PoolStatusCache}.
+ * Simple placeholder which blocks the processing of any other status messages
+ * for this pool until the scan completes.
  *
- * @author arossi
+ * Created by arossi on 1/30/15.
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+class PoolScanStatusNotifier implements PoolStatusNotifier {
+    private final String poolName;
+    private final PoolScanWorker owner;
 
-   @Override
-   public String getType() {
-       return toString();
+    PoolScanStatusNotifier(String poolName, PoolScanWorker owner) {
+        this.poolName = poolName;
+        this.owner = owner;
+    }
+
+    @Override
+    public String getNotifierName() {
+        return poolName + "-scan-notifier";
+    }
+
+    @Override
+    public String getPoolName() {
+        return poolName;
+    }
+
+    @Override
+    public void messageArrived(PoolStatusChangedMessage message) {
+        LOGGER.trace("Received {} during pool scan of {}.", message, poolName);
+    }
+
+    @Override
+    public synchronized void taskCompleted() {
+        owner.unregister();
     }
 }

@@ -1,5 +1,6 @@
 onerror shutdown
 
+check -strong pool.enable.replica-management
 check -strong pool.cell.name
 check -strong pool.cell.export
 check -strong pool.name
@@ -87,6 +88,7 @@ endDefine
 
 create org.dcache.cells.UniversalSpringCell "${pool.cell.name}" \
     "!PoolDefaults classpath:org/dcache/pool/classic/pool.xml \
+    -profiles=replica-management-${pool.enable.replica-management} \
     -export=${pool.cell.export} -cellClass=Pool -profiles=healthcheck-${pool.enable.repository-check} \
     -setupClass=pool -setupFile=\"${pool.path}/setup\" \
     -ftpAllowIncomingConnections=\"${pool.mover.ftp.allow-incoming-connections}\" \

@@ -5,15 +5,17 @@
 onerror shutdown
 check -strong broadcast.cell.name
 check -strong broadcast.enable.replica
+check -strong broadcast.enable.replica-management
 check -strong broadcast.enable.space-reservation
 check -strong broadcast.service.replica
+check -strong broadcast.service.replicamanager
 check -strong broadcast.service.spacemanager
 check -strong broadcast.service.billing
 check -strong broadcast.service.pinmanager
 check -strong broadcast.service.poolmanager
 
 #
-#  ----  Registration of the Replica Manager
+#  ----  Registration of the Replica Manager TODO deprecate or remove this eventually
 #
 #   If replicaManager is on, it needs some messages broadcasted:
 #   It is off by default
@@ -28,6 +30,20 @@ exec env replicaManagerOn.exe -ifok
 set env -c broadcastSetupReplicaManager1 ""
 set env -c broadcastSetupReplicaManager2 ""
 set env -c broadcastSetupReplicaManager3 ""
+onerror shutdown
+
+#
+#  ----  Registration of replica management (supersedes the above)
+#
+#   If replica management is enabled, broadcast the pool status messages:
+#   It is off by default
+onerror continue
+define env replicationOn.exe endExe
+  set env -c broadcastSetupReplication "register diskCacheV111.vehicles.PoolStatusChangedMessage       ${broadcast.service.replicamanager}"
+endExe
+eval ${broadcast.enable.replica-management} true ==
+exec env replicationOn.exe -ifok
+set env -c broadcastSetupReplication ""
 onerror shutdown
 
 #

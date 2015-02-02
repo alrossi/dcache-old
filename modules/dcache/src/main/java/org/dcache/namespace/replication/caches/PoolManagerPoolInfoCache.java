@@ -57,32 +57,66 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.namespace.replication.caches;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.MoreExecutors;
+
+import diskCacheV111.vehicles.PoolManagerGetPoolsByPoolGroupMessage;
+import org.dcache.cells.AbstractMessageCallback;
+import org.dcache.cells.CellStub;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Because replica handling may involve many calls to the pool manager,
+ * precautions must be taken to avoid DOS on this service.  This cache assumes
+ * that the values asked for are reasonably stable within the limits defined
+ * for the timeout.  All information needed by the replica manager
+ * concerning selection units should pass through this cache.
+ * <p/>
  *
- * @author arossi
+ * This class is thread-safe.  It is assumed that access to the cache
+ * will be on a dedicated thread.
+ * <p/>
+ *
+ * This cache is mainly the provider for the migration task's refreshable
+ * list, offering a level of caching on top of the asynchronous callback
+ * which is implemented in {@link org.dcache.pool.migration.PoolListByPoolGroup).
+ *
+ * Created by arossi on 1/22/15.
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public class PoolManagerPoolInfoCache
+                extends AbstractResilientInfoCache<String,
+                                                   PoolManagerGetPoolsByPoolGroupMessage> {
+    private CellStub poolManager;
 
-   @Override
-   public String getType() {
-       return toString();
+    /**
+     * Note that the cache is not loaded directly when the entry is not
+     * found.  Delegation to a callback on a message sent to the pool is
+     * used, as prescribed by the Migration Task API.
+     *
+     * @param poolGroup from which to get the PoolManager info.
+     * @param callback object to which to redirect the message.
+     */
+    public void refreshPoolManagerPoolInfo(String poolGroup,
+                                           AbstractMessageCallback callback) {
+        PoolManagerGetPoolsByPoolGroupMessage msg = cache.getIfPresent(poolGroup);
+        if (msg != null) {
+            callback.success(msg);
+        } else {
+            msg = new PoolManagerGetPoolsByPoolGroupMessage(ImmutableList.of(poolGroup));
+            CellStub.addCallback(poolManager.send(msg),
+                                 callback,
+                                 MoreExecutors.directExecutor());
+        }
+    }
+
+    public void setPoolManager(CellStub poolManager) {
+        this.poolManager = poolManager;
+    }
+
+    @Override
+    protected void prettyPrint(PoolManagerGetPoolsByPoolGroupMessage value,
+                               StringBuilder builder) {
+        builder.append(value);
     }
 }
