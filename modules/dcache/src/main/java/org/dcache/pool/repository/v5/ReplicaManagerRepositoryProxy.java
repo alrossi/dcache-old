@@ -74,9 +74,9 @@ import org.dcache.pool.repository.IllegalTransitionException;
 import org.dcache.pool.repository.MetaDataRecord;
 import org.dcache.pool.repository.StickyRecord;
 import org.dcache.util.CacheExceptionFactory;
-import org.dcache.pool.replication.vehicles.CacheEntryInfoMessage;
-import org.dcache.pool.replication.vehicles.RemoveReplicasMessage;
-import org.dcache.pool.replication.vehicles.StickyReplicasMessage;
+import org.dcache.vehicles.replication.CacheEntryInfoMessage;
+import org.dcache.vehicles.replication.RemoveReplicasMessage;
+import org.dcache.vehicles.replication.StickyReplicasMessage;
 
 import static diskCacheV111.util.CacheException.DEFAULT_ERROR_CODE;
 import static diskCacheV111.util.CacheException.PERMISSION_DENIED;

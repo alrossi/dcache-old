@@ -87,8 +87,8 @@ import org.dcache.namespace.replication.data.PnfsIdInfo;
 import org.dcache.namespace.replication.data.PoolGroupInfo;
 import org.dcache.util.replication.CellStubFactory;
 import org.dcache.util.replication.CollectionElementSelectionStrategy;
-import org.dcache.pool.replication.vehicles.RemoveReplicasMessage;
-import org.dcache.pool.replication.vehicles.StickyReplicasMessage;
+import org.dcache.vehicles.replication.RemoveReplicasMessage;
+import org.dcache.vehicles.replication.StickyReplicasMessage;
 
 /**
  * Encapsulates fields and functions common to both pnfsid and pool status

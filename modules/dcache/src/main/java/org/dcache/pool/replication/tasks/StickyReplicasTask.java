@@ -67,7 +67,7 @@ import java.util.concurrent.Executor;
 
 import dmg.util.command.DelayedCommand;
 import org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy;
-import org.dcache.pool.replication.vehicles.StickyReplicasMessage;
+import org.dcache.vehicles.replication.StickyReplicasMessage;
 
 /**
  * Manipulates a sticky record indicating that the replica currently is

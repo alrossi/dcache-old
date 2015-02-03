@@ -57,7 +57,7 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.pool.replication.vehicles;
+package org.dcache.vehicles.replication;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -67,29 +67,32 @@ import diskCacheV111.util.PnfsId;
 import diskCacheV111.vehicles.Message;
 
 /**
- * Used by replica manager to request removal of cache entry from
- * the pool repository.
+ * Used by replica manager to add or remove a sticky record with itself as owner
+ * to the cache entry of the enumerated files.
  *
  * @author arossi
  */
-public class RemoveReplicasMessage extends Message {
+public class StickyReplicasMessage extends Message {
     private static final long serialVersionUID = 1L;
 
     public final String pool;
+    public final boolean set;
 
-    private final Collection<PnfsId> toRemove = new ArrayList<>();
+    private final Collection<PnfsId> pnfsIds = new ArrayList<>();
 
-    public RemoveReplicasMessage(String pool, Collection<PnfsId> toRemove) {
+    public StickyReplicasMessage(String pool, Collection<PnfsId> pnfsIds,
+                    boolean set) {
         this.pool = pool;
-        this.toRemove.addAll(toRemove);
+        this.pnfsIds.addAll(pnfsIds);
+        this.set = set;
     }
 
     public Iterator<PnfsId> iterator() {
-        return toRemove.iterator();
+        return pnfsIds.iterator();
     }
 
     public String toString() {
-        return String.format("%s (pool %s) (toRemove %s) %s.",
-                        getMessageName(), pool, toRemove, super.toString());
+        return String.format("%s (pool %s) (pnfsids %s), set=%s, %s.",
+                        getMessageName(), pool, pnfsIds, set, super.toString());
     }
 }

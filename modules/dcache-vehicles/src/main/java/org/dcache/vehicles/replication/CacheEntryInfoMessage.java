@@ -57,42 +57,51 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.pool.replication.vehicles;
+package org.dcache.vehicles.replication;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
+import com.google.common.base.Preconditions;
 
 import diskCacheV111.util.PnfsId;
 import diskCacheV111.vehicles.Message;
 
+import org.dcache.pool.repository.CacheEntry;
+
 /**
- * Used by replica manager to add or remove a sticky record with itself as owner
- * to the cache entry of the enumerated files.
+ * Used by replica manager to request cache entry info from
+ * the pool repository.
  *
  * @author arossi
  */
-public class StickyReplicasMessage extends Message {
+public class CacheEntryInfoMessage extends Message {
     private static final long serialVersionUID = 1L;
 
-    public final String pool;
-    public final boolean set;
+    public final PnfsId pnfsId;
 
-    private final Collection<PnfsId> pnfsIds = new ArrayList<>();
+    private String pool;
+    private CacheEntry entry;
 
-    public StickyReplicasMessage(String pool, Collection<PnfsId> pnfsIds,
-                    boolean set) {
-        this.pool = pool;
-        this.pnfsIds.addAll(pnfsIds);
-        this.set = set;
+    public CacheEntryInfoMessage(PnfsId pnfsId) {
+        this.pnfsId = Preconditions.checkNotNull(pnfsId, "message lacks pnfsid");
     }
 
-    public Iterator<PnfsId> iterator() {
-        return pnfsIds.iterator();
+    public CacheEntry getEntry() {
+        return entry;
+    }
+
+    public String getPool() {
+        return pool;
+    }
+
+    public void setEntry(CacheEntry entry) {
+        this.entry = entry;
+    }
+
+    public void setPool(String pool) {
+        this.pool = pool;
     }
 
     public String toString() {
-        return String.format("%s (pool %s) (pnfsids %s), set=%s, %s.",
-                        getMessageName(), pool, pnfsIds, set, super.toString());
+        return String.format("%s (pool %s) (pnfsid %s), (entry %s), %s.",
+                        getMessageName(), pool, pnfsId, entry, super.toString());
     }
 }

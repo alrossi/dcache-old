@@ -72,9 +72,9 @@ import org.dcache.pool.replication.tasks.RemoveReplicasTask;
 import org.dcache.pool.replication.tasks.StickyReplicasTask;
 import org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy;
 import org.dcache.util.replication.CDCFixedPoolTaskExecutor;
-import org.dcache.pool.replication.vehicles.CacheEntryInfoMessage;
-import org.dcache.pool.replication.vehicles.RemoveReplicasMessage;
-import org.dcache.pool.replication.vehicles.StickyReplicasMessage;
+import org.dcache.vehicles.replication.CacheEntryInfoMessage;
+import org.dcache.vehicles.replication.RemoveReplicasMessage;
+import org.dcache.vehicles.replication.StickyReplicasMessage;
 
 /**
  * Uses the ListenableFuture pattern to return cache entry info

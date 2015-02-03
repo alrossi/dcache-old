@@ -85,7 +85,7 @@ import org.dcache.pool.migration.ProportionalPoolSelectionStrategy;
 import org.dcache.pool.migration.Task;
 import org.dcache.pool.migration.TaskCompletionHandler;
 import org.dcache.pool.migration.TaskParameters;
-import org.dcache.pool.replication.vehicles.CacheEntryInfoMessage;
+import org.dcache.vehicles.replication.CacheEntryInfoMessage;
 import org.dcache.pool.repository.EntryState;
 import org.dcache.pool.repository.StickyRecord;
 

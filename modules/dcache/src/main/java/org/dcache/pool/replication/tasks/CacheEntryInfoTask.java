@@ -67,7 +67,7 @@ import java.util.concurrent.Executor;
 
 import dmg.util.command.DelayedCommand;
 import org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy;
-import org.dcache.pool.replication.vehicles.CacheEntryInfoMessage;
+import org.dcache.vehicles.replication.CacheEntryInfoMessage;
 
 /**
  * Delayed/threaded handling of info request.

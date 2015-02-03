@@ -57,51 +57,39 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.pool.replication.vehicles;
+package org.dcache.vehicles.replication;
 
-import com.google.common.base.Preconditions;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 
 import diskCacheV111.util.PnfsId;
 import diskCacheV111.vehicles.Message;
 
-import org.dcache.pool.repository.CacheEntry;
-
 /**
- * Used by replica manager to request cache entry info from
+ * Used by replica manager to request removal of cache entry from
  * the pool repository.
  *
  * @author arossi
  */
-public class CacheEntryInfoMessage extends Message {
+public class RemoveReplicasMessage extends Message {
     private static final long serialVersionUID = 1L;
 
-    public final PnfsId pnfsId;
+    public final String pool;
 
-    private String pool;
-    private CacheEntry entry;
+    private final Collection<PnfsId> toRemove = new ArrayList<>();
 
-    public CacheEntryInfoMessage(PnfsId pnfsId) {
-        this.pnfsId = Preconditions.checkNotNull(pnfsId, "message lacks pnfsid");
-    }
-
-    public CacheEntry getEntry() {
-        return entry;
-    }
-
-    public String getPool() {
-        return pool;
-    }
-
-    public void setEntry(CacheEntry entry) {
-        this.entry = entry;
-    }
-
-    public void setPool(String pool) {
+    public RemoveReplicasMessage(String pool, Collection<PnfsId> toRemove) {
         this.pool = pool;
+        this.toRemove.addAll(toRemove);
+    }
+
+    public Iterator<PnfsId> iterator() {
+        return toRemove.iterator();
     }
 
     public String toString() {
-        return String.format("%s (pool %s) (pnfsid %s), (entry %s), %s.",
-                        getMessageName(), pool, pnfsId, entry, super.toString());
+        return String.format("%s (pool %s) (toRemove %s) %s.",
+                        getMessageName(), pool, toRemove, super.toString());
     }
 }
