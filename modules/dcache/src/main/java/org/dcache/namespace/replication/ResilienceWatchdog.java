@@ -63,7 +63,6 @@ import com.google.common.base.Preconditions;
 
 import java.util.Collection;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -162,7 +161,6 @@ public final class ResilienceWatchdog extends RunnableModule {
                                         + "has started.", date);
 
         Collection<String> activePools = null;
-        Collection<String> seenPnfsids = new HashSet<>();
 
         try {
             activePools = hub.getPoolInfoCache().findAllActivePools();
@@ -179,6 +177,12 @@ public final class ResilienceWatchdog extends RunnableModule {
 
         /**
          * Executes sequentially.
+         *
+         * Note that the query run for each pool will refresh the
+         * actual location count, so a pnfsid which showed up for one
+         * pool in a resilient group as being in need of extra copies or
+         * removal of copies should not show up again for another pool
+         * in that group unless that operation failed.
          */
         for (String pool : activePools) {
             if (!scanning.get()) {
@@ -197,7 +201,7 @@ public final class ResilienceWatchdog extends RunnableModule {
             }
 
             synchronized(this) {
-                PoolScanWorker worker = new PoolScanWorker(pool, seenPnfsids, hub);
+                PoolScanWorker worker = new PoolScanWorker(pool, hub);
 
                 LOGGER.debug("Starting worker to scan {}.", pool);
 
