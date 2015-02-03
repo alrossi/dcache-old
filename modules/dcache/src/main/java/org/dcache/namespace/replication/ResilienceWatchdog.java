@@ -61,7 +61,6 @@ package org.dcache.namespace.replication;
 
 import com.google.common.base.Preconditions;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
@@ -72,7 +71,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import diskCacheV111.util.CacheException;
-import org.dcache.namespace.replication.caches.PoolStatusCache;
 import org.dcache.namespace.replication.workers.PoolScanWorker;
 import org.dcache.util.replication.RunnableModule;
 
@@ -87,13 +85,22 @@ import org.dcache.util.replication.RunnableModule;
  */
 public final class ResilienceWatchdog extends RunnableModule {
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicBoolean scanning = new AtomicBoolean(false);
     private final AtomicLong nextCheck = new AtomicLong(System.currentTimeMillis());
 
     private ReplicaManagerHub hub;
     private ReplicationMessageHandler handler;
+    private Future<String> workerFuture;
 
     public void cancel() {
-
+        if (!scanning.getAndSet(false)) {
+            return;
+        }
+        synchronized (this) {
+            if (workerFuture != null) {
+                workerFuture.cancel(true);
+            }
+        }
     }
 
     public long getNextScan() {
@@ -117,7 +124,9 @@ public final class ResilienceWatchdog extends RunnableModule {
 
         while (running.get()) {
             if (System.currentTimeMillis() >= nextCheck.get()) {
+                scanning.set(true);
                 doScan();
+                scanning.set(false);
                 nextCheck.set(System.currentTimeMillis() + waitInMs);
             }
 
@@ -168,14 +177,14 @@ public final class ResilienceWatchdog extends RunnableModule {
             return;
         }
 
-        PoolStatusCache cache = hub.getPoolStatusCache();
-
-        Collection<Future<String>> toJoin = new ArrayList<>();
-
         /**
          * Executes sequentially.
          */
         for (String pool : activePools) {
+            if (!scanning.get()) {
+                break;
+            }
+
             LOGGER.debug("scan(): checking pool {}.", pool);
             if (hub.getPoolStatusCache().isRegistered(pool)) {
                 /*
@@ -187,21 +196,26 @@ public final class ResilienceWatchdog extends RunnableModule {
                 continue;
             }
 
-            PoolScanWorker worker = new PoolScanWorker(pool, seenPnfsids, hub);
+            synchronized(this) {
+                PoolScanWorker worker = new PoolScanWorker(pool, seenPnfsids, hub);
 
-            LOGGER.debug("Starting worker to scan {}.", pool);
+                LOGGER.debug("Starting worker to scan {}.", pool);
 
-            worker.run();
+                worker.run();
+                workerFuture = worker.getWorkerFuture();
 
-            try {
-                worker.getWorkerFuture().get();
-            } catch (InterruptedException | ExecutionException e) {
-                LOGGER.error("A problem occurred while waiting for scan of "
-                                                + "pool {} to finish: {}.",
-                                pool, e.getMessage());
+                try {
+                    workerFuture.get();
+                } catch (InterruptedException | ExecutionException e) {
+                    LOGGER.error("A problem occurred while waiting for scan of "
+                                                    + "pool {} to finish: {}.",
+                                    pool, e.getMessage());
+                }
+
+                LOGGER.debug("Worker to scan {} completed.", pool);
+
+                workerFuture = null;
             }
-
-            LOGGER.debug("Worker to scan {} completed.", pool);
         }
 
         LOGGER.info("Periodic resilient pool scan, scheduled for {}, "

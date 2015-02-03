@@ -33,6 +33,9 @@ import org.dcache.namespace.replication.workers.PoolScanWorker;
  *         a given pool.
  *     </li>
  *     <li>
+ *         cancel a running job.
+ *     </li>
+ *     <li>
  *         list pool group information for a given pool.
  *     </li>
  *     <li>
@@ -42,10 +45,10 @@ import org.dcache.namespace.replication.workers.PoolScanWorker;
  *          replica consistency).
  *     </li>
  *     <li>
- *         list running operations.
+ *         list running jobs.
  *     </li>
  *     <li>
- *         list cumulative totals for messages and operations.
+ *         list cumulative totals for messages and jobs.
  *     </li>
  *     <li>
  *         refresh from pool monitor all pool group info currently
@@ -63,7 +66,7 @@ import org.dcache.namespace.replication.workers.PoolScanWorker;
 public final class ReplicaManagerAdmin implements CellCommandListener {
 
     enum WatchdogMode {
-        ON, OFF, RUN, INFO;
+        ON, OFF, RUN, CANCEL, INFO;
 
         public static WatchdogMode parseOption(String option) {
             switch(option.toUpperCase()) {
@@ -73,6 +76,8 @@ public final class ReplicaManagerAdmin implements CellCommandListener {
                     return WatchdogMode.OFF;
                 case "RUN":
                     return WatchdogMode.RUN;
+                case "CANCEL":
+                    return WatchdogMode.CANCEL;
                 case "INFO":
                     return WatchdogMode.INFO;
                 default:
@@ -366,7 +371,7 @@ public final class ReplicaManagerAdmin implements CellCommandListener {
                                     + "of active pools for deficient and excessive copies.")
     class WatchdogCommand implements Callable<String> {
         @Argument(index = 0,
-                        valueSpec = "off|on|info|run ",
+                        valueSpec = "off|on|info|run|cancel ",
                         required = true,
                         usage = "off = turn the watchdog off; on = turn the watchdog on; "
                                         + "info = show when the next check is scheduled "
@@ -374,7 +379,8 @@ public final class ReplicaManagerAdmin implements CellCommandListener {
                                         + "check to run when indicated (default means now); "
                                         + "automatic periodic checking resumes afterwards, "
                                         + "with a new next time being scheduled using the "
-                                        + "default timeout period.")
+                                        + "default timeout period; cancel = attempt to "
+                                        + "cancel the currently running check.")
         String operation;
 
         @Argument(index = 1, required = false,
@@ -423,6 +429,11 @@ public final class ReplicaManagerAdmin implements CellCommandListener {
                     watchdog.reschedule(time, TimeUnit.MILLISECONDS);
                     return "Check rescheduled for "
                                     + new Date(time).toString() + ".";
+                case CANCEL:
+                    watchdog.cancel();
+                    return "Cancel called on watchdog. Next check scheduled for "
+                                    + new Date(watchdog.getNextScan()).toString()
+                                    + ".";
             }
 
             return "Next check scheduled for "
