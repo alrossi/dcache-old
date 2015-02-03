@@ -108,8 +108,8 @@ public final class ReplicaManagerHub {
     /*
      * Worker settings.
      */
-    private long poolStatusChangeWindow;
-    private TimeUnit poolStatusChangeWindowUnit;
+    private long poolStatusGracePeriod;
+    private TimeUnit poolStatusGracePeriodUnit;
 
     public ActivityRegistry getRegistry() {
         return registry;
@@ -119,20 +119,20 @@ public final class ReplicaManagerHub {
         this.registry = registry;
     }
 
-    public long getPoolStatusChangeWindow() {
-        return poolStatusChangeWindow;
+    public long getPoolStatusGracePeriod() {
+        return poolStatusGracePeriod;
     }
 
-    public void setPoolStatusChangeWindow(long window) {
-        this.poolStatusChangeWindow = window;
+    public void setPoolStatusGracePeriod(long window) {
+        this.poolStatusGracePeriod = window;
     }
 
-    public TimeUnit getPoolStatusChangeWindowUnit() {
-        return poolStatusChangeWindowUnit;
+    public TimeUnit getPoolStatusGracePeriodUnit() {
+        return poolStatusGracePeriodUnit;
     }
 
-    public void setPoolStatusChangeWindowUnit(TimeUnit unit) {
-        this.poolStatusChangeWindowUnit = unit;
+    public void setPoolStatusGracePeriodUnit(TimeUnit unit) {
+        this.poolStatusGracePeriodUnit = unit;
     }
 
     public PnfsInfoCache getPnfsInfoCache() {

@@ -80,14 +80,14 @@ public abstract class AbstractResilientInfoCache<K extends Comparable, V> {
                     = LoggerFactory.getLogger(AbstractResilientInfoCache.class);
 
     protected Cache<K, V> cache;
-    protected int expiry = 1;
+    protected int lifetime = 1;
     protected int size = 1000;
-    protected TimeUnit expiryUnit = TimeUnit.MINUTES;
+    protected TimeUnit lifetimeUnit = TimeUnit.MINUTES;
 
     public void initialize() throws IllegalArgumentException {
-        if (expiry < 0) {
+        if (lifetime < 0) {
             throw new IllegalArgumentException("Cache life must be positive "
-                            + "integer; was: " + expiry);
+                            + "integer; was: " + lifetime);
         }
 
         if (size < 1) {
@@ -96,22 +96,14 @@ public abstract class AbstractResilientInfoCache<K extends Comparable, V> {
         }
 
         cache = CacheBuilder.newBuilder()
-                        .expireAfterWrite(expiry, expiryUnit)
+                        .expireAfterWrite(lifetime, lifetimeUnit)
                         .maximumSize(size)
                         .softValues()
                         .build();
     }
 
-    public void setExpiry(int expiry) {
-        this.expiry = expiry;
-    }
-
     public void setSize(int size) {
         this.size = size;
-    }
-
-    public void setExpiryUnit(TimeUnit expiryUnit) {
-        this.expiryUnit = expiryUnit;
     }
 
     public void invalidate(K key) {
@@ -135,6 +127,14 @@ public abstract class AbstractResilientInfoCache<K extends Comparable, V> {
         }
 
         return contents.toString();
+    }
+
+    public void setLifetime(int lifetime) {
+        this.lifetime = lifetime;
+    }
+
+    public void setLifetimeUnit(TimeUnit lifetimeUnit) {
+        this.lifetimeUnit = lifetimeUnit;
     }
 
     protected abstract void prettyPrint(V value, StringBuilder builder);

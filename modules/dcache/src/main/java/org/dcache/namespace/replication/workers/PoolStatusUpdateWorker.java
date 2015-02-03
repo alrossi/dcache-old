@@ -319,8 +319,8 @@ public class PoolStatusUpdateWorker extends PoolUpdateWorker {
 
     @Override
     protected void startNotifier() {
-        long wait = hub.getPoolStatusChangeWindowUnit()
-                       .toMillis(hub.getPoolStatusChangeWindow());
+        long wait = hub.getPoolStatusGracePeriodUnit()
+                       .toMillis(hub.getPoolStatusGracePeriod());
         PoolUpdateStatusNotifier notifier
                         = new PoolUpdateStatusNotifier(poolName,
                                                        this,

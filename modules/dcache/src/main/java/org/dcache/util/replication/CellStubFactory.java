@@ -61,6 +61,8 @@ package org.dcache.util.replication;
 
 import java.util.concurrent.TimeUnit;
 
+import dmg.cells.nucleus.CellEndpoint;
+import dmg.cells.nucleus.CellMessageSender;
 import org.dcache.cells.CellStub;
 
 /**
@@ -69,18 +71,16 @@ import org.dcache.cells.CellStub;
  *
  * @author arossi
  */
-public final class CellStubFactory {
-    private String callbackDestination;
-    private String pinManagerDestination;
+public final class CellStubFactory implements CellMessageSender {
+    private CellEndpoint cellEndpoint;
 
+    private String callbackDestination;
+    private CellStub pinManagerStub;
     private Long callbackTimeout;
     private TimeUnit callbackTimeoutUnit;
-
-    private Long pinManagerTimeout;
-    private TimeUnit pinManagerTimeoutUnit;
-
     private Long poolTimeout;
     private TimeUnit poolTimeoutUnit;
+
 
     public CellStub getCallbackStub() {
         CellStub stub = new CellStub();
@@ -95,21 +95,9 @@ public final class CellStubFactory {
         return stub;
     }
 
-    public CellStub getPinManagerStub() {
-        CellStub stub = new CellStub();
-        stub.setDestination(pinManagerDestination);
-        stub.setRetryOnNoRouteToCell(true);
-        if (pinManagerTimeout != null) {
-            stub.setTimeout(pinManagerTimeout);
-        }
-        if (pinManagerTimeoutUnit != null) {
-            stub.setTimeoutUnit(pinManagerTimeoutUnit);
-        }
-        return stub;
-    }
-
     public CellStub getPoolStub(String destination) {
         CellStub stub = new CellStub();
+        stub.setCellEndpoint(cellEndpoint);
         stub.setDestination(destination);
         stub.setRetryOnNoRouteToCell(true);
         if (poolTimeout != null) {
@@ -121,15 +109,19 @@ public final class CellStubFactory {
         return stub;
     }
 
-    public void setPoolTimeout(long poolTimeout) {
-        this.poolTimeout = poolTimeout;
+    public void setCallbackDestination(String callbackDestination) {
+        this.callbackDestination = callbackDestination;
     }
 
-    public void setPoolTimeoutUnit(TimeUnit poolTimeoutUnit) {
-        this.poolTimeoutUnit = poolTimeoutUnit;
+    public CellStub getPinManagerStub() {
+        return pinManagerStub;
     }
 
-    public void setCallbackTimeout(long callbackTimeout) {
+    public void setPinManagerStub(CellStub pinManagerStub) {
+        this.pinManagerStub = pinManagerStub;
+    }
+
+    public void setCallbackTimeout(Long callbackTimeout) {
         this.callbackTimeout = callbackTimeout;
     }
 
@@ -137,27 +129,16 @@ public final class CellStubFactory {
         this.callbackTimeoutUnit = callbackTimeoutUnit;
     }
 
-    public void setCallbackDestination(String callbackDestination) {
-        this.callbackDestination = callbackDestination;
-    }
-
-    public void setPinManagerDestination(String pinManagerDestination) {
-        this.pinManagerDestination = pinManagerDestination;
-    }
-
     public void setPoolTimeout(Long poolTimeout) {
         this.poolTimeout = poolTimeout;
     }
 
-    public void setCallbackTimeout(Long callbackTimeout) {
-        this.callbackTimeout = callbackTimeout;
+    public void setPoolTimeoutUnit(TimeUnit poolTimeoutUnit) {
+        this.poolTimeoutUnit = poolTimeoutUnit;
     }
 
-    public void setPinManagerTimeout(Long pinManagerTimeout) {
-        this.pinManagerTimeout = pinManagerTimeout;
-    }
-
-    public void setPinManagerTimeoutUnit(TimeUnit pinManagerTimeoutUnit) {
-        this.pinManagerTimeoutUnit = pinManagerTimeoutUnit;
+    @Override
+    public void setCellEndpoint(CellEndpoint cellEndpoint) {
+        this.cellEndpoint = cellEndpoint;
     }
 }

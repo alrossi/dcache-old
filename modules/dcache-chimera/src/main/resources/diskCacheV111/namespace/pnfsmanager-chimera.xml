@@ -138,17 +138,29 @@
       <property name="numberOfThreads" value="${pnfsmanager.replication.concurrent-remove-jobs}"/>
     </bean>
 
+    <bean id="PoolManagerStub" class="org.dcache.cells.CellStub">
+      <property name="destination" value="${pnfsmanager.service.poolmanager}"/>
+      <property name="timeout" value="${pnfsmanager.service.poolmanager-timeout}"/>
+      <property name="timeoutUnit" value="${pnfsmanager.service.poolmanager-timeout.unit}"/>
+      <property name="retryOnNoRouteToCell" value="true"/>
+    </bean>
+
     <bean id="PoolMonitorStub" class="org.dcache.poolmanager.RemotePoolMonitorFactoryBean">
       <property name="poolManagerStub" ref="PoolManagerStub"/>
     </bean>
 
     <bean id="CellStubFactory" class="org.dcache.util.replication.CellStubFactory">
+      <property name="pinManagerStub">
+        <bean class="org.dcache.cells.CellStub">
+          <property name="destination" value="${pnfsmanager.service.pinmanager}"/>
+          <property name="timeout" value="${pnfsmanager.service.pinmanager-timeout}"/>
+          <property name="timeoutUnit" value="${pnfsmanager.service.pinmanager-timeout.unit}"/>
+          <property name="retryOnNoRouteToCell" value="true"/>
+        </bean>
+     </property>
       <property name="callbackDestination" value="${pnfsmanager.callback}"/>
-      <property name="pinManagerDestination" value="${pnfsmanager.service.pinmanager}"/>
       <property name="callbackTimeout" value="${pnfsmanager.callback-timeout}"/>
       <property name="callbackTimeoutUnit" value="${pnfsmanager.callback-timeout.unit}"/>
-      <property name="pinManagerTimeout" value="${pnfsmanager.service.pinmanager-timeout}"/>
-      <property name="pinManagerTimeoutUnit" value="${pnfsmanager.service.pinmanager-timeout.unit}"/>
       <property name="poolTimeout" value="${pnfsmanager.service.pool-timeout}"/>
       <property name="poolTimeoutUnit" value="${pnfsmanager.service.pool-timeout.unit}"/>
     </bean>
@@ -156,28 +168,28 @@
     <bean id="PnfsInfoCache" init-method="initialize">
       <property name="access" ref="NamespaceAccess"/>
       <property name="size" value="${pnfsmanager.replication.average-files-per-pool}"/>
-      <property name="expiry" ref="${pnfsmanager.replication.pnfs-info-lifetime}"/>
-      <property name="expiryUnit" ref="${pnfsmanager.replication.pnfs-info-lifetime.unit}"/>
+      <property name="lifetime" ref="${pnfsmanager.replication.pnfs-info-lifetime}"/>
+      <property name="lifetimeUnit" ref="${pnfsmanager.replication.pnfs-info-lifetime.unit}"/>
     </bean>
 
     <bean id="PoolInfoCache" init-method="initialize">
       <property name="poolMonitor" ref="PoolMonitorStub"/>
       <property name="size" value="${pnfsmanager.replication.expected-number-of-pools}"/>
-      <property name="expiry" ref="${pnfsmanager.replication.pool-info-lifetime}"/>
-      <property name="expiryUnit" ref="${pnfsmanager.replication.pool-info-lifetime.unit}"/>
+      <property name="lifetime" ref="${pnfsmanager.replication.pool-info-lifetime}"/>
+      <property name="lifetimeUnit" ref="${pnfsmanager.replication.pool-info-lifetime.unit}"/>
     </bean>
 
     <bean id="PoolManagerPoolInfoCache" init-method="initialize">
       <property name="poolManager" ref="PoolManagerStub"/>
       <property name="size" value="${pnfsmanager.replication.expected-number-of-pools}"/>
-      <property name="expiry" ref="${pnfsmanager.replication.pool-info-lifetime}"/>
-      <property name="expiryUnit" ref="${pnfsmanager.replication.pool-info-lifetime.unit}"/>
+      <property name="lifetime" ref="${pnfsmanager.replication.pool-info-lifetime}"/>
+      <property name="lifetimeUnit" ref="${pnfsmanager.replication.pool-info-lifetime.unit}"/>
     </bean>
 
     <bean id="PoolStatusCache" init-method="initialize">
       <property name="size" value="${pnfsmanager.replication.expected-number-of-pools}"/>
-      <property name="expiry" ref="${pnfsmanager.replication.scan-period}"/>
-      <property name="expiryUnit" ref="${pnfsmanager.replication.scan-period.unit}"/>
+      <property name="lifetime" ref="${pnfsmanager.replication.scan-period}"/>
+      <property name="lifetimeUnit" ref="${pnfsmanager.replication.scan-period.unit}"/>
     </bean>
 
     <bean id="ReplicaManagerHub" class="org.dcache.namespace.replication.ReplicaManagerHub">
@@ -192,8 +204,8 @@
       <property name="poolInfoCache" ref="PoolInfoCache"/>
       <property name="poolManagerPoolInfoCache" ref="PoolManagerPoolInfoCache"/>
       <property name="poolStatusCache" ref="PoolStatusCache"/>
-      <property name="poolStatusChangeWindow" value="${pnfsmanager.replication.grace-period-on-pool-status-change}"/>
-      <property name="poolStatusChangeWindowUnit" value="${pnfsmanager.replication.grace-period-on-pool-status-change.unit}"/>
+      <property name="poolStatusGracePeriod" value="${pnfsmanager.replication.grace-period-on-pool-status-change}"/>
+      <property name="poolStatusGracePeriodUnit" value="${pnfsmanager.replication.grace-period-on-pool-status-change.unit}"/>
     </bean>
 
     <bean id="ResilienceWatchdog" class="org.dcache.namespace.replication.ResilienceWatchdog">
