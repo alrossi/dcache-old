@@ -67,6 +67,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -211,7 +212,7 @@ public abstract class PoolUpdateWorker extends AbstractUpdateWorker<String> {
      * counts, and discarding if the current count meets them.
      * Otherwise, the pnfsId is added to the list of pnfsIds.
      */
-    protected void loadPnfsIdInfo(BoundCheck type)
+    protected void loadPnfsIdInfo(BoundCheck type, Set<String> toExclude)
                     throws CacheException, ParseException {
         String filter;
         int bound;
@@ -245,6 +246,7 @@ public abstract class PoolUpdateWorker extends AbstractUpdateWorker<String> {
                 if (info != null) {
                     info.setConstraints(poolGroupInfo);
                 }
+
 
                 switch(type) {
                     case UPPER_MIN:
