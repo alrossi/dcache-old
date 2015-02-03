@@ -59,12 +59,8 @@ documents or software obtained from this server.
  */
 package org.dcache.namespace.replication.db;
 
-import com.google.common.collect.Multimap;
 import com.google.common.collect.Range;
-import com.google.common.collect.TreeMultimap;
 
-import javax.security.auth.Subject;
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -72,7 +68,11 @@ import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import javax.security.auth.Subject;
+import javax.sql.DataSource;
 
 import diskCacheV111.namespace.NameSpaceProvider;
 import diskCacheV111.util.AccessLatency;
@@ -99,8 +99,6 @@ import static org.dcache.commons.util.SqlHelper.tryToClose;
  * The extra queries return the pnfsids for a given location, and
  * optionally counts for them representing total number of replicas.
  * <p/>
- * Note that the count queries are currently here only for use
- * by the admin shell commands.
  *
  * Created by arossi on 1/31/15.
  */
@@ -146,7 +144,7 @@ public class LocalNamespaceAccess implements NameSpaceProvider {
         try {
             Connection dbConnection = getConnection();
             try {
-                Multimap<String, Integer> results = TreeMultimap.create();
+                Map<String, Integer> results = new TreeMap<>();
                 getResult(dbConnection, sql, location, results);
                 return results.keySet();
             } catch (SQLException e) {
@@ -168,7 +166,7 @@ public class LocalNamespaceAccess implements NameSpaceProvider {
      * @return map of pnfsid, replica count entries.
      * @throws CacheException
      */
-    public Multimap<String, Integer> getPnfsidCountsFor(String location)
+    public Map<String, Integer> getPnfsidCountsFor(String location)
                     throws CacheException {
         String sql = SQL_GET_LOCATION_COUNTS + " ORDER BY count(*)";
         return getResult(location, null);
@@ -180,7 +178,7 @@ public class LocalNamespaceAccess implements NameSpaceProvider {
      * @return map of pnfsid, replica count entries.
      * @throws CacheException
      */
-    public Multimap<String, Integer> getPnfsidCountsFor(String location,
+    public Map<String, Integer> getPnfsidCountsFor(String location,
                                                         String filter)
                     throws CacheException, ParseException {
         validateInequality(filter);
@@ -322,12 +320,12 @@ public class LocalNamespaceAccess implements NameSpaceProvider {
         }
     }
 
-    private Multimap<String, Integer> getResult(String query, String location)
+    private Map<String, Integer> getResult(String query, String location)
                     throws CacheException {
         try {
             Connection dbConnection = getConnection();
             try {
-                Multimap<String, Integer> results = TreeMultimap.create();
+                Map<String, Integer> results = new TreeMap<>();
                 getResult(dbConnection, query, location, results);
                 return results;
             } catch (SQLException e) {
@@ -347,7 +345,7 @@ public class LocalNamespaceAccess implements NameSpaceProvider {
     private void getResult(Connection connection,
                            String query,
                            String location,
-                           Multimap<String, Integer> results)
+                           Map<String, Integer> results)
                     throws SQLException {
         PreparedStatement statement = null;
         ResultSet resultSet = null;

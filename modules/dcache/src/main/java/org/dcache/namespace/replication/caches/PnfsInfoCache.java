@@ -59,16 +59,13 @@ documents or software obtained from this server.
  */
 package org.dcache.namespace.replication.caches;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ExecutionException;
 
 import diskCacheV111.util.CacheException;
 import diskCacheV111.util.PnfsId;
-import org.dcache.namespace.replication.db.LocalNamespaceAccess;
 import org.dcache.namespace.replication.data.PnfsIdInfo;
+import org.dcache.namespace.replication.db.LocalNamespaceAccess;
 
 /**
  * Because replica handling may involve many calls to the namespace,
@@ -77,7 +74,7 @@ import org.dcache.namespace.replication.data.PnfsIdInfo;
  * for each timeout.  All information needed by the replica manager
  * concerning metadata for a replica should be done via request to this cache,
  * eventually calling the appropriate refresh or extract methods
- * on the info object,
+ * on the info object.
  * <p/>
  * This class is thread-safe.  It is assumed that access to the cache
  * will be on a dedicated thread.
@@ -107,37 +104,6 @@ public class PnfsInfoCache extends
         }
         throw new NoSuchElementException(pnfsId.toString()
                         + " has no associated metadata.");
-    }
-
-    /**
-     * Depending on the size of the collection, this may
-     * take considerable time, and thus should be handled on a thread
-     * which will not block other operations.
-     * <p/>
-     * Just as with the single call, the attributes and locations for each
-     * will be valid, but the constraints will not be indeterminate.
-     *
-     * @param location for which to load all pnfsid information, including
-     *                 attributes and locations.
-     * @param exclude these pnfsids if seen.
-     * @return list of all pnfsids at location whose info has been cached.
-     * @throws CacheException
-     */
-    public Collection<PnfsId> loadAll(String location, Collection<String> exclude)
-                    throws CacheException {
-        Collection<String> pnfsids = access.getAllPnfsidsFor(location);
-        Map<PnfsId, PnfsIdInfo> infoMap = new HashMap<>();
-        for (String pnfsid: pnfsids) {
-            if (exclude.contains(pnfsid)) {
-                continue;
-            }
-            PnfsId pnfsId = new PnfsId(pnfsid);
-            PnfsIdInfo info = new PnfsIdInfo(pnfsId, access);
-            info.setAttributes();
-            infoMap.put(pnfsId, info);
-        }
-        cache.putAll(infoMap);
-        return infoMap.keySet();
     }
 
     public void setAccess(LocalNamespaceAccess access) {

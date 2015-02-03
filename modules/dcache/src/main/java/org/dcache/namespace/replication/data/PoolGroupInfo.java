@@ -85,6 +85,8 @@ public class PoolGroupInfo implements Serializable {
     private final Set<SelectionPool> pools;
 
     private SelectionPoolGroup poolGroup;
+    private int minUpperBound;
+    private int maxLowerBound;
 
     public PoolGroupInfo() {
         storageUnits = new HashMap<>();
@@ -110,6 +112,14 @@ public class PoolGroupInfo implements Serializable {
         } else {
             builder.append("not resilient");
         }
+    }
+
+    public int getLowerBoundForMax() {
+        return maxLowerBound;
+    }
+
+    public int getUpperBoundForMin() {
+        return minUpperBound;
     }
 
     public SelectionPoolGroup getPoolGroup() {
@@ -151,6 +161,25 @@ public class PoolGroupInfo implements Serializable {
             return empty.iterator();
         }
         return storageUnits.values().iterator();
+    }
+
+    public void setMinMaxBounds() {
+        minUpperBound = poolGroup.getMinReplicas();
+        maxLowerBound = poolGroup.getMaxReplicas();
+        Integer unitMin;
+        Integer unitMax;
+
+        for (Iterator<StorageUnit> it = storageUnits(); it.hasNext(); ) {
+            StorageUnit unit = it.next();
+            unitMin = unit.getMinReplicas();
+            unitMax = unit.getMaxReplicas();
+            if (unitMin != null) {
+                minUpperBound = Math.max(minUpperBound, unitMin);
+            }
+            if (unitMax != null) {
+                maxLowerBound = Math.min(maxLowerBound, unitMax);
+            }
+        }
     }
 
     private Collection<String> getStorageUnitNames() {

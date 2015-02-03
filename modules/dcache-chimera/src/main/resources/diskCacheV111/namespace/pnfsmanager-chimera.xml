@@ -193,6 +193,7 @@
     </bean>
 
     <bean id="ReplicaManagerHub" class="org.dcache.namespace.replication.ReplicaManagerHub">
+      <property name="access" ref="NamespaceAccess"/>
       <property name="registry" ref="ActivityRegistry"/>
       <property name="migrationTaskExecutor" ref="MigrationTaskExecutor"/>
       <property name="pnfsInfoTaskExecutor" ref="PnfsInfoTaskExecutor"/>

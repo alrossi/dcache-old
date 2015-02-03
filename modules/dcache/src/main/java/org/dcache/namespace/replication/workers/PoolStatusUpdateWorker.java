@@ -62,12 +62,13 @@ package org.dcache.namespace.replication.workers;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.concurrent.ExecutionException;
 
+import diskCacheV111.util.CacheException;
 import diskCacheV111.util.PnfsId;
 import diskCacheV111.util.RetentionPolicy;
 import org.dcache.alarms.AlarmMarkerFactory;
@@ -377,7 +378,32 @@ public class PoolStatusUpdateWorker extends PoolUpdateWorker {
     }
 
     private void loadPnfsIdInfo() {
-        loadPnfsIdInfo(Collections.EMPTY_SET);
+        try {
+            switch (type) {
+                case DOWN:
+                   /*
+                    *  Files with a location count less than the highest minimum
+                    *  for the pool group are then vetted on a storage-group basis.
+                    *  The upper bound guarantees the less-than query will not miss
+                    *  the special cases.
+                    */
+                    loadPnfsIdInfo(BoundCheck.UPPER_MIN);
+                    break;
+                case RESTART:
+                   /*
+                    *  Files with a location count greater than the lowest maximum
+                    *  for the pool group are then vetted on a storage-group basis.
+                    *  The lower bound guarantees the great-than query will not miss
+                    *  the special cases.
+                    */
+                    loadPnfsIdInfo(BoundCheck.LOWER_MAX);
+                    break;
+                default:
+                    break;
+            }
+        } catch (CacheException | ParseException e) {
+            failed(e);
+        }
     }
 
     private void selectForReduction() {

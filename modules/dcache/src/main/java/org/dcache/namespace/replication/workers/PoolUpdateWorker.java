@@ -61,10 +61,12 @@ package org.dcache.namespace.replication.workers;
 
 import com.google.common.collect.Multimap;
 
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -95,6 +97,10 @@ public abstract class PoolUpdateWorker extends AbstractUpdateWorker<String> {
                     + "Operation cannot proceed at this time; a best effort "
                     + "at retry will be made during the next periodic watchdog "
                     + "scan.";
+
+    enum BoundCheck {
+        UPPER_MIN, LOWER_MAX
+    }
 
     /**
      * All pnfsIds at this pool location.
@@ -199,22 +205,73 @@ public abstract class PoolUpdateWorker extends AbstractUpdateWorker<String> {
     }
 
     /*
-     * Preload all pnfsid info for the location. Retain the pnfsIds.
-     * Then set the constraints on each.
+     * Request pnfsids and counts from namespace according
+     * to boundary constraints. Then iterate over each, caching
+     * the info, and checking storage group constraints against actual
+     * counts, and discarding if the current count meets them.
+     * Otherwise, the pnfsId is added to the list of pnfsIds.
      */
-    protected void loadPnfsIdInfo(Collection<String> exclude) {
+    protected void loadPnfsIdInfo(BoundCheck type)
+                    throws CacheException, ParseException {
+        String filter;
+        int bound;
+
+        switch(type) {
+            case UPPER_MIN:
+                bound = poolGroupInfo.getUpperBoundForMin();
+                filter = " < " + bound;
+                break;
+            case LOWER_MAX:
+                bound = poolGroupInfo.getLowerBoundForMax();
+                filter = " > " + bound;
+                break;
+            default:
+                bound = 1;
+                filter = " > " + bound;
+                break;
+        }
+
+        Map<String, Integer> counts
+                        = hub.getAccess().getPnfsidCountsFor(poolName, filter);
         PnfsInfoCache cache = hub.getPnfsInfoCache();
+
+        pnfsIds.clear();
+
         try {
-            pnfsIds.addAll(cache.loadAll(poolName, exclude));
+            for (Iterator<String> it = counts.keySet().iterator(); it.hasNext();) {
+                String key = it.next();
+                PnfsId pnfsId = new PnfsId(key);
+                PnfsIdInfo info = cache.getPnfsIdInfo(pnfsId);
+                if (info != null) {
+                    info.setConstraints(poolGroupInfo);
+                }
 
-            for (PnfsId pnfsId : pnfsIds) {
-                cache.getPnfsIdInfo(pnfsId).setConstraints(poolGroupInfo);
+                switch(type) {
+                    case UPPER_MIN:
+                        if (counts.get(key) >= info.getMinimum()) {
+                            cache.invalidate(pnfsId);
+                            it.remove();
+                            continue;
+                        }
+                        break;
+                    case LOWER_MAX:
+                        if (counts.get(key) <= info.getMaximum()) {
+                            cache.invalidate(pnfsId);
+                            it.remove();
+                            continue;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+
+                pnfsIds.add(pnfsId);
+                it.remove();
             }
-
-            LOGGER.debug("Load PnfsIdInfo completed for PoolUpdateWorker on {}.",
-                            poolName);
-            LOGGER.trace("Load PnfsIdInfo: {}.", pnfsIds);
-        } catch (CacheException | ExecutionException e) {
+        } catch (ExecutionException e) {
+            /*
+             *  Fail fast.
+             */
             failed(e);
         }
     }

@@ -62,12 +62,12 @@ package org.dcache.namespace.replication.workers;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
-import java.util.Collection;
+import java.text.ParseException;
 import java.util.Collections;
 
+import diskCacheV111.util.CacheException;
 import diskCacheV111.util.PnfsId;
 import org.dcache.namespace.replication.ReplicaManagerHub;
-import org.dcache.namespace.replication.caches.PnfsInfoCache;
 
 /**
  * A worker responsible for all phases of the handling of a pool scan.
@@ -105,10 +105,10 @@ import org.dcache.namespace.replication.caches.PnfsInfoCache;
 public class PoolScanWorker extends PoolUpdateWorker {
     enum State {
         START,               // check for resilience, register notifier
-        FIND_LOCATIONS,      // call database to get map of {(pnfsid: replicas)}
-                             // remove pnfsids that have been seen, add all the rest
-        SELECT_FOR_COPY,     // bin the pnfsIds according to chosen sources
-        SELECT_FOR_REMOVAL,  // bin the pnfsIds according to copies to remove
+        SELECT_FOR_COPY,     // load deficient pnfsids and bin them according
+                             // to chosen sources
+        SELECT_FOR_REMOVAL,  // load redundant pnfsids and bin them according
+                             // to chosen sources
         REPLICATION,         // launch a PnfsUpdateWorker for each
         REDUCTION,           // pin all, remove selected, unpin remainder
         WAIT_FOR_COMPLETION, // join on the PnfsUpdateWorkers
@@ -125,19 +125,10 @@ public class PoolScanWorker extends PoolUpdateWorker {
      */
     private final Multimap<String, PnfsId> toRemove = ArrayListMultimap.create();
 
-    /**
-     * A scan optimization.  Avoids repeated checks on same pnfsid from
-     * one pool scan to the next.
-     */
-    private final Collection<String> seenPnfsids;
-
     private State state = State.START;
 
-    public PoolScanWorker(String poolName,
-                          Collection<String> seenPnfsids,
-                          ReplicaManagerHub hub) {
+    public PoolScanWorker(String poolName, ReplicaManagerHub hub) {
         super(poolName, hub);
-        this.seenPnfsids = seenPnfsids;
     }
 
     @Override
@@ -146,7 +137,6 @@ public class PoolScanWorker extends PoolUpdateWorker {
             case START:                 register();
                                         getPoolGroupInfo();
                                         startNotifier();        nextState(); break;
-            case FIND_LOCATIONS:        loadAndUpdatePnfsIds(); nextState(); break;
             case SELECT_FOR_COPY:       selectForReplication(); nextState(); break;
             case SELECT_FOR_REMOVAL:    selectForReduction();   nextState(); break;
             case REPLICATION:           replicate();            nextState(); break;
@@ -183,7 +173,6 @@ public class PoolScanWorker extends PoolUpdateWorker {
 
         switch (state) {
             case START:
-            case FIND_LOCATIONS:
             case SELECT_FOR_COPY:
             case SELECT_FOR_REMOVAL:
             case REPLICATION:
@@ -212,8 +201,6 @@ public class PoolScanWorker extends PoolUpdateWorker {
 
         switch (state) {
             case START:
-                state = State.FIND_LOCATIONS;       launch();   break;
-            case FIND_LOCATIONS:
                 state = State.SELECT_FOR_COPY;      launch();   break;
             case SELECT_FOR_COPY:
                 state = State.SELECT_FOR_REMOVAL;   launch();   break;
@@ -258,19 +245,39 @@ public class PoolScanWorker extends PoolUpdateWorker {
         LOGGER.debug("Started notifier for PoolScanWorker on {}.", poolName);
     }
 
-    private void loadAndUpdatePnfsIds() {
-        loadPnfsIdInfo(seenPnfsids);
-        PnfsInfoCache cache = hub.getPnfsInfoCache();
-        for (PnfsId pnfsId: pnfsIds) {
-            seenPnfsids.add(pnfsId.toString());
-        }
-    }
-
     private void selectForReduction() {
+        LOGGER.debug("selectForReduction for PoolScanWorker on {}.", poolName);
+
+        try {
+            /*
+             *  Files with a location count greater than the lowest maximum
+             *  for the pool group are then vetted on a storage-group basis.
+             *  The lower bound guarantees the great-than query will not miss
+             *  the special cases.
+             */
+            loadPnfsIdInfo(BoundCheck.LOWER_MAX);
+        } catch (CacheException | ParseException e) {
+            failed(e);
+        }
+
         selectForReduction(pnfsIds, toCopy, Collections.EMPTY_LIST);
     }
 
     private void selectForReplication() {
+        LOGGER.debug("selectForReplication for PoolScanWorker on {}.", poolName);
+
+        try {
+            /*
+             *  Files with a location count less than the highest minimum
+             *  for the pool group are then vetted on a storage-group basis.
+             *  The upper bound guarantees the less-than query will not miss
+             *  the special cases.
+             */
+            loadPnfsIdInfo(BoundCheck.UPPER_MIN);
+        } catch (CacheException | ParseException e) {
+            failed(e);
+        }
+
         selectForReplication(pnfsIds, toCopy, false);
     }
 }

@@ -183,6 +183,8 @@ public class PoolInfoCache extends
                     }
                 }
             }
+
+            info.setMinMaxBounds();
         }
         return info;
     }

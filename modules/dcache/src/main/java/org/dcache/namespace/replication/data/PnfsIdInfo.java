@@ -134,11 +134,12 @@ public class PnfsIdInfo {
         return locations;
     }
 
-    public synchronized void setAttributes() throws CacheException {
+    public synchronized PnfsIdInfo setAttributes() throws CacheException {
         attributes = nameSpaceProvider.getFileAttributes(Subjects.ROOT,
                                                          pnfsId,
                                                          REQUIRED_ATTRIBUTES);
         locations = attributes.getLocations();
+        return this;
     }
 
     /**
@@ -148,7 +149,7 @@ public class PnfsIdInfo {
      *
      * @param poolGroupInfo for resilient group having default constraints.
      */
-    public void setConstraints(PoolGroupInfo poolGroupInfo) {
+    public PnfsIdInfo setConstraints(PoolGroupInfo poolGroupInfo) {
         SelectionPoolGroup poolGroup = poolGroupInfo.getPoolGroup();
         minimum = poolGroup.getMinReplicas();
         maximum = poolGroup.getMaxReplicas();
@@ -173,5 +174,6 @@ public class PnfsIdInfo {
                 onlyOneCopyPer = oneCopyPer;
             }
         }
+        return this;
     }
 }

@@ -67,6 +67,7 @@ import org.dcache.namespace.replication.caches.PnfsInfoCache;
 import org.dcache.namespace.replication.caches.PoolInfoCache;
 import org.dcache.namespace.replication.caches.PoolManagerPoolInfoCache;
 import org.dcache.namespace.replication.caches.PoolStatusCache;
+import org.dcache.namespace.replication.db.LocalNamespaceAccess;
 import org.dcache.namespace.replication.monitoring.ActivityRegistry;
 import org.dcache.util.replication.CellStubFactory;
 
@@ -78,6 +79,11 @@ import org.dcache.util.replication.CellStubFactory;
  * Created by arossi on 1/25/15.
  */
 public final class ReplicaManagerHub {
+    /*
+     * For attribute information and location queries.
+     */
+    private LocalNamespaceAccess access;
+
     /*
      * Monitoring
      */
@@ -113,6 +119,14 @@ public final class ReplicaManagerHub {
 
     public ActivityRegistry getRegistry() {
         return registry;
+    }
+
+    public LocalNamespaceAccess getAccess() {
+        return access;
+    }
+
+    public void setAccess(LocalNamespaceAccess access) {
+        this.access = access;
     }
 
     public void setRegistry(ActivityRegistry registry) {

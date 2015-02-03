@@ -1,13 +1,12 @@
 package org.dcache.namespace.replication.admin;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.Multimap;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -135,8 +134,7 @@ public final class ReplicaManagerAdmin implements CellCommandListener {
                 return "Please choose one of the two options (pnfsid or pool).";
             }
 
-            new Thread(new PoolScanWorker(pool, Collections.EMPTY_SET, hub))
-                            .start();
+            new Thread(new PoolScanWorker(pool, hub)).start();
             return "A pool scan job has been started on " + pool;
         }
     }
@@ -261,7 +259,7 @@ public final class ReplicaManagerAdmin implements CellCommandListener {
         public String call() throws Exception {
             try {
                 StringBuilder builder = new StringBuilder();
-                Multimap<String, Integer> results = null;
+                Map<String, Integer> results = null;
                 if (filter != null) {
                     results = access.getPnfsidCountsFor(pool, filter);
                 } else {
