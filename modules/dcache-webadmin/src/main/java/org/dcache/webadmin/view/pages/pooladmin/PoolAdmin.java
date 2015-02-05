@@ -69,7 +69,6 @@ public class PoolAdmin extends SortableBasePage implements AuthenticatedWebPage 
         });
         ListView<PoolAdminBean> poolGroups =
                 buildPoolGroupView("poolGroupList");
-        poolAdminForm.add(new SelectAllButton("selectAllButton"));
         poolAdminForm.add(new DeselectAllButton("deselectAllButton"));
         poolAdminForm.add(poolGroups);
         ListView<SelectableWrapper<PoolCommandBean>> poolItems =
@@ -88,10 +87,6 @@ public class PoolAdmin extends SortableBasePage implements AuthenticatedWebPage 
 
     private void deselectAll() {
         setSelectionForAll(Boolean.FALSE);
-    }
-
-    private void selectAll() {
-        setSelectionForAll(Boolean.TRUE);
     }
 
     private void setSelectionForAll(Boolean selected) {
@@ -266,21 +261,6 @@ public class PoolAdmin extends SortableBasePage implements AuthenticatedWebPage 
                     error("couldn't send all PoolCommands successful " + e.getMessage());
                 }
             }
-        }
-    }
-
-    private class SelectAllButton extends Button {
-
-        private static final long serialVersionUID = 446290920975470686L;
-
-        public SelectAllButton(String id) {
-            super(id);
-            this.setDefaultFormProcessing(false);
-        }
-
-        @Override
-        public void onSubmit() {
-            selectAll();
         }
     }
 

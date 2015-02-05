@@ -77,29 +77,11 @@ public abstract class SelectAllPanel extends BasePanel {
 
     public SelectAllPanel(String id, Button submit) {
         super(id);
-//        Button selectAll = new SelectAllButton("selectAllButton");
         Button deselectAll = new DeselectAllButton("deselectAllButton");
         MetaDataRoleAuthorizationStrategy.authorize(submit, RENDER, Role.ADMIN);
-//        MetaDataRoleAuthorizationStrategy.authorize(selectAll, RENDER, Role.ADMIN);
         MetaDataRoleAuthorizationStrategy.authorize(deselectAll, RENDER, Role.ADMIN);
         add(submit);
-//        add(selectAll);
         add(deselectAll);
-    }
-
-    private class SelectAllButton extends Button {
-        private static final long serialVersionUID = -8490536062145002381L;
-
-        public SelectAllButton(String id) {
-            super(id);
-            this.setDefaultFormProcessing(false);
-        }
-
-        @Override
-        public void onSubmit() {
-            setSubmitCalled();
-            setSelectionForAll(Boolean.TRUE);
-        }
     }
 
     private class DeselectAllButton extends Button {
