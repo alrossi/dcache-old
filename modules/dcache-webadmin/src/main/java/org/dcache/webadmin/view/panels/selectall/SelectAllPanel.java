@@ -77,13 +77,13 @@ public abstract class SelectAllPanel extends BasePanel {
 
     public SelectAllPanel(String id, Button submit) {
         super(id);
-        Button selectAll = new SelectAllButton("selectAllButton");
+//        Button selectAll = new SelectAllButton("selectAllButton");
         Button deselectAll = new DeselectAllButton("deselectAllButton");
         MetaDataRoleAuthorizationStrategy.authorize(submit, RENDER, Role.ADMIN);
-        MetaDataRoleAuthorizationStrategy.authorize(selectAll, RENDER, Role.ADMIN);
+//        MetaDataRoleAuthorizationStrategy.authorize(selectAll, RENDER, Role.ADMIN);
         MetaDataRoleAuthorizationStrategy.authorize(deselectAll, RENDER, Role.ADMIN);
         add(submit);
-        add(selectAll);
+//        add(selectAll);
         add(deselectAll);
     }
 
