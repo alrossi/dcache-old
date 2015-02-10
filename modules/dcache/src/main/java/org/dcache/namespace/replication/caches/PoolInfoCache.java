@@ -156,42 +156,6 @@ public final class PoolInfoCache extends
     }
 
     /*
-     *  If the pool does not belong to a resilient group, the group
-     *  field on the info object remains <code>null</code>.  Otherwise,
-     *  the info object is populated with a list of pools and storage units
-     *  in the group.
-     */
-    private PoolGroupInfo load(String poolName) throws Exception {
-        PoolGroupInfo info = new PoolGroupInfo();
-        getResilientPoolGroupOfPool(poolName, info);
-        if (info.isResilient()) {
-            String poolGroup = info.getPoolGroup().getName();
-            Collection<SelectionPool> pools
-                            = poolMonitor.getPoolSelectionUnit()
-                                         .getPoolsByPoolGroup(poolGroup);
-
-            getStorageUnitsInGroup(info, poolGroup);
-
-            String[] active = poolMonitor.getPoolSelectionUnit()
-                            .getActivePools();
-            Set<String> valid = new HashSet<>(Arrays.asList(active));
-
-            for (SelectionPool pool : pools) {
-                String name = pool.getName();
-                if (valid.contains(name)) {
-                    info.addPool(pool);
-                    if (!name.equals(poolName)) {
-                        cache.put(pool.getName(), info);
-                    }
-                }
-            }
-
-            info.setMinMaxBounds();
-        }
-        return info;
-    }
-
-    /*
      *  Assumes only one resilient poolgroup per pool.
      */
     private void getResilientPoolGroupOfPool(String pool, PoolGroupInfo info) {
@@ -229,5 +193,41 @@ public final class PoolInfoCache extends
                 }
             }
         }
+    }
+
+    /*
+     *  If the pool does not belong to a resilient group, the group
+     *  field on the info object remains <code>null</code>.  Otherwise,
+     *  the info object is populated with a list of pools and storage units
+     *  in the group.
+     */
+    private PoolGroupInfo load(String poolName) throws Exception {
+        PoolGroupInfo info = new PoolGroupInfo();
+        getResilientPoolGroupOfPool(poolName, info);
+        if (info.isResilient()) {
+            String poolGroup = info.getPoolGroup().getName();
+            Collection<SelectionPool> pools
+                            = poolMonitor.getPoolSelectionUnit()
+                            .getPoolsByPoolGroup(poolGroup);
+
+            getStorageUnitsInGroup(info, poolGroup);
+
+            String[] active = poolMonitor.getPoolSelectionUnit()
+                            .getActivePools();
+            Set<String> valid = new HashSet<>(Arrays.asList(active));
+
+            for (SelectionPool pool : pools) {
+                String name = pool.getName();
+                if (valid.contains(name)) {
+                    info.addPool(pool);
+                    if (!name.equals(poolName)) {
+                        cache.put(pool.getName(), info);
+                    }
+                }
+            }
+
+            info.setMinMaxBounds();
+        }
+        return info;
     }
 }

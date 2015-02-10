@@ -72,10 +72,6 @@ import org.dcache.namespace.replication.tasks.PnfsIdProcessor;
  * Created by arossi on 2/5/15.
  */
 public final class PnfsInfoQuery {
-    public enum BoundCheck {
-        UPPER_MIN, LOWER_MAX, UNDEFINED
-    }
-
     public final PoolGroupInfo poolGroupInfo;
     public final PnfsIdProcessor callback;
     public final String poolName;

@@ -80,8 +80,9 @@ import dmg.cells.nucleus.CDC;
  * Created by arossi on 1/25/15.
  */
 public final class MessageGuard {
+    static final String REPLICA_ID = "REPLICAMANAGER" + UUID.randomUUID();
+
     private static final Logger LOGGER = LoggerFactory.getLogger(MessageGuard.class);
-    private static final String REPLICA_ID = "REPLICAMANAGER" + UUID.randomUUID();
 
     private ResilienceWatchdog watchdog;
     private boolean enableWatchdogOnBoot = true;
@@ -103,7 +104,7 @@ public final class MessageGuard {
 
     /**
      * Will fail if the incoming message has a CDC session id belonging to the
-     * replica manager itself (i.e., the message is the result of an
+     * replica handler itself (i.e., the message is the result of an
      * operation which originated here).
      *
      * @param message  informative statement for logging purposes.

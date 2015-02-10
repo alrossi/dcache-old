@@ -448,10 +448,10 @@ public final class LocalNamespaceAccess implements NameSpaceProvider {
      *  That is why we vet these results by storage group constraints
      *  and exclude inactive locations in memory.
      *
-     *  Iterates over the result set (which uses a cursor), caching
-     *  the info, and checking storage group constraints against active
-     *  locations, then discarding the pnfsid if the current count meets them.
-     *  Otherwise, the pnfsId is added to the list of pnfsIds.
+     *  Iterates over the result set (which uses a cursor), checking storage
+     *  group constraints against active locations, then discarding the pnfsid
+     *  if the current count meets them. Otherwise, the pnfsId is processed
+     *  by calling the appropriate method on the query callback object.
      */
     private void handleQuery(Connection connection, PnfsInfoQuery query)
                     throws SQLException, ExecutionException,
