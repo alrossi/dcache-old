@@ -68,7 +68,7 @@ import java.util.Random;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.dcache.namespace.replication.ReplicaManagerHub;
+import org.dcache.namespace.replication.ReplicationHub;
 import org.dcache.util.replication.CollectionElementSelectionStrategy;
 
 /**
@@ -123,7 +123,7 @@ public abstract class ReplicaTask implements Cancellable, Runnable {
     /*
      *  Needed to access caches, executor services and the namespace.
      */
-    protected final ReplicaManagerHub hub;
+    protected final ReplicationHub hub;
 
     /*
      *  A wrapper for basic task information, providing a cancellable
@@ -140,7 +140,7 @@ public abstract class ReplicaTask implements Cancellable, Runnable {
      */
     protected Future runFuture;
 
-    protected ReplicaTask(ReplicaTaskInfo info, ReplicaManagerHub hub) {
+    protected ReplicaTask(ReplicaTaskInfo info, ReplicationHub hub) {
         this.info = info;
         this.hub = hub;
         hub.getRegistry().register(info);
@@ -240,10 +240,4 @@ public abstract class ReplicaTask implements Cancellable, Runnable {
     }
 
     protected abstract void failed(Exception e);
-
-    protected static String exceptionMessage(Exception e) {
-        Throwable t = e.getCause();
-        return String.format("Exception: %s%s.", e.getMessage(),
-                        t == null ? "" : String.format(", cause: %s", t));
-    }
 }

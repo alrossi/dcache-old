@@ -71,7 +71,7 @@ import java.util.concurrent.ExecutionException;
 import diskCacheV111.util.CacheException;
 import org.dcache.alarms.AlarmMarkerFactory;
 import org.dcache.alarms.PredefinedAlarm;
-import org.dcache.namespace.replication.ReplicaManagerHub;
+import org.dcache.namespace.replication.ReplicationHub;
 import org.dcache.namespace.replication.data.PnfsIdInfo;
 import org.dcache.namespace.replication.data.PoolGroupInfo;
 import org.dcache.namespace.replication.data.PoolManagerInfoList;
@@ -145,7 +145,7 @@ public final class MakeCopies extends ReplicaTask
     public MakeCopies(ReplicaTaskInfo info,
                       String poolGroup,
                       PnfsIdInfo pnfsIdInfo,
-                      ReplicaManagerHub hub) {
+                      ReplicationHub hub) {
         super(info, hub);
         this.poolGroup = poolGroup;
         this.pnfsIdInfo = pnfsIdInfo;
@@ -215,7 +215,7 @@ public final class MakeCopies extends ReplicaTask
                         source,
                         "make copies",
                         triedSourcePools,
-                        exceptionMessage(e));
+                        ReplicationHub.exceptionMessage(e));
         failedAll();
     }
 

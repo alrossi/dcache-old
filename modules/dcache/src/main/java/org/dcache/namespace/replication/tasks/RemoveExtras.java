@@ -72,7 +72,7 @@ import java.util.concurrent.Future;
 
 import org.dcache.alarms.AlarmMarkerFactory;
 import org.dcache.alarms.PredefinedAlarm;
-import org.dcache.namespace.replication.ReplicaManagerHub;
+import org.dcache.namespace.replication.ReplicationHub;
 import org.dcache.namespace.replication.data.PnfsIdInfo;
 import org.dcache.namespace.replication.data.PoolGroupInfo;
 import org.dcache.namespace.replication.db.LocalNamespaceAccess;
@@ -121,14 +121,14 @@ public final class RemoveExtras extends ReplicaTask {
 
     public RemoveExtras(ReplicaTaskInfo info,
                         PnfsIdInfo pnfsIdInfo,
-                        ReplicaManagerHub hub) {
+                        ReplicationHub hub) {
         this(info, pnfsIdInfo, Collections.EMPTY_SET, hub);
     }
 
     public RemoveExtras(ReplicaTaskInfo info,
                         PnfsIdInfo pnfsIdInfo,
                         Collection<String> confirmed,
-                        ReplicaManagerHub hub) {
+                        ReplicationHub hub) {
         super(info, hub);
         this.pnfsIdInfo = pnfsIdInfo;
         this.confirmed = Preconditions.checkNotNull(confirmed);
@@ -218,7 +218,7 @@ public final class RemoveExtras extends ReplicaTask {
                 throw new Exception(String.format("Failed pin of %s on %s: %s.",
                                     msg.pnfsId,
                                     msg.pool,
-                                    exceptionMessage((Exception)e)));
+                                    ReplicationHub.exceptionMessage((Exception) e)));
             }
         }
     }

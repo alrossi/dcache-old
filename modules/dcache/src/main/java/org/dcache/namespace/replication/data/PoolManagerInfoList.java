@@ -59,8 +59,17 @@ documents or software obtained from this server.
  */
 package org.dcache.namespace.replication.data;
 
+import com.google.common.collect.ImmutableList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.ExecutionException;
+
+import diskCacheV111.vehicles.PoolManagerGetPoolsByPoolGroupMessage;
+import diskCacheV111.vehicles.PoolManagerPoolInformation;
+import org.dcache.namespace.replication.ReplicationHub;
 import org.dcache.namespace.replication.caches.PoolManagerPoolInfoCache;
-import org.dcache.pool.migration.PoolListFromPoolManager;
+import org.dcache.pool.migration.RefreshablePoolList;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -69,26 +78,61 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * Created by arossi on 1/20/15.
  */
-public final class PoolManagerInfoList extends PoolListFromPoolManager {
+public final class PoolManagerInfoList implements RefreshablePoolList {
+    private static final Logger LOGGER
+                    = LoggerFactory.getLogger(PoolManagerInfoList.class);
 
     private final PoolManagerPoolInfoCache infoCache;
     private final String poolGroup;
 
+    private ImmutableList<PoolManagerPoolInformation> pools = ImmutableList.of();
+    private ImmutableList<String> offlinePools =  ImmutableList.of();
+
+    private boolean isValid;
+
     public PoolManagerInfoList(PoolManagerPoolInfoCache infoCache,
-                    String poolGroup) {
+                               String poolGroup) {
         this.infoCache = checkNotNull(infoCache);
         this.poolGroup = checkNotNull(poolGroup);
-        _isValid = false;
+        isValid = false;
     }
 
     @Override
     public String toString() {
         return String.format("pool group %s, %d pools",
-                             poolGroup, _pools.size());
+                             poolGroup, pools.size());
     }
 
     @Override
-    public void refresh() {
-        infoCache.refreshPoolManagerPoolInfo(poolGroup, this);
+    public synchronized boolean isValid()
+    {
+        return isValid;
+    }
+
+    @Override
+    public synchronized ImmutableList<String> getOfflinePools() {
+        return offlinePools;
+    }
+
+    @Override
+    public synchronized ImmutableList<PoolManagerPoolInformation> getPools() {
+        return pools;
+    }
+
+    /*
+     * The call to the cache blocks if the entry does not exist.
+     */
+    @Override
+    public synchronized void refresh() {
+        try {
+            PoolManagerGetPoolsByPoolGroupMessage msg
+                            = infoCache.getMessage(poolGroup);
+            pools = ImmutableList.copyOf(msg.getPools());
+            offlinePools = ImmutableList.copyOf(msg.getOfflinePools());
+            isValid = true;
+        } catch (ExecutionException e) {
+            LOGGER.error(ReplicationHub.exceptionMessage(e));
+            isValid = false;
+        }
     }
 }

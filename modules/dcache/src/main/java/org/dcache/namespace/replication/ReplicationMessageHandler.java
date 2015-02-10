@@ -99,7 +99,7 @@ public final class ReplicationMessageHandler implements CellMessageReceiver {
     private static final String POOL_STATUS_CHANGED = "POOL_STATUS_CHANGED";
 
     private MessageGuard guard;
-    private ReplicaManagerHub hub;
+    private ReplicationHub hub;
     private ActivityRegistry registry;
 
     public void initialize() {
@@ -212,7 +212,7 @@ public final class ReplicationMessageHandler implements CellMessageReceiver {
         this.guard = guard;
     }
 
-    public void setHub(ReplicaManagerHub hub) {
+    public void setHub(ReplicationHub hub) {
         this.hub = hub;
     }
 }

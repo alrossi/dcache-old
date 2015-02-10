@@ -86,7 +86,7 @@ public final class ResilienceWatchdog extends RunnableModule {
     private final AtomicBoolean scanning = new AtomicBoolean(false);
     private final AtomicLong nextCheck = new AtomicLong(System.currentTimeMillis());
 
-    private ReplicaManagerHub hub;
+    private ReplicationHub hub;
     private ReplicationMessageHandler handler;
     private ReplicaTaskInfo current;
 
@@ -149,11 +149,12 @@ public final class ResilienceWatchdog extends RunnableModule {
         this.handler = handler;
     }
 
-    public void setHub(ReplicaManagerHub hub) {
+    public void setHub(ReplicationHub hub) {
         this.hub = hub;
     }
 
     public void shutdown() {
+        cancel();
         running.set(false);
         super.shutdown();
     }

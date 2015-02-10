@@ -77,7 +77,16 @@ import org.dcache.util.replication.CellStubFactory;
  *
  * Created by arossi on 1/25/15.
  */
-public final class ReplicaManagerHub {
+public final class ReplicationHub {
+    /**
+     *  A shared static utility.
+     */
+    public static String exceptionMessage(Exception e) {
+        Throwable t = e.getCause();
+        return String.format("Exception: %s%s.", e.getMessage(),
+                        t == null ? "" : String.format(", cause: %s", t));
+    }
+
     /*
      * For attribute information and location queries.
      */

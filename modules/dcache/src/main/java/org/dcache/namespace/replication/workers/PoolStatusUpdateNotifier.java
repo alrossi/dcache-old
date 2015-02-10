@@ -57,33 +57,29 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.namespace.replication.tasks;
+package org.dcache.namespace.replication.workers;
 
 import diskCacheV111.vehicles.PoolStatusChangedMessage;
-import org.dcache.namespace.replication.ReplicationHub;
+import org.dcache.namespace.replication.PoolStatusNotifier;
 import org.dcache.namespace.replication.data.PoolStatusMessageType;
 
 /**
  * Implementation of the object which is registered with the
  * {@link org.dcache.namespace.replication.caches.PoolStatusCache}.
- * It reacts to any incoming state change messages affecting the pool
+ * It is owned by an instance of the PoolStatusUpdateWorker, and
+ * reacts to any incoming state change messages affecting the pool
  * in question.  Requires a wait of a determinate interval before
- * actually allowing the task to start.  This is to ensure that adequate
+ * actually allowing the worker to start.  This is to ensure that adequate
  * time has passed to confirm that the state of the pool (particularly
  * DOWN) is not just ephemeral.
  * <p/>
  * Handles a possible state switch from DOWN to RESTART or vice-versa
  * depending on the intervening messages received and the state of
- * the sentinel itself.
- * </p>
- * The sentinel will launch the next phase of the operation
- * when the appropriate state is reached, and will then wait on its
- * future for completion.  If further action is required,
- * it will create a new task info object and relaunch.
+ * the notifier itself.
  *
  * Created by arossi on 1/23/15.
  */
-final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
+class PoolStatusUpdateNotifier implements Runnable, PoolStatusNotifier {
     /*
      * These are the "external" states associated with the type of
      * PoolStatusChangedMessage (DOWN, RESTART).  The worker implementation
@@ -98,36 +94,37 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
         RESTART_COMPLETED   // worker finished processing RESTART message
     }
 
-
-    private final ReplicationHub hub;
     private final long waitInterval;
+    private final PoolStatusUpdateWorker owner;
 
-    private ReplicaTaskInfo info;
+    private String poolName;
     private PoolStatusMessageType lastReceived;
     private State current;
     private State next;
 
-    PoolUpdateSentinel(ReplicaTaskInfo info, ReplicationHub hub) {
-        this.info = info;
-        this.hub = hub;
-        this.waitInterval = hub.getPoolStatusGracePeriodUnit()
-                               .toMillis(hub.getPoolStatusGracePeriod());
+    PoolStatusUpdateNotifier(String poolName, PoolStatusUpdateWorker owner,
+                    PoolStatusMessageType lastReceived, long waitInterval) {
+        this.poolName = poolName;
+        this.owner = owner;
 
+        this.lastReceived = lastReceived;
         switch(lastReceived) {
             case DOWN:      current = State.DOWN_WAIT;      break;
             case RESTART:   current = State.RESTART_WAIT;   break;
             default:
         }
+
+        this.waitInterval = waitInterval;
     }
 
     @Override
-    public String getName() {
-        return info.pool + "-status-change-notifier";
+    public String getNotifierName() {
+        return poolName + "-status-change-notifier";
     }
 
     @Override
     public String getPoolName() {
-        return info.pool;
+        return poolName;
     }
 
     @Override
@@ -137,13 +134,13 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
             synchronized (this) {
                 long beginWait = System.currentTimeMillis();
                 LOGGER.debug("{}, before wait: current {}, next {}, wait {}.",
-                                getName(), current, next, wait);
+                                getNotifierName(), current, next, wait);
                 try {
                     if (wait >= 0) {
                         wait(wait);
                     }
                 } catch (InterruptedException e) {
-                    LOGGER.debug("{}, wait was notified.", getName());
+                    LOGGER.debug("{}, wait was notified.", getNotifierName());
                     switch(current) {
                         case RESTART_WAIT:
                             if (lastReceived == PoolStatusMessageType.RESTART) {
@@ -161,7 +158,6 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
                              * DOWN before waitInterval has passed;
                              * shift the task to DOWN and start over.
                              */
-                            info.type = ReplicaTaskInfo.Type.POOL_DOWN;
                             current = State.DOWN_WAIT;
                             wait = waitInterval;
                             continue;
@@ -172,7 +168,7 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
                                  * RESTART while worker is handling RESTART;
                                  * just keep waiting until completion.
                                  */
-                                wait = Long.MAX_VALUE; // wait for done()
+                                wait = Long.MAX_VALUE; // wait for taskCompleted()
                                 continue;
                             }
 
@@ -183,7 +179,7 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
                              * wait until current operation completes.
                              */
                             next = State.DOWN_WAIT;
-                            wait = Long.MAX_VALUE; // wait for done()
+                            wait = Long.MAX_VALUE; // wait for taskCompleted()
                             continue;
                         case DOWN_WAIT:
                             if (lastReceived == PoolStatusMessageType.DOWN) {
@@ -202,9 +198,9 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
                              * Treat this as an ephemeral change and cancel
                              * the task altogether.
                              */
-                            info.cancel(); // should call back
-                            wait = Long.MAX_VALUE; // wait for done()
-                            continue;
+                            current = State.DOWN_COMPLETED;
+                            owner.done();
+                            return;
                         case DOWN_RUNNING:
                             if (lastReceived == PoolStatusMessageType.DOWN) {
                                 /*
@@ -212,7 +208,7 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
                                  * DOWN while worker is handling DOWN;
                                  * just keep waiting until completion.
                                  */
-                                wait = Long.MAX_VALUE; // wait for done()
+                                wait = Long.MAX_VALUE; // wait for taskCompleted()
                                 continue;
                             }
 
@@ -223,7 +219,7 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
                              * wait until current operation completes.
                              */
                             next = State.RESTART_WAIT;
-                            wait = Long.MAX_VALUE; // wait for done()
+                            wait = Long.MAX_VALUE; // wait for taskCompleted()
                             continue;
                         case RESTART_COMPLETED:
                         case DOWN_COMPLETED:
@@ -231,8 +227,7 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
                                 /*
                                  * No further state changes to process.
                                  */
-                                hub.getPoolStatusCache()
-                                   .unregisterPoolSentinel(this);
+                                owner.unregisterNotifier();
                                 return;
                             }
 
@@ -245,63 +240,21 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
                              */
                             current = next;
                             next = null;
-                            PoolStatusMessageType messageType;
-                            switch(current) {
-                                case DOWN_WAIT:
-                                    messageType = PoolStatusMessageType.DOWN;
-                                    break;
-                                case RESTART_WAIT:
-                                    messageType = PoolStatusMessageType.RESTART;
-                                    break;
-                                default:
-                                    throw new IllegalArgumentException(current
-                                                    + " cannot be the next state "
-                                                    + "after completion of "
-                                                    + "a task; this is a bug.");
-                            }
-                            info = new ReplicaTaskInfo(info.pool, messageType);
-                            info.setSentinel(this);
                             wait = waitInterval;
                             continue;
                     }
                 }
 
                 /*
-                 * The wait has completed, so we start the next phase.
-                 * The phases are chained, so that the last will call done()
-                 * on the notifier attached to the task info.
+                 * The wait has completed, so we start the worker.
+                 * The worker will set its first state and queue itself
+                 * appropriately, so it is not running on this thread.
                  */
                 LOGGER.debug("{}, wait completed, starting worker: "
                                                 + "current {}, next {}, type {}.",
-                                getName(), current, next, lastReceived);
-                info.setTaskFuture(new ProcessPool(info, hub).launch());
+                                getNotifierName(), current, next, lastReceived);
+                owner.start(lastReceived);
             }
-        }
-    }
-
-    @Override
-    public synchronized void done() {
-        switch(current) {
-            case DOWN_WAIT:
-            case DOWN_RUNNING:
-                current = State.DOWN_COMPLETED;
-                LOGGER.debug("{}, task finished: notifying {}.", current,
-                                getName());
-                notifyAll();
-                break;
-            case RESTART_RUNNING:
-                current = State.RESTART_COMPLETED;
-                LOGGER.debug("{}, task finished: notifying {}.", current,
-                                getName());
-                notifyAll();
-                break;
-            case DOWN_COMPLETED:
-            case RESTART_COMPLETED:
-                break;
-            case RESTART_WAIT:
-            default:
-                throw new RuntimeException("taskCompleted() was called while"
-                                + " in the " + current + " state; this is a bug.");
         }
     }
 
@@ -314,7 +267,7 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
             case DOWN:
                 lastReceived = type;
                 LOGGER.trace("{}, message arrived {}: notifying.",
-                                getName(), message);
+                                getNotifierName(), message);
                 notifyAll();
                 break;
             case UNKNOWN:
@@ -325,10 +278,28 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
     }
 
     @Override
-    public synchronized void start() {
-        info.setSentinel(this);
-        hub.getPoolStatusCache().registerPoolSentinel(this);
-        info.setTaskFuture(new ProcessPool(info, hub).launch());
-        LOGGER.debug("{} started.", getName());
+    public synchronized void taskCompleted() {
+        switch(current) {
+            case DOWN_RUNNING:
+                current = State.DOWN_COMPLETED;
+                LOGGER.debug("{}, worker finished: notifying {}.", current,
+                                getNotifierName());
+                notifyAll();
+                break;
+            case RESTART_RUNNING:
+                current = State.RESTART_COMPLETED;
+                LOGGER.debug("{}, worker finished: notifying {}.", current,
+                                getNotifierName());
+                notifyAll();
+                break;
+            case DOWN_COMPLETED:
+            case RESTART_COMPLETED:
+                break;
+            case DOWN_WAIT:
+            case RESTART_WAIT:
+            default:
+                throw new RuntimeException("taskCompleted() was called while"
+                            + " in the " + current + " state; this is a bug.");
+        }
     }
 }

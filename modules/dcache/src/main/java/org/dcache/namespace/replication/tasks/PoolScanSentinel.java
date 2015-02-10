@@ -60,7 +60,7 @@ documents or software obtained from this server.
 package org.dcache.namespace.replication.tasks;
 
 import diskCacheV111.vehicles.PoolStatusChangedMessage;
-import org.dcache.namespace.replication.ReplicaManagerHub;
+import org.dcache.namespace.replication.ReplicationHub;
 
 /**
  * Implementation of the object which is registered with the
@@ -73,9 +73,9 @@ import org.dcache.namespace.replication.ReplicaManagerHub;
 final class PoolScanSentinel implements PoolMessageSentinel {
 
     private final ReplicaTaskInfo info;
-    private final ReplicaManagerHub hub;
+    private final ReplicationHub hub;
 
-    PoolScanSentinel(ReplicaTaskInfo info, ReplicaManagerHub hub) {
+    PoolScanSentinel(ReplicaTaskInfo info, ReplicationHub hub) {
         this.info = info;
         this.hub = hub;
     }

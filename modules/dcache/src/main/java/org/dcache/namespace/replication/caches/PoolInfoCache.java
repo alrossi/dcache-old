@@ -82,7 +82,7 @@ import org.dcache.poolmanager.PoolMonitor;
  * Because replica handling may involve many calls to the pool monitor,
  * precautions must be taken to avoid DOS on this service.  This cache assumes
  * that the values asked for are reasonably stable within the limits defined
- * for the timeout.  All information needed by the replica manager
+ * for the timeout.  All information needed for replica handling
  * concerning selection units should pass through this cache.
  * <p/>
  *
@@ -92,9 +92,8 @@ import org.dcache.poolmanager.PoolMonitor;
  *
  * The injected monitor is provided by
  * org.dcache.poolmanager.RemotePoolMonitorFactoryBean, which means
- * it already has one level of caching incorporated in it.  We have
- * implemented this second level in conformity with the other
- * replica manager caches.
+ * it already has one level of caching incorporated into it.  We have
+ * implemented this second level for further efficiency.
  *
  * Created by arossi on 1/22/15.
  */
@@ -121,7 +120,9 @@ public final class PoolInfoCache extends
     }
 
     /**
-     * Does not pass through cache.  Here for convenience.
+     * Does not pass through cache.  Here for convenient access
+     * to the pool monitor.
+     *
      * @return set of all active pools.
      * @throws CacheException
      * @throws InterruptedException
@@ -138,6 +139,7 @@ public final class PoolInfoCache extends
 
     /**
      * Invalidates the cache and reloads all current entries.
+     *
      * @throws Exception
      */
     public synchronized void reload() throws Exception {
@@ -189,6 +191,9 @@ public final class PoolInfoCache extends
         return info;
     }
 
+    /*
+     *  Assumes only one resilient poolgroup per pool.
+     */
     private void getResilientPoolGroupOfPool(String pool, PoolGroupInfo info) {
         Collection<SelectionPoolGroup> pgroups
                         = poolMonitor.getPoolSelectionUnit()

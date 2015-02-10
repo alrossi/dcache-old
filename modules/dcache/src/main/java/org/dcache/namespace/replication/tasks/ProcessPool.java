@@ -74,7 +74,7 @@ import diskCacheV111.util.PnfsId;
 import diskCacheV111.util.RetentionPolicy;
 import org.dcache.alarms.AlarmMarkerFactory;
 import org.dcache.alarms.PredefinedAlarm;
-import org.dcache.namespace.replication.ReplicaManagerHub;
+import org.dcache.namespace.replication.ReplicationHub;
 import org.dcache.namespace.replication.data.PnfsIdInfo;
 import org.dcache.namespace.replication.data.PoolGroupInfo;
 import org.dcache.namespace.replication.db.LocalNamespaceAccess;
@@ -140,7 +140,7 @@ public final class ProcessPool extends ReplicaTask implements PnfsIdProcessor {
     private PoolGroupInfo poolGroupInfo;
     private PnfsInfoQuery query;
 
-    public ProcessPool(ReplicaTaskInfo info, ReplicaManagerHub hub) {
+    public ProcessPool(ReplicaTaskInfo info, ReplicationHub hub) {
         super(info, hub);
         access = hub.getAccess();
     }
@@ -272,7 +272,7 @@ public final class ProcessPool extends ReplicaTask implements PnfsIdProcessor {
     @Override
     protected void failed(Exception e) {
         LOGGER.error(GENERAL_FAILURE_MESSAGE, info.pool,
-                        "process pool", exceptionMessage(e));
+                        "process pool", ReplicationHub.exceptionMessage(e));
         failedAll();
     }
 
@@ -371,10 +371,10 @@ public final class ProcessPool extends ReplicaTask implements PnfsIdProcessor {
                     future.get(1, TimeUnit.MINUTES);
                 } catch (InterruptedException | TimeoutException e) {
                     LOGGER.trace("Future get() for waitForFutures: {}.",
-                                    exceptionMessage(e));
+                                    ReplicationHub.exceptionMessage(e));
                 } catch (ExecutionException e) {
                     LOGGER.trace("Future get() for waitForFutures: {}.",
-                                    exceptionMessage(e));
+                                    ReplicationHub.exceptionMessage(e));
                     ++failed;
                     break;
                 }

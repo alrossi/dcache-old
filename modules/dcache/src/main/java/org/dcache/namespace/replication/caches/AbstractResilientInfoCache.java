@@ -71,7 +71,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Base class for replica manager caching.  Wraps the Guava cache object.
+ * Base class for replica info caching.  Wraps the Guava cache object.
  *
  * Created by arossi on 1/22/15.
  */

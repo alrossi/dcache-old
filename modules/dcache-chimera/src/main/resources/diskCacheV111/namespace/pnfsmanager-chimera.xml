@@ -118,7 +118,7 @@
       <property name="namespace" ref="name-space-provider"/>
       <property name="connectionPool" ref="ReplicaConnectionPool"/>
       <property name="fetchSize" value="${pnfsmanager.replication.pnfs-fetch-size}"/>
-      <property name="hub" ref="ReplicaManagerHub"/>
+      <property name="hub" ref="ReplicationHub"/>
     </bean>
 
     <bean id="VerifyPoolExecutor" class="org.dcache.util.replication.CDCFixedPoolTaskExecutor">
@@ -192,7 +192,7 @@
       <property name="lifetimeUnit" ref="${pnfsmanager.replication.scan-period.unit}"/>
     </bean>
 
-    <bean id="ReplicaManagerHub" class="org.dcache.namespace.replication.ReplicaManagerHub">
+    <bean id="ReplicationHub" class="org.dcache.namespace.replication.ReplicationHub">
       <property name="access" ref="NamespaceAccess"/>
       <property name="registry" ref="ActivityRegistry"/>
       <property name="migrationTaskExecutor" ref="MigrationTaskExecutor"/>
@@ -211,7 +211,7 @@
 
     <bean id="ResilienceWatchdog" class="org.dcache.namespace.replication.ResilienceWatchdog">
       <description>This is initialized/started by the message guard.</description>
-      <property name="hub" ref="ReplicaManagerHub"/>
+      <property name="hub" ref="ReplicationHub"/>
       <property name="handler" ref="ReplicationMessageHandler"/>
       <property name="timeout" value="${pnfsmanager.replication.watchdog-period}"/>
       <property name="timeoutUnit" value="${pnfsmanager.replication.watchdog-period.unit}"/>
@@ -225,12 +225,12 @@
     <bean id="ReplicationMessageHandler" class="org.dcache.namespace.replication.ReplicationMessageHandler"
           init-method="initialize">
       <property name="guard" ref="MessageGuard"/>
-      <property name="hub" ref="ReplicaManagerHub"/>
+      <property name="hub" ref="ReplicationHub"/>
     </bean>
 
-    <bean id="ReplicaManagerAdminCLI" class="org.dcache.namespace.replication.admin.ReplicaManagerAdmin">
+    <bean id="ReplicaManagerAdminCLI" class="org.dcache.namespace.replication.admin.ReplicationAdmin">
       <property name="access" ref="NamespaceAccess"/>
-      <property name="hub" ref="ReplicaManagerHub"/>
+      <property name="hub" ref="ReplicationHub"/>
       <property name="watchdog" ref="ResilienceWatchdog"/>
     </bean>
   </beans>

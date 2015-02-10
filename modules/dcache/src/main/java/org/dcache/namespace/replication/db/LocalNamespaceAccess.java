@@ -88,7 +88,7 @@ import org.dcache.commons.util.SqlHelper;
 import org.dcache.namespace.CreateOption;
 import org.dcache.namespace.FileAttribute;
 import org.dcache.namespace.ListHandler;
-import org.dcache.namespace.replication.ReplicaManagerHub;
+import org.dcache.namespace.replication.ReplicationHub;
 import org.dcache.namespace.replication.data.PnfsIdInfo;
 import org.dcache.util.ChecksumType;
 import org.dcache.util.Glob;
@@ -136,7 +136,7 @@ public final class LocalNamespaceAccess implements NameSpaceProvider {
      */
     private NameSpaceProvider namespace;
 
-    private ReplicaManagerHub hub;
+    private ReplicationHub hub;
 
     /**
      * For cursor used when running pool-based queries.
@@ -267,7 +267,7 @@ public final class LocalNamespaceAccess implements NameSpaceProvider {
         this.fetchSize = fetchSize;
     }
 
-    public void setHub(ReplicaManagerHub hub) {
+    public void setHub(ReplicationHub hub) {
         this.hub = hub;
     }
 

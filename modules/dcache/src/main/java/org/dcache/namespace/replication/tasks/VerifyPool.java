@@ -61,7 +61,7 @@ package org.dcache.namespace.replication.tasks;
 
 import java.util.concurrent.ExecutionException;
 
-import org.dcache.namespace.replication.ReplicaManagerHub;
+import org.dcache.namespace.replication.ReplicationHub;
 import org.dcache.namespace.replication.data.PoolGroupInfo;
 
 /**
@@ -81,7 +81,7 @@ import org.dcache.namespace.replication.data.PoolGroupInfo;
  */
 public final class VerifyPool extends ReplicaTask {
 
-    public VerifyPool(ReplicaTaskInfo info, ReplicaManagerHub hub) {
+    public VerifyPool(ReplicaTaskInfo info, ReplicationHub hub) {
         super(info, hub);
     }
 
@@ -119,7 +119,7 @@ public final class VerifyPool extends ReplicaTask {
         LOGGER.error(GENERAL_FAILURE_MESSAGE,
                         info.pool,
                         "verification of pool information",
-                        exceptionMessage(e));
+                        ReplicationHub.exceptionMessage(e));
 
         failedAll();
     }

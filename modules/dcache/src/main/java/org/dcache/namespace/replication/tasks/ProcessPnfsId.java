@@ -67,7 +67,7 @@ import java.util.concurrent.TimeoutException;
 import diskCacheV111.util.AccessLatency;
 import diskCacheV111.util.CacheException;
 import org.dcache.cells.CellStub;
-import org.dcache.namespace.replication.ReplicaManagerHub;
+import org.dcache.namespace.replication.ReplicationHub;
 import org.dcache.namespace.replication.data.PnfsIdInfo;
 import org.dcache.namespace.replication.data.PoolGroupInfo;
 import org.dcache.namespace.replication.db.LocalNamespaceAccess;
@@ -100,7 +100,7 @@ public class ProcessPnfsId extends ReplicaTask {
     private ReplicaTaskFuture<MakeCopies> copy;
     private ReplicaTaskFuture<RemoveExtras> remove;
 
-    public ProcessPnfsId(ReplicaTaskInfo info, ReplicaManagerHub hub) {
+    public ProcessPnfsId(ReplicaTaskInfo info, ReplicationHub hub) {
         super(info, hub);
         access = hub.getAccess();
         pnfsIdInfo = new PnfsIdInfo(info.pnfsId);
@@ -158,7 +158,7 @@ public class ProcessPnfsId extends ReplicaTask {
     @Override
     protected void failed(Exception e) {
         LOGGER.error(GENERAL_FAILURE_MESSAGE, info.pool,
-                        "process pnfsid", exceptionMessage(e));
+                        "process pnfsid", ReplicationHub.exceptionMessage(e));
         failedAll();
     }
 
@@ -241,7 +241,8 @@ public class ProcessPnfsId extends ReplicaTask {
                 result = copy.get(1, TimeUnit.MINUTES);
             } catch (InterruptedException | TimeoutException e) {
                 LOGGER.trace("Future get() for MakeCopies {}: {}.",
-                                pnfsIdInfo.pnfsId, exceptionMessage(e));
+                                pnfsIdInfo.pnfsId,
+                                ReplicationHub.exceptionMessage(e));
             }
         }
 
@@ -268,7 +269,8 @@ public class ProcessPnfsId extends ReplicaTask {
                 remove.get(1, TimeUnit.MINUTES);
             } catch (InterruptedException | TimeoutException e) {
                 LOGGER.trace("Future get() for RemoveExtras {}.",
-                                pnfsIdInfo.pnfsId, exceptionMessage(e));
+                                pnfsIdInfo.pnfsId,
+                                ReplicationHub.exceptionMessage(e));
             }
         }
     }
