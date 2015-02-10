@@ -92,10 +92,11 @@ import org.dcache.namespace.replication.data.PoolStatusMessageType;
  * and unregister the task info.  The registry can then be
  * used to inspect and cancel running operations.
  * </p>
+ * Class is not final for purposes of mocking.
  *
  * Created by arossi on 2/7/15.
  */
-public final class ReplicaTaskInfo implements Cancellable {
+public class ReplicaTaskInfo implements Cancellable {
 
     public enum Type {
         SINGLE, POOL_DOWN, POOL_RESTART, POOL_SCAN

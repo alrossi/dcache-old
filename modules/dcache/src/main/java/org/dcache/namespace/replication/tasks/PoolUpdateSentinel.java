@@ -83,7 +83,7 @@ import org.dcache.namespace.replication.data.PoolStatusMessageType;
  *
  * Created by arossi on 1/23/15.
  */
-final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
+class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
     /*
      * These are the "external" states associated with the type of
      * PoolStatusChangedMessage (DOWN, UP, RESTART).  The worker implementation
@@ -98,13 +98,17 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
         RESTART_COMPLETED   // worker finished processing RESTART
     }
 
+    /**
+     * Package visibility for testing.
+     */
+    State current;
+    State next;
+
     private final ReplicationHub hub;
     private final long waitInterval;
 
     private ReplicaTaskInfo info;
     private PoolStatusMessageType lastReceived;
-    private State current;
-    private State next;
 
     PoolUpdateSentinel(ReplicaTaskInfo info, ReplicationHub hub) {
         this.info = info;
@@ -112,9 +116,9 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
         this.waitInterval = hub.getPoolStatusGracePeriodUnit()
                                .toMillis(hub.getPoolStatusGracePeriod());
 
-        switch(lastReceived) {
-            case DOWN:      current = State.DOWN_WAIT;      break;
-            case RESTART:   current = State.RESTART_WAIT;   break;
+        switch(info.getType()) {
+            case POOL_DOWN:      current = State.DOWN_WAIT;      break;
+            case POOL_RESTART:   current = State.RESTART_WAIT;   break;
             default:
                 /*
                  * The sentinel should not be constructed by the
@@ -267,15 +271,7 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
                     }
                 }
 
-                /*
-                 * The wait has completed, so we start the next phase.
-                 * The phases are chained, so that the last will call done()
-                 * on the notifier attached to the task info.
-                 */
-                LOGGER.debug("{}, wait completed, starting worker: "
-                                                + "current {}, next {}, type {}.",
-                                getName(), current, next, lastReceived);
-                info.setTaskFuture(new ProcessPool(info, hub).launch());
+                launchProcessPool();
             }
         }
     }
@@ -315,8 +311,7 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
             case RESTART:
             case DOWN:
                 lastReceived = type;
-                LOGGER.trace("{}, message arrived {}: notifying.",
-                                getName(), message);
+                LOGGER.trace("{}, message arrived {}: notifying.", getName(), message);
                 notifyAll();
                 break;
             case UNKNOWN:
@@ -327,11 +322,26 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
         }
     }
 
+    /*
+     * The wait has completed, so we start the next phase.
+     * The phases are chained, so that the last will call done()
+     * on the notifier attached to the task info.
+     *
+     * Note the class is not final so that a package unit test
+     * can override this method.
+     */
+    @Override
+    public void launchProcessPool() {
+        LOGGER.debug("{}, wait completed, starting worker: "
+                                        + "current {}, next {}, type {}.",
+                        getName(), current, next, lastReceived);
+        info.setTaskFuture(new ProcessPool(info, hub).launch());
+    }
+
     @Override
     public synchronized void start() {
         info.setSentinel(this);
         hub.getPoolStatusCache().registerPoolSentinel(this);
-        info.setTaskFuture(new ProcessPool(info, hub).launch());
         LOGGER.debug("{} started.", getName());
     }
 }

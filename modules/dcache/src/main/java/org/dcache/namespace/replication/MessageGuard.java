@@ -80,6 +80,9 @@ import dmg.cells.nucleus.CDC;
  * Created by arossi on 1/25/15.
  */
 public final class MessageGuard {
+    /*
+     * Package visiblity for testing.
+     */
     static final String REPLICA_ID = "REPLICAMANAGER" + UUID.randomUUID();
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MessageGuard.class);

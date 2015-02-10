@@ -74,10 +74,12 @@ import org.dcache.util.replication.CellStubFactory;
  * A convenience container for all the injected executors, caches and services.
  * This is mainly in order to unclutter the constructors of the various
  * tasks requiring these components.
+ * </p>
+ * Class is not final for purposes of mocking.
  *
  * Created by arossi on 1/25/15.
  */
-public final class ReplicationHub {
+public class ReplicationHub {
     /**
      *  A shared static utility.
      */

@@ -71,10 +71,12 @@ import org.dcache.namespace.replication.tasks.PoolMessageSentinel;
  * </p>
  * Caches a sentinel instance which intercepts messages and watches over
  * the running pool task.
+ * </p>
+ * Class is not final for purposes of mocking.
  *
  * Created by arossi on 1/22/15.
  */
-public final class PoolStatusCache
+public class PoolStatusCache
                 extends AbstractResilientInfoCache<String, PoolMessageSentinel> {
 
     public synchronized void registerPoolSentinel(PoolMessageSentinel sentinel) {

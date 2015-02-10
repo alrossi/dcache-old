@@ -96,6 +96,11 @@ final class PoolScanSentinel implements PoolMessageSentinel {
     }
 
     @Override
+    public void launchProcessPool() {
+        info.setTaskFuture(new ProcessPool(info, hub).launch());
+    }
+
+    @Override
     public void messageArrived(PoolStatusChangedMessage message) {
         LOGGER.trace("Received {} during pool scan of {}.", message, info.pool);
     }
@@ -104,7 +109,7 @@ final class PoolScanSentinel implements PoolMessageSentinel {
     public synchronized void start() {
         info.setSentinel(this);
         hub.getPoolStatusCache().registerPoolSentinel(this);
-        info.setTaskFuture(new ProcessPool(info, hub).launch());
+        launchProcessPool();
         LOGGER.debug("{} started.", getName(), info.pool);
     }
 }

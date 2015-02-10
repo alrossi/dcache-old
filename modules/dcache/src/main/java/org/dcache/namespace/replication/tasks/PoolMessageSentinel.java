@@ -95,4 +95,10 @@ public interface PoolMessageSentinel {
     void start();
 
     void done();
+
+    /**
+     * Actually starts the task to process the pool.  This may be
+     * delayed or done from the start() method.
+     */
+    void launchProcessPool();
 }
