@@ -94,4 +94,144 @@
       <property name="nameSpaceProvider" ref="name-space-provider"/>
   </bean>
 
+  <!-- **************************************** Replication ****************************************** -->
+
+  <beans profile="replica-management-true">
+    <bean id="ActivityRegistry" class="org.dcache.namespace.replication.monitoring.ActivityRegistry"/>
+
+    <bean id="ReplicaConnectionPool" class="com.zaxxer.hikari.HikariDataSource" destroy-method="shutdown">
+      <description>Database connection pool</description>
+      <constructor-arg>
+        <bean class="com.zaxxer.hikari.HikariConfig">
+          <property name="jdbcUrl" value="${pnfsmanager.db.url}"/>
+          <property name="username" value="${pnfsmanager.db.user}"/>
+          <property name="password" value="#{ T(diskCacheV111.util.Pgpass).getPassword('${pnfsmanager.db.password.file}', '${pnfsmanager.db.url}', '${pnfsmanager.db.user}', '${pnfsmanager.db.password}') }"/>
+          <property name="minimumIdle" value="${pnfsmanager.replication.db.connections.idle}"/>
+          <property name="maximumPoolSize" value="${pnfsmanager.replication.db.connections.max}"/>
+          <property name="autoCommit" value="true"/>
+          <property name="transactionIsolation" value="TRANSACTION_READ_COMMITTED"/>
+        </bean>
+      </constructor-arg>
+    </bean>
+
+    <bean id="NamespaceAccess" class="org.dcache.namespace.replication.db.LocalNamespaceAccess">
+      <property name="namespace" ref="name-space-provider"/>
+      <property name="connectionPool" ref="ReplicaConnectionPool"/>
+      <property name="fetchSize" value="${pnfsmanager.replication.pnfs-fetch-size}"/>
+      <property name="hub" ref="ReplicaManagerHub"/>
+    </bean>
+
+    <bean id="VerifyPoolExecutor" class="org.dcache.util.replication.CDCFixedPoolTaskExecutor">
+      <property name="numberOfThreads" value="${pnfsmanager.replication.concurrent-pool-info-fetches}"/>
+    </bean>
+
+    <bean id="ProcessPnfsIdExecutor" class="org.dcache.util.replication.CDCFixedPoolTaskExecutor">
+      <property name="numberOfThreads" value="${pnfsmanager.replication.concurrent-pnfsid-jobs}"/>
+    </bean>
+
+    <bean id="ProcessPoolExecutor" class="org.dcache.util.replication.CDCFixedPoolTaskExecutor">
+      <property name="numberOfThreads" value="${pnfsmanager.replication.concurrent-pool-status-jobs}"/>
+    </bean>
+
+    <bean id="MakeCopiesExecutor" class="org.dcache.util.replication.CDCFixedPoolTaskExecutor">
+      <property name="numberOfThreads" value="${pnfsmanager.replication.concurrent-copy-jobs}"/>
+    </bean>
+
+    <bean id="RemoveExtrasExecutor" class="org.dcache.util.replication.CDCFixedPoolTaskExecutor">
+      <property name="numberOfThreads" value="${pnfsmanager.replication.concurrent-remove-jobs}"/>
+    </bean>
+
+    <bean id="MigrationTaskExecutor" class="org.dcache.util.replication.CDCScheduledPoolTaskExecutor">
+      <property name="numberOfThreads" value="${pnfsmanager.replication.concurrent-copy-jobs}"/>
+    </bean>
+
+    <bean id="PoolManagerStub" class="org.dcache.cells.CellStub">
+      <property name="destination" value="${pnfsmanager.service.poolmanager}"/>
+      <property name="timeout" value="${pnfsmanager.service.poolmanager-timeout}"/>
+      <property name="timeoutUnit" value="${pnfsmanager.service.poolmanager-timeout.unit}"/>
+      <property name="retryOnNoRouteToCell" value="true"/>
+    </bean>
+
+    <bean id="PoolMonitorStub" class="org.dcache.poolmanager.RemotePoolMonitorFactoryBean">
+      <property name="poolManagerStub" ref="PoolManagerStub"/>
+    </bean>
+
+    <bean id="CellStubFactory" class="org.dcache.util.replication.CellStubFactory">
+      <property name="pinManagerStub">
+        <bean class="org.dcache.cells.CellStub">
+          <property name="destination" value="${pnfsmanager.service.pinmanager}"/>
+          <property name="timeout" value="${pnfsmanager.service.pinmanager-timeout}"/>
+          <property name="timeoutUnit" value="${pnfsmanager.service.pinmanager-timeout.unit}"/>
+          <property name="retryOnNoRouteToCell" value="true"/>
+        </bean>
+     </property>
+      <property name="callbackDestination" value="${pnfsmanager.callback}"/>
+      <property name="callbackTimeout" value="${pnfsmanager.callback-timeout}"/>
+      <property name="callbackTimeoutUnit" value="${pnfsmanager.callback-timeout.unit}"/>
+      <property name="poolTimeout" value="${pnfsmanager.service.pool-timeout}"/>
+      <property name="poolTimeoutUnit" value="${pnfsmanager.service.pool-timeout.unit}"/>
+    </bean>
+
+    <bean id="PoolInfoCache" init-method="initialize">
+      <property name="poolMonitor" ref="PoolMonitorStub"/>
+      <property name="size" value="${pnfsmanager.replication.expected-number-of-pools}"/>
+      <property name="lifetime" ref="${pnfsmanager.replication.pool-info-lifetime}"/>
+      <property name="lifetimeUnit" ref="${pnfsmanager.replication.pool-info-lifetime.unit}"/>
+    </bean>
+
+    <bean id="PoolManagerPoolInfoCache" init-method="initialize">
+      <property name="poolManager" ref="PoolManagerStub"/>
+      <property name="size" value="${pnfsmanager.replication.expected-number-of-pools}"/>
+      <property name="lifetime" ref="${pnfsmanager.replication.pool-info-lifetime}"/>
+      <property name="lifetimeUnit" ref="${pnfsmanager.replication.pool-info-lifetime.unit}"/>
+    </bean>
+
+    <bean id="PoolStatusCache" init-method="initialize">
+      <property name="size" value="${pnfsmanager.replication.expected-number-of-pools}"/>
+      <property name="lifetime" ref="${pnfsmanager.replication.scan-period}"/>
+      <property name="lifetimeUnit" ref="${pnfsmanager.replication.scan-period.unit}"/>
+    </bean>
+
+    <bean id="ReplicaManagerHub" class="org.dcache.namespace.replication.ReplicaManagerHub">
+      <property name="access" ref="NamespaceAccess"/>
+      <property name="registry" ref="ActivityRegistry"/>
+      <property name="migrationTaskExecutor" ref="MigrationTaskExecutor"/>
+      <property name="verifyPoolExecutor" ref="VerifyPoolExecutor"/>
+      <property name="processPnfsIdExecutor" ref="ProcessPnfsIdExecutor"/>
+      <property name="processPoolExecutor" ref="ProcessPoolExecutor"/>
+      <property name="makeCopiesExecutor" ref="MakeCopiesExecutor"/>
+      <property name="removeExtrasExecutor" ref="RemoveExtrasExecutor"/>
+      <property name="cellStubFactory" ref="CellStubFactory"/>
+      <property name="poolInfoCache" ref="PoolInfoCache"/>
+      <property name="poolManagerPoolInfoCache" ref="PoolManagerPoolInfoCache"/>
+      <property name="poolStatusCache" ref="PoolStatusCache"/>
+      <property name="poolStatusGracePeriod" value="${pnfsmanager.replication.grace-period-on-pool-status-change}"/>
+      <property name="poolStatusGracePeriodUnit" value="${pnfsmanager.replication.grace-period-on-pool-status-change.unit}"/>
+    </bean>
+
+    <bean id="ResilienceWatchdog" class="org.dcache.namespace.replication.ResilienceWatchdog">
+      <description>This is initialized/started by the message guard.</description>
+      <property name="hub" ref="ReplicaManagerHub"/>
+      <property name="handler" ref="ReplicationMessageHandler"/>
+      <property name="timeout" value="${pnfsmanager.replication.watchdog-period}"/>
+      <property name="timeoutUnit" value="${pnfsmanager.replication.watchdog-period.unit}"/>
+    </bean>
+
+    <bean id="MessageGuard" class="org.dcache.namespace.replication.MessageGuard" init-method="initialize">
+      <property name="watchdog" ref="ResilienceWatchdog"/>
+      <property name="enableWatchdogOnBoot" value="${pnfsmanager.replication.use-watchdog}"/>
+    </bean>
+
+    <bean id="ReplicationMessageHandler" class="org.dcache.namespace.replication.ReplicationMessageHandler"
+          init-method="initialize">
+      <property name="guard" ref="MessageGuard"/>
+      <property name="hub" ref="ReplicaManagerHub"/>
+    </bean>
+
+    <bean id="ReplicaManagerAdminCLI" class="org.dcache.namespace.replication.admin.ReplicaManagerAdmin">
+      <property name="access" ref="NamespaceAccess"/>
+      <property name="hub" ref="ReplicaManagerHub"/>
+      <property name="watchdog" ref="ResilienceWatchdog"/>
+    </bean>
+  </beans>
 </beans>
