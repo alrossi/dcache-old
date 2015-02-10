@@ -172,11 +172,6 @@ public final class ReplicationMessageHandler implements CellMessageReceiver {
 
         PoolStatusCache cache = hub.getPoolStatusCache();
 
-        if (!type.isValidForUpdate()) {
-            LOGGER.trace("{} is of type {}; ignoring.", message, type);
-            return;
-        }
-
         /*
          * Guard check is done on the message queue thread
          * (there should be little overhead).
@@ -185,13 +180,12 @@ public final class ReplicationMessageHandler implements CellMessageReceiver {
             return;
         }
 
-        registry.register(message);
-
         String pool = message.getPoolName();
 
         /*
          * If this message regards a pool currently being processed for
-         * status change, do nothing here.
+         * status change, do nothing here.  Note that an UP should
+         * be treated similarly to a RESTART in this case.
          */
         if (hub.getPoolStatusCache().sentinelReceivedMessage(message)) {
             LOGGER.trace("{} is already being handled for status change; "
@@ -199,6 +193,21 @@ public final class ReplicationMessageHandler implements CellMessageReceiver {
                             pool, message);
             return;
         }
+
+        /*
+         * Do not take action on simple UP messages.
+         */
+        if (!type.isValidForAction()) {
+            LOGGER.trace("{} is of type {}; ignoring.", message, type);
+            return;
+        }
+
+        /*
+         * UP messages are sent every heartbeat for every pool.  We
+         * don't want to register them, only messages which cause action
+         * here.
+         */
+        registry.register(message);
 
         /*
          * When launch() is called the task immediately

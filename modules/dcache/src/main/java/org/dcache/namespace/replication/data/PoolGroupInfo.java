@@ -74,7 +74,10 @@ import diskCacheV111.poolManager.StorageUnit;
 
 /**
  * Encapsulates the pool group data obtainable from the pool selection unit.
- * This includes a map of all storage unit types found in the pool group.
+ * This includes a map of all storage unit types found in the pool group,
+ * and the upper bound and minimum replicas and lower bound on maximum
+ * replicas, as determined by the special minima and maxima of the storage
+ * units in the group.
  *
  * Created by arossi on 1/29/15.
  */

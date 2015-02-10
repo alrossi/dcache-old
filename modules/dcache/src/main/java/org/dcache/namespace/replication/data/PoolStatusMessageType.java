@@ -68,18 +68,22 @@ package org.dcache.namespace.replication.data;
  * Created by arossi on 1/26/15.
  */
 public enum PoolStatusMessageType {
-    UNKNOWN,    // = 0
+    UNKNOWN,    // = 0, placeholder to give the values corresponding indices
     UP,         // = 1
     DOWN,       // = 2
     RESTART;    // = 3
 
-    public boolean isValidForUpdate() {
+    public boolean isValidForAction() {
         switch(this) {
             case DOWN:
             case RESTART:
                 return true;
-            case UNKNOWN:
             case UP:
+                /*
+                 * UP messages get passed to the sentinel, but
+                 * should not trigger any new action.
+                 */
+            case UNKNOWN:
             default:
                 return false;
 

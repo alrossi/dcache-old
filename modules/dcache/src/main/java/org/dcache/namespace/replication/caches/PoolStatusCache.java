@@ -63,10 +63,14 @@ import diskCacheV111.vehicles.PoolStatusChangedMessage;
 import org.dcache.namespace.replication.tasks.PoolMessageSentinel;
 
 /**
- * A cache of pool status changes.
- * The timeout value should be at least the length of the watchdog interval.
+ * A cache of pool status changes. The timeout value should be at least
+ * the length of the watchdog interval.
+ * </p>
  * Used when pool status checks are run, in order to avoid redundant
  * operations and to throttle the processing of state change messages.
+ * </p>
+ * Caches a sentinel instance which intercepts messages and watches over
+ * the running pool task.
  *
  * Created by arossi on 1/22/15.
  */

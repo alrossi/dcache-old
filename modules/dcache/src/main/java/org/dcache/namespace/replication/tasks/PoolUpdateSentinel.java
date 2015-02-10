@@ -72,7 +72,7 @@ import org.dcache.namespace.replication.data.PoolStatusMessageType;
  * time has passed to confirm that the state of the pool (particularly
  * DOWN) is not just ephemeral.
  * <p/>
- * Handles a possible state switch from DOWN to RESTART or vice-versa
+ * Handles a possible state switch from DOWN to RESTART/UP or vice-versa
  * depending on the intervening messages received and the state of
  * the sentinel itself.
  * </p>
@@ -86,18 +86,17 @@ import org.dcache.namespace.replication.data.PoolStatusMessageType;
 final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
     /*
      * These are the "external" states associated with the type of
-     * PoolStatusChangedMessage (DOWN, RESTART).  The worker implementation
+     * PoolStatusChangedMessage (DOWN, UP, RESTART).  The worker implementation
      * can have its own set of (sub)states inside the RUNNING states.
      */
     enum State {
-        DOWN_WAIT,          // worker waiting an interval before processing DOWN message
-        RESTART_WAIT,       // worker waiting an interval before processing RESTART message
-        DOWN_RUNNING,       // worker processing DOWN message
-        RESTART_RUNNING,    // worker processing RESTART message
-        DOWN_COMPLETED,     // worker finished processing DOWN message
-        RESTART_COMPLETED   // worker finished processing RESTART message
+        DOWN_WAIT,          // worker waiting an interval before processing DOWN
+        RESTART_WAIT,       // worker waiting an interval before processing RESTART
+        DOWN_RUNNING,       // worker processing DOWN
+        RESTART_RUNNING,    // worker processing RESTART
+        DOWN_COMPLETED,     // worker finished processing DOWN
+        RESTART_COMPLETED   // worker finished processing RESTART
     }
-
 
     private final ReplicationHub hub;
     private final long waitInterval;
@@ -117,6 +116,10 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
             case DOWN:      current = State.DOWN_WAIT;      break;
             case RESTART:   current = State.RESTART_WAIT;   break;
             default:
+                /*
+                 * The sentinel should not be constructed by the
+                 * MessageHandler (after VerifyPool) due to an UP.
+                 */
         }
     }
 
@@ -146,43 +149,41 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
                     LOGGER.debug("{}, wait was notified.", getName());
                     switch(current) {
                         case RESTART_WAIT:
-                            if (lastReceived == PoolStatusMessageType.RESTART) {
-                                /*
-                                 * Pool RESTART has been succeeded by another
-                                 * RESTART before waitInterval has passed;
-                                 * just update the waitInterval.
-                                 */
-                                wait -= (System.currentTimeMillis()-beginWait);
+                            if (lastReceived == PoolStatusMessageType.DOWN) {
+                               /*
+                                * Pool RESTART has been succeeded by a
+                                * DOWN before waitInterval has passed;
+                                * shift the task to DOWN and start over.
+                                */
+                                info.type = ReplicaTaskInfo.Type.POOL_DOWN;
+                                current = State.DOWN_WAIT;
+                                wait = waitInterval;
                                 continue;
                             }
-
                             /*
-                             * Pool RESTART has been succeeded by a
-                             * DOWN before waitInterval has passed;
-                             * shift the task to DOWN and start over.
+                             * Pool RESTART has been succeeded by another
+                             * UP or RESTART before waitInterval has passed;
+                             * just update the waitInterval.
                              */
-                            info.type = ReplicaTaskInfo.Type.POOL_DOWN;
-                            current = State.DOWN_WAIT;
-                            wait = waitInterval;
+                            wait -= (System.currentTimeMillis()-beginWait);
                             continue;
                         case RESTART_RUNNING:
-                            if (lastReceived == PoolStatusMessageType.RESTART) {
+                            if (lastReceived == PoolStatusMessageType.DOWN) {
                                 /*
-                                 * Pool RESTART has been succeeded by another
-                                 * RESTART while worker is handling RESTART;
-                                 * just keep waiting until completion.
+                                 * Pool RESTART has been succeeded by a
+                                 * DOWN while worker is handling RESTART;
+                                 * set the next state to DOWN_WAIT, and
+                                 * wait until current operation completes.
                                  */
+                                next = State.DOWN_WAIT;
                                 wait = Long.MAX_VALUE; // wait for done()
                                 continue;
                             }
-
                             /*
-                             * Pool RESTART has been succeeded by a
-                             * DOWN while worker is handling RESTART;
-                             * set the next state to DOWN_WAIT, and
-                             * wait until current operation completes.
+                             * Pool RESTART has been succeeded by another
+                             * UP or RESTART while worker is handling RESTART;
+                             * just keep waiting until completion.
                              */
-                            next = State.DOWN_WAIT;
                             wait = Long.MAX_VALUE; // wait for done()
                             continue;
                         case DOWN_WAIT:
@@ -198,7 +199,7 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
 
                             /*
                              * Pool DOWN has been succeeded by a
-                             * RESTART before waitInterval has passed.
+                             * RESTART or UP before waitInterval has passed.
                              * Treat this as an ephemeral change and cancel
                              * the task altogether.
                              */
@@ -218,7 +219,7 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
 
                             /*
                              * Pool DOWN has been succeeded by a
-                             * RESTART while worker is handling DOWN.
+                             * RESTART or UP while worker is handling DOWN.
                              * set the next state to RESTART_WAIT, and
                              * wait until current operation completes.
                              */
@@ -310,6 +311,7 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
         PoolStatusMessageType type
                         = PoolStatusMessageType.valueOf(message.getPoolStatus());
         switch(type) {
+            case UP:
             case RESTART:
             case DOWN:
                 lastReceived = type;
@@ -318,9 +320,10 @@ final class PoolUpdateSentinel implements Runnable, PoolMessageSentinel {
                 notifyAll();
                 break;
             case UNKNOWN:
-            case UP:
             default:
-                break;
+                /*
+                 * Should not happen (see PoolStatusMessageType conversion).
+                 */
         }
     }
 

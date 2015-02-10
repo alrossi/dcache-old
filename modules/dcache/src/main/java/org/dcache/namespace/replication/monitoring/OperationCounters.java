@@ -68,9 +68,11 @@ import org.dcache.commons.stats.RequestCounter;
 import org.dcache.commons.stats.RequestCounters;
 
 /**
- * For recording cumulative activity.
- *
- * Maintains a map of {@link RequestCounters}.
+ * For recording cumulative activity.  Used by
+ * {@link org.dcache.namespace.replication.monitoring.ActivityRegistry}.
+ * </p>
+ * Maintains a map of
+ * {@link org.dcache.commons.stats.RequestCounters}.
  *
  * Created by arossi on 1/30/15.
  */

@@ -177,10 +177,10 @@ public final class PnfsIdInfo {
 
     /**
      * Determine replication contraints:  minimum/maximum copies required,
-     * and whether replicas have special constraints limiting them to
+     * and whether replicas have special limitations requiring only
      * one per category (such as host, rack, etc.).
      *
-     * @param poolGroupInfo for resilient group having default constraints.
+     * @param poolGroupInfo for resilient group having the default constraints.
      */
     public PnfsIdInfo setConstraints(PoolGroupInfo poolGroupInfo) {
         SelectionPoolGroup poolGroup = poolGroupInfo.getPoolGroup();

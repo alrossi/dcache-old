@@ -82,9 +82,9 @@ import org.dcache.namespace.replication.tasks.ReplicaTaskInfo;
 import org.dcache.vehicles.PnfsSetFileAttributes;
 
 /**
- * This module provides a record of the operation which are in flight,
- * by operation category. Once an operation completes or fails, its record
- * is removed from the list.
+ * This module provides a record of the operations in flight,
+ * by operation category. Once an operation completes or fails,
+ * its record is removed from the list.
  * <p/>
  * A counter is used to keep track of the cumulative totals of both
  * operation and messages received.
@@ -93,8 +93,8 @@ import org.dcache.vehicles.PnfsSetFileAttributes;
  * pool name, pnfsid, and operation type.
  * <p/>
  * In addition to the monitoring functions, the registry
- * maintains a map of tasks, allowing for cancellation
- * of running jobs.
+ * maintains a map of task info instances, allowing for
+ * cancellation of running operations.
  *
  * Created by arossi on 1/30/15.
  */

@@ -74,7 +74,7 @@ import org.dcache.namespace.replication.ReplicationHub;
  * precautions are taken to avoid DOS on that service.  This cache assumes
  * that the values asked for are reasonably stable within the limits defined
  * for the timeout.  All information needed by the replication process
- * concerning pool manager information should pass through this cache.
+ * concerning the pool manager should pass through this cache.
  * <p/>
  *
  * This class is thread-safe.  It is assumed that access to the cache
