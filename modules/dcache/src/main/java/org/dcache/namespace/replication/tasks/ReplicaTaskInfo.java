@@ -212,11 +212,11 @@ public class ReplicaTaskInfo implements Cancellable {
             return;
         }
 
-        synchronized (this) {
-            if (sentinel != null) {
-                sentinel.done();
-            }
+        if (sentinel != null) {
+            sentinel.done();
+        }
 
+        synchronized (this) {
             notifyAll();
         }
     }
@@ -249,6 +249,10 @@ public class ReplicaTaskInfo implements Cancellable {
 
     public synchronized void setSentinel(PoolMessageSentinel sentinel) {
         this.sentinel = sentinel;
+    }
+
+    public synchronized boolean hasSentinel() {
+        return sentinel != null;
     }
 
     @Override

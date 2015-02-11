@@ -79,14 +79,18 @@ import org.dcache.namespace.replication.tasks.PoolMessageSentinel;
 public class PoolStatusCache
                 extends AbstractResilientInfoCache<String, PoolMessageSentinel> {
 
-    public synchronized void registerPoolSentinel(PoolMessageSentinel sentinel) {
-        cache.put(sentinel.getPoolName(), sentinel);
-        cache.notifyAll();
+    public void registerPoolSentinel(PoolMessageSentinel sentinel) {
+        synchronized(cache) {
+            cache.put(sentinel.getPoolName(), sentinel);
+            cache.notifyAll();
+        }
     }
 
-    public synchronized void unregisterPoolSentinel(PoolMessageSentinel sentinel) {
-        cache.invalidate(sentinel.getPoolName());
-        cache.notifyAll();
+    public void unregisterPoolSentinel(PoolMessageSentinel sentinel) {
+        synchronized(cache) {
+            cache.invalidate(sentinel.getPoolName());
+            cache.notifyAll();
+        }
     }
 
     public boolean sentinelReceivedMessage(PoolStatusChangedMessage message) {

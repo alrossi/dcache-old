@@ -134,11 +134,13 @@ public class PoolUpdateSentinel extends PoolMessageSentinel implements Runnable 
                 LOGGER.error("{}, before wait: current {}, next {}, wait {}.",
                                 getName(), current, next, wait);
                 try {
-                    if (wait >= 0) {
+                    if (current != null && wait > 0) {
                         wait(wait);
                     }
                 } catch (InterruptedException e) {
-                    LOGGER.error("{}, wait was notified.", getName());
+                    LOGGER.error("{}, wait was notified, last received {}.",
+                                    getName(), lastReceived);
+
                     switch(current) {
                         case RESTART_WAIT:
                             if (lastReceived == PoolStatusMessageType.DOWN) {
@@ -198,7 +200,8 @@ public class PoolUpdateSentinel extends PoolMessageSentinel implements Runnable 
                              * the task altogether.
                              */
                             wait = Long.MAX_VALUE; // wait for done()
-                            info.cancel(); // should call back
+                            current = null;
+                            info.cancel();
                             continue;
                         case DOWN_RUNNING:
                             if (lastReceived == PoolStatusMessageType.DOWN) {
@@ -222,6 +225,7 @@ public class PoolUpdateSentinel extends PoolMessageSentinel implements Runnable 
                             continue;
                         case RESTART_COMPLETED:
                         case DOWN_COMPLETED:
+                            current = null;
                             if (next == null) {
                                 /*
                                  * No further state changes to process.
@@ -311,7 +315,8 @@ public class PoolUpdateSentinel extends PoolMessageSentinel implements Runnable 
             case RESTART:
             case DOWN:
                 lastReceived = type;
-                LOGGER.debug("{}, message arrived {}: notifying.", getName(), message);
+                LOGGER.error("{}, message arrived {}: notifying.", getName(),
+                                message);
                 notifyAll();
                 break;
             case UNKNOWN:

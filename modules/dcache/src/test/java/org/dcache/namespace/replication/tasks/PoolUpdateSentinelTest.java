@@ -9,12 +9,9 @@ import java.util.concurrent.TimeUnit;
 import diskCacheV111.vehicles.PoolStatusChangedMessage;
 import org.dcache.namespace.replication.ReplicationHub;
 import org.dcache.namespace.replication.caches.PoolStatusCache;
+import org.dcache.namespace.replication.data.PoolStatusMessageType;
+import org.dcache.namespace.replication.monitoring.ActivityRegistry;
 import org.dcache.namespace.replication.tasks.PoolUpdateSentinel.State;
-import org.dcache.namespace.replication.tasks.ReplicaTaskInfo.Type;
-
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 
 /**
  * Created by arossi on 2/10/15.
@@ -38,31 +35,40 @@ public class PoolUpdateSentinelTest {
         }
     }
 
+    ActivityRegistry registry;
+    PoolStatusCache cache;
     ReplicationHub hub;
     ReplicaTaskInfo info;
-    PoolStatusCache cache;
+
     TestSentinel sentinel;
 
     @Before
     public void setUp() {
-        hub = mock(ReplicationHub.class);
-        info = mock(ReplicaTaskInfo.class);
-        cache = mock(PoolStatusCache.class);
+        registry = new ActivityRegistry();
+        cache = new PoolStatusCache();
+        cache.setLifetime(1);
+        cache.setLifetimeUnit(TimeUnit.SECONDS);
+        cache.setSize(5);
+        cache.initialize();
+        hub = new ReplicationHub();
+        hub.setPoolStatusCache(cache);
+        hub.setRegistry(registry);
     }
 
     @After
-    public void tearDown() {
-        whenSentinelHasCompleted();
-//        verify(cache).unregisterPoolSentinel(sentinel);
+    public void tearDown() throws Exception {
+        sentinel.done();
+        waitFor(1);
+        verifyCacheUnregisteredPool();
     }
 
     @Test
     public void shouldRegisterWhenStarted() {
-        givenHubHasGracePeriod(30);
+        givenHubHasGracePeriod(0);
         givenInitialStatusWasPoolDown();
         whenSentinelHasStarted();
-        verify(info).setSentinel(sentinel);
-        verify(cache).registerPoolSentinel(sentinel);
+        verifyInfoSetSentinel();
+        verifyCacheRegisteredPool();
     }
 
     @Test
@@ -71,7 +77,7 @@ public class PoolUpdateSentinelTest {
         givenInitialStatusWasPoolRestart();
         whenSentinelHasStarted();
         whenPoolStatusChangesToDown();
-        assert(sentinel.current == State.DOWN_WAIT);
+        verifySentinelCurrentIs(State.DOWN_WAIT);
     }
 
     @Test
@@ -80,20 +86,22 @@ public class PoolUpdateSentinelTest {
         givenInitialStatusWasPoolRestart();
         whenSentinelHasStarted();
         whenPoolStatusChangesToUp();
-        assert(sentinel.current == State.RESTART_WAIT);
+        verifySentinelCurrentIs(State.RESTART_WAIT);
         whenPoolStatusChangesToRestart();
-        assert(sentinel.current == State.RESTART_WAIT);
+        verifySentinelCurrentIs(State.RESTART_WAIT);
     }
 
     @Test
-    public void shouldCancelAndSetNextToDownWaitAfterDownWhileRestartRunning() {
-        givenHubHasGracePeriod(30);
+    public void shouldCancelAndSetNextToDownWaitAfterDownWhileRestartRunning()
+                    throws InterruptedException {
+        givenHubHasGracePeriod(5);
         givenInitialStatusWasPoolRestart();
         whenSentinelHasStarted();
-        whenProcessPoolStartsToRun();
         whenPoolStatusChangesToDown();
-        assert(sentinel.next == State.DOWN_WAIT);
-        verify(info).cancel();
+        verifySentinelNextIs(State.DOWN_WAIT);
+        sentinel.done();
+        whenInfoIsDone();
+        verifyInfoCancel();
     }
 
     @Test
@@ -101,11 +109,10 @@ public class PoolUpdateSentinelTest {
         givenHubHasGracePeriod(30);
         givenInitialStatusWasPoolRestart();
         whenSentinelHasStarted();
-        whenProcessPoolStartsToRun();
         whenPoolStatusChangesToUp();
-        assert(sentinel.next == null);
+        verifySentinelNextIs(null);
         whenPoolStatusChangesToRestart();
-        assert(sentinel.next == null);
+        verifySentinelNextIs(null);
     }
 
     @Test
@@ -114,16 +121,18 @@ public class PoolUpdateSentinelTest {
         givenInitialStatusWasPoolDown();
         whenSentinelHasStarted();
         whenPoolStatusChangesToDown();
-        assert(sentinel.current == State.DOWN_WAIT);
+        verifySentinelCurrentIs(State.DOWN_WAIT);
     }
 
     @Test
-    public void shouldCancelDownWaitAfterRestart() {
+    public void shouldCancelDownWaitAfterRestart() throws InterruptedException {
         givenHubHasGracePeriod(30);
         givenInitialStatusWasPoolDown();
         whenSentinelHasStarted();
         whenPoolStatusChangesToUp();
-        verify(info).cancel();
+        verifySentinelNextIs(null);
+        info.replicaTaskInfoFuture.get();
+        verifyInfoCancel();
     }
 
     @Test
@@ -131,9 +140,8 @@ public class PoolUpdateSentinelTest {
         givenHubHasGracePeriod(30);
         givenInitialStatusWasPoolDown();
         whenSentinelHasStarted();
-        whenProcessPoolStartsToRun();
         whenPoolStatusChangesToDown();
-        assert(sentinel.next == null);
+        verifySentinelNextIs(null);
     }
 
     @Test
@@ -141,76 +149,94 @@ public class PoolUpdateSentinelTest {
         givenHubHasGracePeriod(30);
         givenInitialStatusWasPoolDown();
         whenSentinelHasStarted();
-        whenProcessPoolStartsToRun();
         whenPoolStatusChangesToUp();
-        assert(sentinel.next == State.RESTART_WAIT);
+        verifySentinelNextIs(State.RESTART_WAIT);
     }
 
     private void givenHubHasGracePeriod(long grace) {
-        given(hub.getPoolStatusGracePeriod()).willReturn(grace);
-        given(hub.getPoolStatusGracePeriodUnit()).willReturn(TimeUnit.SECONDS);
-        given(hub.getPoolStatusCache()).willReturn(cache);
+        hub.setPoolStatusGracePeriod(grace);
+        hub.setPoolStatusGracePeriodUnit(TimeUnit.SECONDS);
     }
 
     private void givenInitialStatusWasPoolDown() {
-        given(info.getName()).willReturn("test");
-        given(info.getType()).willReturn(Type.POOL_DOWN);
+        info = new ReplicaTaskInfo("testPool", PoolStatusMessageType.DOWN);
     }
 
     private void givenInitialStatusWasPoolRestart() {
-        given(info.getName()).willReturn("test");
-        given(info.getType()).willReturn(Type.POOL_RESTART);
+        info = new ReplicaTaskInfo("testPool", PoolStatusMessageType.RESTART);
+    }
+
+    private void verifyInfoSetSentinel() {
+        if (!info.hasSentinel()) {
+            throw new AssertionError("info.hasSentinel()");
+        }
+    }
+
+    private void verifyInfoCancel() {
+        if (!info.isCancelled()) {
+            throw new AssertionError("info.isCancelled()");
+        }
+    }
+
+    private void verifyCacheRegisteredPool() {
+        if (!cache.isRegistered("testPool")) {
+            throw new AssertionError("pool registered");
+        }
+    }
+
+    private void verifyCacheUnregisteredPool() {
+        if (cache.isRegistered("testPool")) {
+            throw new AssertionError("pool unregistered");
+        }
+    }
+
+    private void verifySentinelCurrentIs(State state) {
+        synchronized(sentinel) {
+            assert(sentinel.current == state);
+        }
+    }
+
+    private void verifySentinelNextIs(State state) {
+        synchronized(sentinel) {
+            assert(sentinel.next == state);
+        }
+    }
+
+    private void waitFor(int sec) {
+        try {
+            Thread.sleep(TimeUnit.SECONDS.toMillis(sec));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void whenInfoIsDone() throws InterruptedException {
+        info.replicaTaskInfoFuture.get();
     }
 
     private void whenPoolStatusChangesToDown() {
         if (sentinel != null) {
-            sentinel.messageArrived(new PoolStatusChangedMessage("test",
+            sentinel.messageArrived(new PoolStatusChangedMessage("testPool",
                                         PoolStatusChangedMessage.DOWN));
         }
     }
 
     private void whenPoolStatusChangesToUp() {
         if (sentinel != null) {
-            sentinel.messageArrived(new PoolStatusChangedMessage("test",
+            sentinel.messageArrived(new PoolStatusChangedMessage("testPool",
                                         PoolStatusChangedMessage.UP));
         }
     }
 
     private void whenPoolStatusChangesToRestart() {
         if (sentinel != null) {
-            sentinel.messageArrived(new PoolStatusChangedMessage("test",
+            sentinel.messageArrived(new PoolStatusChangedMessage("testPool",
                                         PoolStatusChangedMessage.RESTART));
-        }
-    }
-
-    private void whenProcessPoolStartsToRun() {
-        if (sentinel != null) {
-            switch (sentinel.current) {
-                case DOWN_WAIT:
-                    sentinel.current = State.DOWN_RUNNING;
-                    break;
-                case RESTART_WAIT:
-                    sentinel.current = State.RESTART_RUNNING;
-                    break;
-                default:
-                    throw new IllegalArgumentException("Starting from wrong "
-                                    + "state: " + sentinel.current);
-            }
-            sentinel.launchProcessPool();
-        }
-    }
-
-    private void whenSentinelHasCompleted() {
-        if (sentinel != null) {
-            sentinel.done();
         }
     }
 
     private void whenSentinelHasStarted() {
         sentinel = new TestSentinel(info, hub);
         sentinel.start();
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException e) {}
     }
 }
