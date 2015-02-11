@@ -131,14 +131,14 @@ public class PoolUpdateSentinel extends PoolMessageSentinel implements Runnable 
         while(true) {
             synchronized (this) {
                 long beginWait = System.currentTimeMillis();
-                LOGGER.debug("{}, before wait: current {}, next {}, wait {}.",
+                LOGGER.error("{}, before wait: current {}, next {}, wait {}.",
                                 getName(), current, next, wait);
                 try {
                     if (wait >= 0) {
                         wait(wait);
                     }
                 } catch (InterruptedException e) {
-                    LOGGER.debug("{}, wait was notified.", getName());
+                    LOGGER.error("{}, wait was notified.", getName());
                     switch(current) {
                         case RESTART_WAIT:
                             if (lastReceived == PoolStatusMessageType.DOWN) {
@@ -228,7 +228,7 @@ public class PoolUpdateSentinel extends PoolMessageSentinel implements Runnable 
                                  */
                                 hub.getPoolStatusCache()
                                    .unregisterPoolSentinel(this);
-                                LOGGER.debug("{} finished, exiting ...",
+                                LOGGER.error("{} finished, exiting ...",
                                                 getName());
                                 return;
                             }
@@ -268,7 +268,7 @@ public class PoolUpdateSentinel extends PoolMessageSentinel implements Runnable 
                  * The phases are chained, so that the last will call done()
                  * on the notifier attached to the task info.
                  */
-                LOGGER.debug("{}, wait completed, starting worker: "
+                LOGGER.error("{}, wait completed, starting worker: "
                                                 + "current {}, next {}, type {}.",
                                 getName(), current, next, lastReceived);
                 launchProcessPool();
@@ -282,14 +282,14 @@ public class PoolUpdateSentinel extends PoolMessageSentinel implements Runnable 
             case DOWN_WAIT:
             case DOWN_RUNNING:
                 current = State.DOWN_COMPLETED;
-                LOGGER.debug("{}, task finished: notifying {}.", current,
+                LOGGER.error("{}, task finished: notifying {}.", current,
                                 getName());
                 notifyAll();
                 break;
             case RESTART_WAIT:
             case RESTART_RUNNING:
                 current = State.RESTART_COMPLETED;
-                LOGGER.debug("{}, task finished: notifying {}.", current,
+                LOGGER.error("{}, task finished: notifying {}.", current,
                                 getName());
                 notifyAll();
                 break;
@@ -311,7 +311,7 @@ public class PoolUpdateSentinel extends PoolMessageSentinel implements Runnable 
             case RESTART:
             case DOWN:
                 lastReceived = type;
-                LOGGER.trace("{}, message arrived {}: notifying.", getName(), message);
+                LOGGER.debug("{}, message arrived {}: notifying.", getName(), message);
                 notifyAll();
                 break;
             case UNKNOWN:
@@ -327,6 +327,6 @@ public class PoolUpdateSentinel extends PoolMessageSentinel implements Runnable 
         info.setSentinel(this);
         hub.getPoolStatusCache().registerPoolSentinel(this);
         new Thread(this).start();
-        LOGGER.debug("{} started.", getName());
+        LOGGER.error("{} started.", getName());
     }
 }

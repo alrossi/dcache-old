@@ -31,7 +31,10 @@ public class PoolUpdateSentinelTest {
 
         @Override
         public void launchProcessPool() {
-            // to avoid constructing real task and submitting to executor
+            /*
+             * to avoid constructing the real task and submitting it to
+             * to the executor service.
+             */
         }
     }
 
@@ -50,7 +53,7 @@ public class PoolUpdateSentinelTest {
     @After
     public void tearDown() {
         whenSentinelHasCompleted();
-        verify(cache).unregisterPoolSentinel(sentinel);
+//        verify(cache).unregisterPoolSentinel(sentinel);
     }
 
     @Test
@@ -189,6 +192,9 @@ public class PoolUpdateSentinelTest {
                 case RESTART_WAIT:
                     sentinel.current = State.RESTART_RUNNING;
                     break;
+                default:
+                    throw new IllegalArgumentException("Starting from wrong "
+                                    + "state: " + sentinel.current);
             }
             sentinel.launchProcessPool();
         }
@@ -203,5 +209,8 @@ public class PoolUpdateSentinelTest {
     private void whenSentinelHasStarted() {
         sentinel = new TestSentinel(info, hub);
         sentinel.start();
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {}
     }
 }
