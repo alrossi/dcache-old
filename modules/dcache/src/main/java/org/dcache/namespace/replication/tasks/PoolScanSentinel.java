@@ -70,34 +70,15 @@ import org.dcache.namespace.replication.ReplicationHub;
  *
  * Created by arossi on 1/30/15.
  */
-final class PoolScanSentinel implements PoolMessageSentinel {
-
-    private final ReplicaTaskInfo info;
-    private final ReplicationHub hub;
+public final class PoolScanSentinel extends PoolMessageSentinel {
 
     PoolScanSentinel(ReplicaTaskInfo info, ReplicationHub hub) {
-        this.info = info;
-        this.hub = hub;
+        super(info, hub);
     }
 
     @Override
     public synchronized void done() {
         hub.getPoolStatusCache().unregisterPoolSentinel(this);
-    }
-
-    @Override
-    public String getName() {
-        return info.pool + "-scan-notifier";
-    }
-
-    @Override
-    public String getPoolName() {
-        return info.pool;
-    }
-
-    @Override
-    public void launchProcessPool() {
-        info.setTaskFuture(new ProcessPool(info, hub).launch());
     }
 
     @Override

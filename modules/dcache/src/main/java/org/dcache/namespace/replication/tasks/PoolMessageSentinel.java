@@ -63,6 +63,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import diskCacheV111.vehicles.PoolStatusChangedMessage;
+import org.dcache.namespace.replication.ReplicationHub;
 
 /**
  * Object registered with the pool status cache which handles any
@@ -70,19 +71,35 @@ import diskCacheV111.vehicles.PoolStatusChangedMessage;
  *
  * Created by arossi on 1/25/15.
  */
-public interface PoolMessageSentinel {
+public abstract class PoolMessageSentinel {
     static final Logger LOGGER
                     = LoggerFactory.getLogger(PoolMessageSentinel.class);
+
+    protected final ReplicationHub hub;
+
+    /*
+     * Maybe reset internally.
+     */
+    protected ReplicaTaskInfo info;
+
+    protected PoolMessageSentinel(ReplicaTaskInfo info, ReplicationHub hub) {
+        this.info = info;
+        this.hub = hub;
+    }
 
     /*
      *  For printing and debugging.  Name of thread running it.
      */
-    String getName();
+    public String getName() {
+        return info.pool + "-" + getClass().getSimpleName();
+    }
 
     /*
      *  Key for registering in the status cache.
      */
-    String getPoolName();
+    public String getPoolName() {
+        return info.pool;
+    }
 
     /**
      * Should make any required state transition internal to the notifier
@@ -90,15 +107,17 @@ public interface PoolMessageSentinel {
      *
      * @param message either DOWN or RESTART
      */
-    void messageArrived(PoolStatusChangedMessage message);
+    public abstract void messageArrived(PoolStatusChangedMessage message);
 
-    void start();
+    public abstract void start();
 
-    void done();
+    public abstract void done();
 
     /**
      * Actually starts the task to process the pool.  This may be
      * delayed or done from the start() method.
      */
-    void launchProcessPool();
+    protected void launchProcessPool() {
+        info.setTaskFuture(new ProcessPool(info, hub).launch());
+    }
 }
