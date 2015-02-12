@@ -57,32 +57,49 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.namespace.replication.tasks;
+
+import diskCacheV111.util.CacheException;
+import org.dcache.namespace.replication.data.PnfsIdInfo;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * A callback interface used by the namespace access method which
+ * inspects pnfsids on a pool and determines the action to be
+ * taken with respect to them.
+ * </p>
+ * The component task which is called is responsible for the actual
+ * copying or remove of the replicas.
  *
- * @author arossi
+ * Created by arossi on 2/8/15.
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public interface PnfsIdProcessor {
 
-   @Override
-   public String getType() {
-       return toString();
-    }
+    /**
+     * Callback to launch a copy task because there are insufficient replicas.
+     *
+     * @param info for the pnfsid in question.
+     * @throws InterruptedException
+     */
+    void processCopy(PnfsIdInfo info) throws InterruptedException;
+
+    /**
+     * Callback to launch a remove task because there are extra replicas.
+     *
+     * @param info for the pnfsid in question.
+     * @param count number of copies to remove.
+     * @throws InterruptedException
+     * @throws CacheException
+     */
+    void processRemove(PnfsIdInfo info, int count)
+                    throws InterruptedException, CacheException;
+
+    /**
+     * Callback to notify that there is no available replica of the file with
+     * this pnfsid, most likely because all pools which carried copies are
+     * offline.
+     *
+     * @param info for the pnfsid in question.
+     * @throws InterruptedException
+     */
+    void processAlarm(PnfsIdInfo info) throws InterruptedException;
 }

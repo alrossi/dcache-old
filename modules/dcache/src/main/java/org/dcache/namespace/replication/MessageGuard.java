@@ -57,32 +57,82 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.namespace.replication;
+
+import com.google.common.base.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.UUID;
+
+import dmg.cells.nucleus.CDC;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Used to ensure that the incoming message does not carry the message handler
+ * session id. This is to avoid initiating unnecessary replica requests on
+ * copies just made by a request originating from the replica handler itself.
+ * While such redundant requests will not cause an infinite cycle, as the
+ * migration task in which this bottoms out will not continue indefinitely
+ * creating copies (and thus triggering update messages to the namespace which
+ * are intercepted by the message handler), they would generate more work
+ * than is necessary or desirable.
  *
- * @author arossi
+ * Created by arossi on 1/25/15.
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public final class MessageGuard {
+    /*
+     * Package visiblity for testing.
+     */
+    static final String REPLICA_ID = "REPLICAMANAGER" + UUID.randomUUID();
 
-   @Override
-   public String getType() {
-       return toString();
+    private static final Logger LOGGER = LoggerFactory.getLogger(MessageGuard.class);
+
+    private ResilienceWatchdog watchdog;
+    private boolean enableWatchdogOnBoot = true;
+
+    public void initialize() {
+        Preconditions.checkNotNull(watchdog);
+        if (enableWatchdogOnBoot && watchdog != null) {
+            watchdog.initialize();
+        }
+    }
+
+    public void setEnableWatchdogOnBoot(boolean enableWatchdogOnBoot) {
+        this.enableWatchdogOnBoot = enableWatchdogOnBoot;
+    }
+
+    public void setWatchdog(ResilienceWatchdog watchdog) {
+        this.watchdog = watchdog;
+    }
+
+    /**
+     * Will fail if the incoming message has a CDC session id belonging to the
+     * replica handler itself (i.e., the message is the result of an
+     * operation which originated here).
+     *
+     * @param message  informative statement for logging purposes.
+     * @param messageObject received by the handler.
+     * @return whether the message should be handled.
+     */
+    boolean acceptMessage(String message, Object messageObject) {
+        LOGGER.trace("**** acceptMessage **** {}: {}.", message, messageObject);
+
+        /*
+         * A check of the session id ensures that we avoid cyclical calls to
+         * replicate the same pnfsid by processing the setAttribute calls made
+         * for each of the copies requested by the replica manager. Only
+         * operations originating here will carry this id, so messages from
+         * other copy operations (e.g. normal p2p) will be handled and not
+         * discarded.
+         */
+        if (CDC.getSession().equals(REPLICA_ID)) {
+            LOGGER.debug("{} originated with this replica manager ({}); "
+                            + "discarding.", message, REPLICA_ID);
+            return false;
+        }
+
+        CDC.setSession(REPLICA_ID);
+
+        return true;
     }
 }

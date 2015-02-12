@@ -57,32 +57,85 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.namespace.replication.caches;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Base class for replica info caching.  Wraps the Guava cache object.
  *
- * @author arossi
+ * Created by arossi on 1/22/15.
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public abstract class AbstractResilientInfoCache<K extends Comparable, V> {
+    protected static final Logger LOGGER
+                    = LoggerFactory.getLogger(AbstractResilientInfoCache.class);
 
-   @Override
-   public String getType() {
-       return toString();
+    protected Cache<K, V> cache;
+    protected int lifetime = 1;
+    protected int size = 1000;
+    protected TimeUnit lifetimeUnit = TimeUnit.MINUTES;
+
+    public void initialize() throws IllegalArgumentException {
+        if (lifetime < 0) {
+            throw new IllegalArgumentException("Cache life must be positive "
+                            + "integer; was: " + lifetime);
+        }
+
+        if (size < 1) {
+            throw new IllegalArgumentException("Cache size must be non-zero "
+                            + "positive integer; was: " + size);
+        }
+
+        cache = CacheBuilder.newBuilder()
+                        .expireAfterWrite(lifetime, lifetimeUnit)
+                        .maximumSize(size)
+                        .softValues()
+                        .build();
     }
+
+    public void setSize(int size) {
+        this.size = size;
+    }
+
+    public void invalidate(K key) {
+        cache.invalidate(key);
+    }
+
+    public void invalidateAll() {
+        cache.invalidateAll();
+    }
+
+    public String prettyPrint() {
+        StringBuilder contents = new StringBuilder();
+        Set<K> keys = cache.asMap().keySet();
+        List<K> sorted = new ArrayList<>(keys);
+        Collections.sort(sorted);
+
+        for (K key : sorted) {
+            contents.append(key).append(" : ");
+            prettyPrint(cache.getIfPresent(key), contents);
+            contents.append("\n");
+        }
+
+        return contents.toString();
+    }
+
+    public void setLifetime(int lifetime) {
+        this.lifetime = lifetime;
+    }
+
+    public void setLifetimeUnit(TimeUnit lifetimeUnit) {
+        this.lifetimeUnit = lifetimeUnit;
+    }
+
+    protected abstract void prettyPrint(V value, StringBuilder builder);
 }

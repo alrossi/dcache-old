@@ -2,6 +2,7 @@
 
 onerror shutdown
 
+check -strong pnfsmanager.enable.replica-management
 check -strong pnfsmanager.plugins.storage-info-extractor
 check -strong pnfsmanager.enable.inherit-file-ownership
 check -strong pnfsmanager.enable.full-path-permission-check
@@ -27,6 +28,7 @@ check pnfsmanager.db.password.file
 
 create org.dcache.cells.UniversalSpringCell ${pnfsmanager.cell.name} \
    "classpath:diskCacheV111/namespace/pnfsmanager-chimera.xml \
+        -profiles=replica-management-${pnfsmanager.enable.replica-management} \
         -export=${pnfsmanager.cell.export} \
         -cmRelay=broadcast \
         -pnfsDeleteRelay=SrmSpaceManager \

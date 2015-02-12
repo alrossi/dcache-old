@@ -57,32 +57,33 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.namespace.replication.tasks;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Used in connection with
+ * {@link org.dcache.namespace.replication.tasks.ReplicaTask},
+ * {@link org.dcache.namespace.replication.tasks.ReplicaTaskInfo}
+ * {@link org.dcache.namespace.replication.tasks.ReplicaTaskFuture}.
  *
- * @author arossi
+ * Created by arossi on 2/8/15.
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public interface Cancellable {
 
-   @Override
-   public String getType() {
-       return toString();
-    }
+    /**
+     *  Should signal or notify waiters and attempt to
+     *  interrupt any threads made accessible via a future.
+     */
+    boolean cancel();
+
+    /**
+     *  Should include cancelled.
+     */
+    boolean isDone();
+
+    /**
+     *  Should return false only if an actual cancel fails.
+     *  If there is nothing to cancel, the return value should
+     *  be true.
+     */
+    boolean isCancelled();
 }

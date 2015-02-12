@@ -57,32 +57,55 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.pool.replication.tasks;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.Serializable;
+import java.util.concurrent.Executor;
+
+import dmg.util.command.DelayedCommand;
+import org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy;
+import org.dcache.vehicles.replication.RemoveReplicaMessage;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Attempts to set the cache entry to REMOVED for each pnfsid in the
+ * message list. If successful, the pnfsid is removed from the list.
+ * Hence success is denoted by a message returning with an empty list.
+ * Calls {@link org.dcache.pool.repository.v5.ReplicaManagerRepositoryProxy}.
  *
- * @author arossi
+ * Created by arossi on 1/13/15.
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public final class RemoveReplicasTask extends InnerCommandTask {
+    private static final Logger LOGGER
+        = LoggerFactory.getLogger(RemoveReplicasTask.class);
 
-   @Override
-   public String getType() {
-       return toString();
+    private final RemoveReplicaMessage message;
+    private final ReplicaManagerRepositoryProxy repository;
+
+    public RemoveReplicasTask(RemoveReplicaMessage message,
+                              ReplicaManagerRepositoryProxy repository,
+                              Executor executor) {
+        super(executor);
+        this.message = message;
+        this.repository = repository;
+    }
+
+    @Override
+    protected DelayedCommand createCommand(Executor executor) {
+        return new DelayedCommand(executor) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            protected Serializable execute() {
+                try {
+                    repository.remove(message);
+                } catch (Exception e) {
+                    message.setFailed(-999, e);
+                }
+                return message;
+            }
+        };
     }
 }

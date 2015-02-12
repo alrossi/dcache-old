@@ -57,32 +57,50 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.vehicles.replication;
+
+import com.google.common.base.Preconditions;
+
+import diskCacheV111.util.PnfsId;
+import diskCacheV111.vehicles.Message;
+import org.dcache.pool.repository.CacheEntry;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Used by replica manager to request cache entry info from
+ * the pool repository.
  *
  * @author arossi
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public final class CacheEntryInfoMessage extends Message {
+    private static final long serialVersionUID = 1L;
 
-   @Override
-   public String getType() {
-       return toString();
+    public final PnfsId pnfsId;
+
+    private String pool;
+    private CacheEntry entry;
+
+    public CacheEntryInfoMessage(PnfsId pnfsId) {
+        this.pnfsId = Preconditions.checkNotNull(pnfsId, "message lacks pnfsid");
+    }
+
+    public CacheEntry getEntry() {
+        return entry;
+    }
+
+    public String getPool() {
+        return pool;
+    }
+
+    public void setEntry(CacheEntry entry) {
+        this.entry = entry;
+    }
+
+    public void setPool(String pool) {
+        this.pool = pool;
+    }
+
+    public String toString() {
+        return String.format("%s (pool %s) (pnfsid %s), (entry %s), %s.",
+                        getMessageName(), pool, pnfsId, entry, super.toString());
     }
 }

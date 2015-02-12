@@ -57,32 +57,87 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.namespace.replication.db;
+
+import java.text.ParseException;
+
+import org.dcache.namespace.replication.data.PoolGroupInfo;
+import org.dcache.namespace.replication.tasks.PnfsIdProcessor;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Encapsulates settings and callback objects for processing
+ * a pool update query in order to obtain the set of qualifying
+ * pnfsids.
  *
- * @author arossi
+ * Created by arossi on 2/5/15.
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public final class PnfsInfoQuery {
+    public final PoolGroupInfo poolGroupInfo;
+    public final PnfsIdProcessor callback;
+    public final String poolName;
+    public final boolean excludeThisPool;
 
-   @Override
-   public String getType() {
-       return toString();
+    private String sql;
+
+    public PnfsInfoQuery(String poolName,
+                         PoolGroupInfo poolGroupInfo,
+                         PnfsIdProcessor callback,
+                         boolean excludeThis) {
+        this.poolName = poolName;
+        this.callback = callback;
+        this.poolGroupInfo = poolGroupInfo;
+        this.excludeThisPool = excludeThis;
+    }
+
+    public void createSql(String filter) throws ParseException {
+        if (filter == null) {
+            sql = LocalNamespaceAccess.SQL_GET_PNFSIDS_FOR_LOCATION;
+        } else {
+            sql = String.format(LocalNamespaceAccess.SQL_GET_LOCATION_COUNTS
+                            + " HAVING count(*) %s", validateInequality(filter));
+        }
+    }
+
+    public String getSql() {
+        return sql;
+    }
+
+    static String validateInequality(String expression) throws ParseException {
+        String validate = expression.trim();
+
+        if (validate.length() < 1) {
+            throw new ParseException(expression + " not a valid inequality.", 0);
+        }
+
+        switch (validate.charAt(0)) {
+            case '=':
+            case '<':
+            case '>':
+                validate = validate.substring(1).trim();
+                break;
+            default:
+                throw new ParseException(expression
+                                + " not a valid inequality.", 0);
+        }
+
+        if (validate.length() < 1) {
+            throw new ParseException(expression + " not a valid inequality.", 1);
+        }
+
+        if (validate.charAt(0) == '=') {
+            validate = validate.substring(1).trim();
+        }
+
+        if (validate.length() < 1) {
+            throw new ParseException(expression + " not a valid inequality.", 2);
+        }
+
+        try {
+            Integer.parseInt(validate);
+        } catch (NumberFormatException e) {
+            throw new ParseException(expression + " is not an integer.", 2);
+        }
+
+        return expression;
     }
 }

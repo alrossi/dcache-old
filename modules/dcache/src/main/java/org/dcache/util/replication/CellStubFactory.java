@@ -57,32 +57,88 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.util.replication;
+
+import java.util.concurrent.TimeUnit;
+
+import dmg.cells.nucleus.CellEndpoint;
+import dmg.cells.nucleus.CellMessageSender;
+import org.dcache.cells.CellStub;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Convenience factory for constructing CellStubs, for
+ * messaging with pools and for creating MigrationTasks.
  *
  * @author arossi
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public final class CellStubFactory implements CellMessageSender {
+    private CellEndpoint cellEndpoint;
 
-   @Override
-   public String getType() {
-       return toString();
+    private String callbackDestination;
+    private CellStub pinManagerStub;
+    private Long callbackTimeout;
+    private TimeUnit callbackTimeoutUnit;
+    private Long poolTimeout;
+    private TimeUnit poolTimeoutUnit;
+
+
+    public CellStub getCallbackStub() {
+        CellStub stub = new CellStub();
+        stub.setDestination(callbackDestination);
+        stub.setRetryOnNoRouteToCell(true);
+        if (callbackTimeout != null) {
+            stub.setTimeout(callbackTimeout);
+        }
+        if (callbackTimeoutUnit != null) {
+            stub.setTimeoutUnit(callbackTimeoutUnit);
+        }
+        return stub;
+    }
+
+    public CellStub getPoolStub(String destination) {
+        CellStub stub = new CellStub();
+        stub.setCellEndpoint(cellEndpoint);
+        stub.setDestination(destination);
+        stub.setRetryOnNoRouteToCell(true);
+        if (poolTimeout != null) {
+            stub.setTimeout(poolTimeout);
+        }
+        if (poolTimeoutUnit != null) {
+            stub.setTimeoutUnit(poolTimeoutUnit);
+        }
+        return stub;
+    }
+
+    public void setCallbackDestination(String callbackDestination) {
+        this.callbackDestination = callbackDestination;
+    }
+
+    public CellStub getPinManagerStub() {
+        return pinManagerStub;
+    }
+
+    public void setPinManagerStub(CellStub pinManagerStub) {
+        this.pinManagerStub = pinManagerStub;
+    }
+
+    public void setCallbackTimeout(Long callbackTimeout) {
+        this.callbackTimeout = callbackTimeout;
+    }
+
+    public void setCallbackTimeoutUnit(TimeUnit callbackTimeoutUnit) {
+        this.callbackTimeoutUnit = callbackTimeoutUnit;
+    }
+
+    public void setPoolTimeout(Long poolTimeout) {
+        this.poolTimeout = poolTimeout;
+    }
+
+    public void setPoolTimeoutUnit(TimeUnit poolTimeoutUnit) {
+        this.poolTimeoutUnit = poolTimeoutUnit;
+    }
+
+    @Override
+    public void setCellEndpoint(CellEndpoint cellEndpoint) {
+        this.cellEndpoint = cellEndpoint;
     }
 }

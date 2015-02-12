@@ -57,32 +57,61 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.namespace.replication.monitoring;
+
+import java.util.Collections;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.TreeMap;
+
+import org.dcache.commons.stats.RequestCounter;
+import org.dcache.commons.stats.RequestCounters;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * For recording cumulative activity.  Used by
+ * {@link org.dcache.namespace.replication.monitoring.ActivityRegistry}.
+ * </p>
+ * Maintains a map of
+ * {@link org.dcache.commons.stats.RequestCounters}.
  *
- * @author arossi
+ * Created by arossi on 1/30/15.
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public final class OperationCounters {
+    private final Map<String, RequestCounters<String>> map
+                    = Collections.synchronizedMap
+                        (new TreeMap<String, RequestCounters<String>>());
 
-   @Override
-   public String getType() {
-       return toString();
+    void register(String category, String counter) {
+        RequestCounters<String> requestCounters = map.get(category);
+
+        if (requestCounters == null) {
+            requestCounters = new RequestCounters<String>(category);
+            map.put(category, requestCounters);
+        }
+
+        RequestCounter requestCounter = requestCounters.getCounter(counter);
+
+        if (requestCounter == null) {
+            requestCounters.addCounter(counter);
+        }
+    }
+
+    void increment(String category, String counter) {
+        map.get(category).getCounter(counter).incrementRequests();
+    }
+
+    void incrementFailed(String category, String counter) {
+        map.get(category).getCounter(counter).incrementFailed();
+    }
+
+    String print() {
+        StringBuilder builder = new StringBuilder();
+        for (Entry<String, RequestCounters<String>> entry: map.entrySet()) {
+            builder.append(entry.getValue().toString()).append("\n\n");
+        }
+        return builder.toString();
+    }
+
+    OperationCounters() {
     }
 }

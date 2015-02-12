@@ -57,32 +57,36 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.namespace.replication.data;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * This enum corresponds to the static final ints in the
+ * {@link diskCacheV111.vehicles.PoolStatusChangedMessage}
+ * and as such must reflect the ordering there.  It should not be changed
+ * without changing those indices.
  *
- * @author arossi
+ * Created by arossi on 1/26/15.
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public enum PoolStatusMessageType {
+    UNKNOWN,    // = 0, placeholder to give the values corresponding indices
+    UP,         // = 1
+    DOWN,       // = 2
+    RESTART;    // = 3
 
-   @Override
-   public String getType() {
-       return toString();
+    public boolean isValidForAction() {
+        switch(this) {
+            case DOWN:
+            case RESTART:
+                return true;
+            case UP:
+                /*
+                 * UP messages get passed to the sentinel, but
+                 * should not trigger any new action.
+                 */
+            case UNKNOWN:
+            default:
+                return false;
+
+        }
     }
 }

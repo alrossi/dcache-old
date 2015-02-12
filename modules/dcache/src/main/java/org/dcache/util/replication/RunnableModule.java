@@ -57,32 +57,54 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.util.replication;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.TimeUnit;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Abstracts out daemon thread management.
  *
  * @author arossi
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION;
+public abstract class RunnableModule implements Runnable {
+    protected final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
 
-   @Override
-   public String getType() {
-       return toString();
+    protected long timeout = 30;
+    protected TimeUnit timeoutUnit = TimeUnit.SECONDS;
+
+    private Thread myThread;
+
+    public long getTimeout() {
+        return timeout;
+    }
+
+    public TimeUnit getTimeoutUnit() {
+        return timeoutUnit;
+    }
+
+    public void initialize() {
+        myThread = new Thread(this);
+        myThread.start();
+    }
+
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
+    }
+
+    public void setTimeoutUnit(TimeUnit timeoutUnit) {
+        this.timeoutUnit = timeoutUnit;
+    }
+
+    public void shutdown() {
+        threadInterrupt();
+    }
+
+    protected void threadInterrupt() {
+        if (myThread != null) {
+            myThread.interrupt();
+        }
     }
 }
