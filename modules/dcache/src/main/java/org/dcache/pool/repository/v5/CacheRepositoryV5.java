@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.GuardedBy;
-
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -33,10 +32,9 @@ import diskCacheV111.util.PnfsHandler;
 import diskCacheV111.util.PnfsId;
 import diskCacheV111.util.UnitInteger;
 import diskCacheV111.vehicles.PnfsAddCacheLocationMessage;
-
 import dmg.cells.nucleus.AbstractCellComponent;
 import dmg.cells.nucleus.CellCommandListener;
-
+import org.dcache.cells.CellStub;
 import org.dcache.pool.FaultAction;
 import org.dcache.pool.FaultEvent;
 import org.dcache.pool.FaultListener;
@@ -66,7 +64,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.dcache.namespace.FileAttribute.PNFSID;
 import static org.dcache.namespace.FileAttribute.STORAGEINFO;
-import static org.dcache.pool.repository.EntryState.*;
+import static org.dcache.pool.repository.EntryState.DESTROYED;
+import static org.dcache.pool.repository.EntryState.NEW;
+import static org.dcache.pool.repository.EntryState.PRECIOUS;
+import static org.dcache.pool.repository.EntryState.REMOVED;
 
 
 /**
@@ -195,6 +196,10 @@ public class CacheRepositoryV5
      */
     private Optional<Long> _gap = Optional.empty();
 
+    private boolean _resilienceEnabled = false;
+    private String  _resilienceDestination;
+    private CellStub _resilienceTopic;
+
     public CacheRepositoryV5()
     {
     }
@@ -292,7 +297,15 @@ public class CacheRepositoryV5
         _store = store;
     }
 
-    public void setSpaceSweeperPolicy(SpaceSweeperPolicy sweeper)
+    public synchronized void setResilienceEnabled(boolean resilienceEnabled) {
+        _resilienceEnabled = resilienceEnabled;
+    }
+
+    public synchronized void setResilienceDestination(String resilienceDestination) {
+        _resilienceDestination = resilienceDestination;
+    }
+
+    public synchronized void setSpaceSweeperPolicy(SpaceSweeperPolicy sweeper)
     {
         assertUninitialized();
         _sweeper = sweeper;
@@ -337,9 +350,14 @@ public class CacheRepositoryV5
             _stateLock.writeLock().unlock();
         }
 
-        /* Instantiating the cache causes the listing to be generated to
-         * populate the cache. This may take some time and therefore we
-         * do this outside the synchronization.
+        if (_resilienceEnabled) {
+            _resilienceTopic = new CellStub(getCellEndpoint());
+            _resilienceTopic.setDestination(_resilienceDestination);
+        }
+
+        /* Instantiating the cache causes the listing to be
+         * generated to prepopulate the cache. That may take some
+         * time. Therefore we do this outside the synchronization.
          */
         _log.warn("Reading inventory from {}", _store);
         _store = new MetaDataCache(_store);
@@ -509,9 +527,10 @@ public class CacheRepositoryV5
             synchronized (entry) {
                 entry.setFileAttributes(fileAttributes);
                 setState(entry, transferState);
-
-                return new WriteHandleImpl(
-                        this, _allocator, _pnfs, entry, fileAttributes, targetState, stickyRecords, flags);
+                return new WriteHandleImpl(this, _allocator, _pnfs,
+                                           entry, fileAttributes, targetState,
+                                           stickyRecords, flags,
+                                           _resilienceTopic);
             }
         } catch (DuplicateEntryException e) {
             /* Somebody got the idea that we don't have the file, so we make
@@ -746,6 +765,15 @@ public class CacheRepositoryV5
                 case BROKEN:
                     switch (state) {
                     case REMOVED:
+                        /*
+                         * Fail if this file is currently owned by the
+                         * replica manager.
+                         */
+                        RepositoryResilienceProxy
+                             .assertNoReplicaStickyRecord(entry, getPoolName());
+                        /*
+                         * Otherwise, fall through to setState().
+                         */
                     case CACHED:
                     case PRECIOUS:
                     case BROKEN:
@@ -938,6 +966,61 @@ public class CacheRepositoryV5
         updateRemovable(newEntry);
         StickyChangeEvent event = new StickyChangeEvent(oldEntry, newEntry);
         _stateChangeListeners.stickyChanged(event);
+    }
+
+    /*
+     *  Package local method for access by the ReplicaManagerProxy
+     *  in order not to expose as part of the repository API the ability
+     *  to force removal if there is a sticky record belonging to the replica
+     *  manager itself.  This is to ensure that other removal actions initiated
+     *  elsewhere do not interfere with the Replica Manager's elimination
+     *  of redundant copies.
+     */
+    void remove(PnfsId id) throws IllegalTransitionException,
+                    IllegalArgumentException,
+                    InterruptedException,
+                    CacheException
+    {
+        if (id == null) {
+            throw new IllegalArgumentException("id is null");
+        }
+
+        assertOpen();
+
+        try {
+            MetaDataRecord entry = getMetaDataRecord(id);
+            synchronized (entry) {
+                EntryState source = entry.getState();
+                switch (source) {
+                    case PRECIOUS:
+                    case CACHED:
+                    case NEW:
+                    case BROKEN:
+                        /*
+                         * This will automatically call the pnfsHandler
+                         */
+                        setState(entry, EntryState.REMOVED);
+                        return;
+                    /*
+                     * Note that removed should also not be the case,
+                     * as it would imply that a file which is under the control
+                     * of the replica manager has been deleted.
+                     */
+                    default:
+                        break;
+                }
+                throw new IllegalTransitionException(id, source, EntryState.REMOVED);
+            }
+        } catch (FileNotInCacheException e) {
+            /* File disappeared before we could change the
+             * state.
+             */
+            _log.debug("Removing {} from {}; file was not in repository.",
+                            id, getPoolName());
+        } catch (DiskErrorCacheException e) {
+            fail(FaultAction.READONLY,"Internal repository error", e);
+            throw e;
+        }
     }
 
     /**

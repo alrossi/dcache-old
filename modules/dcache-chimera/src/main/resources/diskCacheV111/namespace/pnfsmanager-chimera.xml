@@ -107,4 +107,190 @@
       <property name="nameSpaceProvider" ref="name-space-provider"/>
   </bean>
 
+  <beans profile="resilience-true">
+    <description>This profile is only relevant when running resilience in embedded mode.</description>
+    <bean id="NamespaceAccessConnectionPool" class="com.zaxxer.hikari.HikariDataSource" destroy-method="shutdown">
+      <description>Separate connection pool for long-running queries</description>
+      <constructor-arg>
+        <bean class="com.zaxxer.hikari.HikariConfig">
+          <property name="jdbcUrl" value="${pnfsmanager.db.url}"/>
+          <property name="username" value="${pnfsmanager.db.user}"/>
+          <property name="password" value="#{ T(diskCacheV111.util.Pgpass).getPassword('${pnfsmanager.db.password.file}', '${pnfsmanager.db.url}', '${pnfsmanager.db.user}', '${pnfsmanager.db.password}') }"/>
+          <property name="minimumIdle" value="${pnfsmanager.resilience.db.connections.idle}"/>
+          <property name="maximumPoolSize" value="${pnfsmanager.resilience.db.connections.max}"/>
+          <property name="transactionIsolation" value="TRANSACTION_READ_COMMITTED"/>
+        </bean>
+      </constructor-arg>
+    </bean>
+
+    <bean id="poolManager" class="org.dcache.cells.CellStub">
+      <property name="destination" value="${pnfsmanager.service.poolmanager}"/>
+      <property name="timeout" value="${pnfsmanager.service.poolmanager.timeout}"/>
+      <property name="timeoutUnit" value="${pnfsmanager.service.poolmanager.timeout.unit}"/>
+      <property name="retryOnNoRouteToCell" value="true"/>
+    </bean>
+
+    <bean id="pinManager" class="org.dcache.cells.CellStub">
+      <property name="destination" value="${pnfsmanager.service.pinmanager}"/>
+      <property name="timeout" value="${pnfsmanager.service.poolmanager.timeout}"/>
+      <property name="timeoutUnit" value="${pnfsmanager.service.poolmanager.timeout.unit}"/>
+      <property name="retryOnNoRouteToCell" value="true"/>
+    </bean>
+
+    <bean id="NamespaceAccess" class="org.dcache.resilience.db.LocalNamespaceAccess">
+      <description>Specialized access for scanning resilient pools</description>
+      <property name="namespace" ref="name-space-provider"/>
+      <property name="connectionPool" ref="NamespaceAccessConnectionPool"/>
+      <property name="fetchSize" value="${pnfsmanager.resilience.pnfs-fetch-size}"/>
+      <property name="handler" ref="PnfsOpHandler"/>
+    </bean>
+
+    <bean id="CellStubFactory" class="org.dcache.util.CellStubFactory">
+      <property name="pinManager" ref="pinManager"/>
+      <property name="poolManager" ref="poolManager"/>
+      <property name="poolTimeout" value="${pnfsmanager.service.pool.timeout}"/>
+      <property name="poolTimeoutUnit" value="${pnfsmanager.service.pool.timeout.unit}"/>
+    </bean>
+
+    <bean id="SubmitExecutor" class="org.dcache.util.CDCFixedPoolTaskExecutor"
+          init-method="initialize" destroy-method="shutdownNow">
+      <property name="numberOfThreads" value="${pnfsmanager.resilience.submit-threads}"/>
+    </bean>
+
+    <bean id="PnfsOpExecutor" class="org.dcache.util.CDCFixedPoolTaskExecutor"
+          init-method="initialize" destroy-method="shutdownNow">
+      <property name="numberOfThreads" value="${pnfsmanager.resilience.pnfs-op-threads}"/>
+    </bean>
+
+    <bean id="PoolScanExecutor" class="org.dcache.util.CDCFixedPoolTaskExecutor"
+          init-method="initialize" destroy-method="shutdownNow">
+      <property name="numberOfThreads" value="${pnfsmanager.resilience.pool-scan-threads}"/>
+    </bean>
+
+    <bean id="MigrationExecutor" class="org.dcache.util.CDCScheduledPoolTaskExecutor"
+          init-method="initialize" destroy-method="shutdownNow">
+      <property name="numberOfThreads" value="${pnfsmanager.resilience.file-copy-threads}"/>
+    </bean>
+
+    <bean id="InaccessibleFileHandler" class="org.dcache.resilience.util.InaccessibleFileAlarmSender">
+      <property name="parentDir" value="${pnfsmanager.resilience.inaccessible-files.directory}"/>
+    </bean>
+
+    <bean id="Counters" class="org.dcache.resilience.util.OperationStatistics" init-method="initialize">
+      <property name="statisticsPath" value="${pnfsmanager.resilience.home}/pnfs-operation-statistics"/>
+    </bean>
+
+    <bean id="History" class="org.dcache.resilience.util.OperationHistory" init-method="initialize">
+      <property name="capacity" value="${pnfsmanager.resilience.history.buffer-size}"/>
+    </bean>
+
+    <bean id="PoolSelectionStrategy" class="${pnfsmanager.resilience.pool-selection-strategy}"/>
+
+    <bean id="MessageGuard" class="org.dcache.resilience.util.MessageGuard"
+          init-method="initialize" destroy-method="shutDown">
+      <property name="backlogHandler" ref="MessageHandler"/>
+      <property name="sampleInterval" value="${pnfsmanager.resilience.startup-delay-sample-interval}"/>
+      <property name="sampleIntervalUnit" value="${pnfsmanager.resilience.startup-delay-sample-interval.unit}"/>
+    </bean>
+
+    <bean id="PoolInfoMap" class="org.dcache.resilience.data.PoolInfoMap">
+      <property name="cacheExpiry" value="${pnfsmanager.resilience.cache-expiry}"/>
+      <property name="cacheExpiryUnit" value="${pnfsmanager.resilience.cache-expiry.unit}"/>
+      <property name="cellStubFactory" ref="CellStubFactory"/>
+      <property name="poolSelectionStrategy" ref="PoolSelectionStrategy"/>
+    </bean>
+
+    <bean id="PnfsTaskCompletionHandler" class="org.dcache.resilience.handlers.PnfsTaskCompletionHandler">
+      <property name="map" ref="PnfsOpMap"/>
+    </bean>
+
+    <bean id="PoolTaskCompletionHandler" class="org.dcache.resilience.handlers.PoolTaskCompletionHandler">
+      <property name="map" ref="PoolOpMap"/>
+    </bean>
+
+    <bean id="PnfsOpMap" class="org.dcache.resilience.data.PnfsOperationMap" destroy-method="shutdown">
+      <property name="timeout" value="${pnfsmanager.resilience.pnfs-scan.period}"/>
+      <property name="timeoutUnit" value="${pnfsmanager.resilience.pnfs-scan.period.unit}"/>
+      <property name="completionHandler" ref="PnfsTaskCompletionHandler"/>
+      <property name="poolTaskCompletionHandler" ref="PoolTaskCompletionHandler"/>
+      <property name="counters" ref="Counters"/>
+      <property name="history" ref="History"/>
+      <property name="copyThreads" value="${pnfsmanager.resilience.file-copy-threads}"/>
+      <property name="maxRetries" value="${pnfsmanager.resilience.max-retries}"/>
+      <property name="operationHandler" ref="PnfsOpHandler"/>
+      <property name="poolInfoMap" ref="PoolInfoMap"/>
+      <property name="checkpointExpiry" value="${pnfsmanager.resilience.checkpoint-expiry}"/>
+      <property name="checkpointExpiryUnit" value="${pnfsmanager.resilience.checkpoint-expiry.unit}"/>
+      <property name="checkpointFilePath" value="${pnfsmanager.resilience.home}/pnfs-operation-map"/>
+    </bean>
+
+    <bean id="PoolOpMap" class="org.dcache.resilience.data.PoolOperationMap" destroy-method="shutdown">
+      <property name="timeout" value="${pnfsmanager.resilience.pool-scan.period}"/>
+      <property name="timeoutUnit" value="${pnfsmanager.resilience.pool-scan.period.unit}"/>
+      <property name="poolInfoMap" ref="PoolInfoMap"/>
+      <property name="counters" ref="Counters"/>
+      <property name="downGracePeriod" value="${pnfsmanager.resilience.pool-down-grace-period}"/>
+      <property name="downGracePeriodUnit" value="${pnfsmanager.resilience.pool-down-grace-period.unit}"/>
+      <property name="handler" ref="PoolOpHandler"/>
+      <property name="inaccessibleFileHandler" ref="InaccessibleFileHandler"/>
+      <property name="maxConcurrentRunning" value="${pnfsmanager.resilience.pool-scan-threads}"/>
+      <property name="rescanWindow" value="${pnfsmanager.resilience.pool-scan.window}"/>
+      <property name="rescanWindowUnit" value="${pnfsmanager.resilience.pool-scan.window.unit}"/>
+      <property name="handleRestarts" value="${pnfsmanager.resilience.scan-on-pool-restart}"/>
+      <property name="watchdog" value="${pnfsmanager.resilience.watchdog.enabled}"/>
+    </bean>
+
+    <bean id="PnfsOpHandler" class="org.dcache.resilience.handlers.PnfsOperationHandler">
+      <property name="completionHandler" ref="PnfsTaskCompletionHandler"/>
+      <property name="factory" ref="CellStubFactory"/>
+      <property name="inaccessibleFileHandler" ref="InaccessibleFileHandler"/>
+      <property name="namespace" ref="NamespaceAccess"/>
+      <property name="pnfsOpMap" ref="PnfsOpMap"/>
+      <property name="poolInfoMap" ref="PoolInfoMap"/>
+      <property name="scheduledService" ref="MigrationExecutor"/>
+      <property name="taskService" ref="PnfsOpExecutor"/>
+    </bean>
+
+    <bean id="PoolOpHandler" class="org.dcache.resilience.handlers.PoolOperationHandler">
+      <property name="namespace" ref="NamespaceAccess"/>
+      <property name="completionHandler" ref="PoolTaskCompletionHandler"/>
+      <property name="operationMap" ref="PoolOpMap"/>
+      <property name="scanService" ref="PoolScanExecutor"/>
+      <property name="submitService" ref="SubmitExecutor"/>
+    </bean>
+
+    <bean id="MessageHandler" class="org.dcache.resilience.handlers.ResilienceMessageHandler">
+      <property name="counters" ref="Counters"/>
+      <property name="initializer" ref="MapInitializer"/>
+      <property name="messageGuard" ref="MessageGuard"/>
+      <property name="pnfsOperationHandler" ref="PnfsOpHandler"/>
+      <property name="poolInfoMap" ref="PoolInfoMap"/>
+      <property name="poolOperationHandler" ref="PoolOpHandler"/>
+      <property name="poolOpMap" ref="PoolOpMap"/>
+      <property name="updateService" ref="SubmitExecutor"/>
+    </bean>
+
+    <bean id="AdminCommands" class="org.dcache.resilience.admin.EmbeddedResilienceCommands">
+      <property name="counters" ref="Counters"/>
+      <property name="history" ref="History"/>
+      <property name="messageGuard" ref="MessageGuard"/>
+      <property name="initializer" ref="MapInitializer"/>
+      <property name="namespaceAccess" ref="NamespaceAccess"/>
+      <property name="pnfsOperationHandler" ref="PnfsOpHandler"/>
+      <property name="pnfsOperationMap" ref="PnfsOpMap"/>
+      <property name="poolInfoMap" ref="PoolInfoMap"/>
+      <property name="poolOperationMap" ref="PoolOpMap"/>
+    </bean>
+
+    <bean id="MapInitializer" class="org.dcache.resilience.util.MapInitializer"
+          init-method="initialize">
+      <property name="poolManager" ref="poolManager"/>
+      <property name="messageGuard" ref="MessageGuard"/>
+      <property name="messageHandler" ref="MessageHandler"/>
+      <property name="poolInfoMap" ref="PoolInfoMap"/>
+      <property name="poolOperationHandler" ref="PoolOpHandler"/>
+      <property name="poolOperationMap" ref="PoolOpMap"/>
+      <property name="pnfsOperationMap" ref="PnfsOpMap"/>
+    </bean>
+  </beans>
 </beans>

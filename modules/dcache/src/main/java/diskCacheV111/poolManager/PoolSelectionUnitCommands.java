@@ -83,10 +83,10 @@ public class PoolSelectionUnitCommands implements CellCommandListener {
         return "";
     }
 
-    public static final String hh_psu_create_pgroup = "<pool group>";
+    public final static String hh_psu_create_pgroup = "<pool group> [-resilient]";
 
     public String ac_psu_create_pgroup_$_1(Args args) {
-        psuAccess.createPoolGroup(args.argv(0));
+        psuAccess.createPoolGroup(args.argv(0), args.hasOption("resilient"));
         return "";
     }
 
@@ -395,6 +395,20 @@ public class PoolSelectionUnitCommands implements CellCommandListener {
     }
 
     public static final String hh_psu_unlink = "<link> <pool>|<pool group>";
+
+    public final static String hh_psu_set_storage_unit = "<storage unit> [-required=<required number of copies>] "
+                    + "[-onlyOneCopyPer=<comma-delimited list of tags>]";
+
+    public String ac_psu_set_storage_unit_$_1(Args args) {
+        psuAccess.setStorageUnit(args.argv(0), args.getOption("required"),
+                                               args.getOption("onlyOneCopyPer"));
+        return "";
+    }
+
+    public String ac_psu_unset_storage_unit_$_1(Args args) {
+        psuAccess.unsetStorageUnit(args.argv(0));
+        return "";
+    }
 
     public String ac_psu_unlink_$_2(Args args) {
         psuAccess.unlink(args.argv(0), args.argv(1));

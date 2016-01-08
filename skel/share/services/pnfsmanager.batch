@@ -2,10 +2,12 @@
 
 onerror shutdown
 
+check pnfsmanager.cell.subscribe
 check -strong pnfsmanager.plugins.storage-info-extractor
 check -strong pnfsmanager.enable.inherit-file-ownership
 check -strong pnfsmanager.enable.full-path-permission-check
 check -strong pnfsmanager.enable.acl
+check -strong pnfsmanager.enable.resilience
 check -strong pnfsmanager.default-retention-policy
 check -strong pnfsmanager.default-access-latency
 check pnfsmanager.destination.flush-notification
@@ -26,8 +28,51 @@ check -strong pnfsmanager.db.connections.max
 check pnfsmanager.db.password
 check pnfsmanager.db.password.file
 
+# Embedded resilience.
+# Additional params, if 'pnfsmanager.enable.resilience' is true
+define env resilience.exe endExe
+  onerror shutdown
+
+    check -strong pnfsmanager.resilience.home
+    check -strong pnfsmanager.resilience.inaccessible-files.directory
+    check -strong pnfsmanager.resilience.pnfs-fetch-size
+    check -strong pnfsmanager.resilience.pnfs-scan.period
+    check -strong pnfsmanager.resilience.pnfs-scan.period.unit
+    check -strong pnfsmanager.resilience.cache-expiry
+    check -strong pnfsmanager.resilience.cache-expiry.unit
+    check -strong pnfsmanager.resilience.submit-threads
+    check -strong pnfsmanager.resilience.pnfs-op-threads
+    check -strong pnfsmanager.resilience.file-copy-threads
+    check -strong pnfsmanager.resilience.pool-scan-threads
+    check -strong pnfsmanager.resilience.db.connections.max
+    check -strong pnfsmanager.resilience.db.connections.idle
+    check -strong pnfsmanager.resilience.pool-down-grace-period
+    check -strong pnfsmanager.resilience.pool-down-grace-period.unit
+    check -strong pnfsmanager.resilience.scan-on-pool-restart
+    check -strong pnfsmanager.resilience.startup-delay-sample-interval
+    check -strong pnfsmanager.resilience.startup-delay-sample-interval.unit
+    check -strong pnfsmanager.resilience.watchdog.enabled
+    check -strong pnfsmanager.resilience.pool-scan.period
+    check -strong pnfsmanager.resilience.pool-scan.period.unit
+    check -strong pnfsmanager.resilience.pool-scan.window
+    check -strong pnfsmanager.resilience.pool-scan.window.unit
+    check -strong pnfsmanager.resilience.pool-selection-strategy
+    check -strong pnfsmanager.resilience.max-retries
+    check -strong pnfsmanager.resilience.checkpoint-expiry
+    check -strong pnfsmanager.resilience.checkpoint-expiry.unit
+    check -strong pnfsmanager.resilience.history.buffer-size
+
+endExe
+
+onerror continue
+eval ${pnfsmanager.enable.resilience} true ==
+exec env resilience.exe -ifok
+onerror shutdown
+
 create org.dcache.cells.UniversalSpringCell ${pnfsmanager.cell.name} \
    "classpath:diskCacheV111/namespace/pnfsmanager-chimera.xml \
+        -profiles=resilience-${pnfsmanager.enable.resilience} \
         -export=${pnfsmanager.cell.export} \
+        -subscribe=${pnfsmanager.cell.subscribe} \
         -namespace-provider=org.dcache.chimera.namespace.ChimeraNameSpaceProviderFactory \
        "
