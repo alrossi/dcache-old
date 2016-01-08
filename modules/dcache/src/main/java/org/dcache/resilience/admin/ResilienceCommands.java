@@ -334,6 +334,13 @@ public abstract class ResilienceCommands implements CellCommandListener {
     private static final String FORMAT_STRING = "yyyy/MM/dd-HH:mm:ss";
     private static final DateFormat DATE_FORMAT
                     = new SimpleDateFormat(FORMAT_STRING);
+    private static final String REQUIRE_LIMIT
+                    = "The current table contains %s entries; listing them all "
+                    + "could cause an out-of-memory error and cause the resilience "
+                    + "system to fail and/or restart; if you wish to proceed "
+                    + "with this listing, reissue the command with the explicit "
+                    + "option '-limit=%s'";
+    private static final long LS_THRESHOLD = 5000000L;
 
     enum ControlMode {
         ON,
@@ -827,9 +834,16 @@ public abstract class ResilienceCommands implements CellCommandListener {
                 return op.toString() + "\n";
             }
 
-            int limitValue = limit == null ?
-                            Integer.MAX_VALUE :
-                            Integer.parseInt(limit);
+            long size = pnfsOperationMap.size();
+            int limitValue = (int)size;
+
+            if (limit == null) {
+                if (size >= LS_THRESHOLD) {
+                    return String.format(REQUIRE_LIMIT, size, size);
+                }
+            } else {
+                limitValue = Integer.parseInt(limit);
+            }
 
             return pnfsOperationMap.list(filter, limitValue);
         }
