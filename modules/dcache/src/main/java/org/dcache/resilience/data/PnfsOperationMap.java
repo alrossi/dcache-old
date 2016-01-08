@@ -643,6 +643,10 @@ public final class PnfsOperationMap extends RunnableModule {
         this.poolTaskCompletionHandler = poolTaskCompletionHandler;
     }
 
+    public long size() {
+        return deque.size();
+    }
+
     public void startCheckpointer() {
         checkpointer.thread = new Thread(checkpointer, "Checkpointing");
         checkpointer.thread.start();
