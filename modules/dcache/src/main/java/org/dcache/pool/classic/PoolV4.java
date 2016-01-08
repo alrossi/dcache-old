@@ -3,10 +3,8 @@
 package org.dcache.pool.classic;
 
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.net.InetAddresses;
-import dmg.util.command.Argument;
-import dmg.util.command.Command;
-import dmg.util.command.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
@@ -71,7 +69,6 @@ import diskCacheV111.vehicles.PoolUpdateCacheStatisticsMessage;
 import diskCacheV111.vehicles.ProtocolInfo;
 import diskCacheV111.vehicles.RemoveFileInfoMessage;
 import diskCacheV111.vehicles.StorageInfo;
-
 import dmg.cells.nucleus.AbstractCellComponent;
 import dmg.cells.nucleus.CellCommandListener;
 import dmg.cells.nucleus.CellInfo;
@@ -82,7 +79,9 @@ import dmg.cells.nucleus.CellVersion;
 import dmg.cells.nucleus.DelayedReply;
 import dmg.cells.nucleus.Reply;
 import dmg.util.CommandSyntaxException;
-
+import dmg.util.command.Argument;
+import dmg.util.command.Command;
+import dmg.util.command.Option;
 import org.dcache.alarms.AlarmMarkerFactory;
 import org.dcache.alarms.PredefinedAlarm;
 import org.dcache.cells.CellStub;
@@ -149,6 +148,7 @@ public class PoolV4
     private PoolV2Mode _poolMode;
     private boolean _reportOnRemovals;
     private boolean _suppressHsmLoad;
+    private boolean _suppressReplication;
     private boolean _cleanPreciousFiles;
     private String     _poolStatusMessage = "OK";
     private int        _poolStatusCode;
@@ -431,6 +431,10 @@ public class PoolV4
         _poolMode = mode;
     }
 
+    public PoolV2Mode getPoolMode() {
+        return new PoolV2Mode(_poolMode.getMode());
+    }
+
     @Required
     public void setTransferServices(TransferServices transferServices)
     {
@@ -453,17 +457,19 @@ public class PoolV4
     public void afterStart()
     {
         assertNotRunning("Cannot initialize several times");
-        disablePool(PoolV2Mode.DISABLED_STRICT, 1, "Awaiting initialization");
+        disablePool(PoolV2Mode.DISABLED_STRICT, true, 1, "Awaiting initialization");
         _pingThread.start();
         _running = true;
         new Thread() {
             @Override
             public void run() {
+                int mode;
                 try {
                     _repository.init();
-                    disablePool(PoolV2Mode.DISABLED_RDONLY, 1, "Initializing");
+                    disablePool(PoolV2Mode.DISABLED_RDONLY, true, 1,
+                                    "Initializing");
                     _repository.load();
-                    enablePool();
+                    enablePool(PoolV2Mode.ENABLED, true);
                     _flushingThread.start();
                 } catch (RuntimeException e) {
                     _log.error(AlarmMarkerFactory.getMarker
@@ -473,8 +479,9 @@ public class PoolV4
                                      + "Please report this to support@dcache.org.",
                                      _poolName, e);
                     _log.warn("Pool not enabled {}", _poolName);
-                    disablePool(PoolV2Mode.DISABLED_DEAD | PoolV2Mode.DISABLED_STRICT,
-                            666, "Init failed: " + e.getMessage());
+                    disablePool(PoolV2Mode.DISABLED_DEAD
+                                    | PoolV2Mode.DISABLED_STRICT,
+                                    true, 666, "Init failed: " + e.getMessage());
                 } catch (Throwable e) {
                     _log.error(AlarmMarkerFactory.getMarker
                                     (PredefinedAlarm.POOL_DISABLED, _poolName),
@@ -482,8 +489,9 @@ public class PoolV4
                                      + "reported a problem ({}).",
                                      _poolName, e.getMessage());
                     _log.warn("Pool not enabled {}", _poolName);
-                    disablePool(PoolV2Mode.DISABLED_DEAD | PoolV2Mode.DISABLED_STRICT,
-                                666, "Init failed: " + e.getMessage());
+                    disablePool(PoolV2Mode.DISABLED_DEAD
+                                    | PoolV2Mode.DISABLED_STRICT,
+                                    true, 666, "Init failed: " + e.getMessage());
                 }
 
                 _log.info("Repository finished");
@@ -500,8 +508,8 @@ public class PoolV4
         /*
          * No need for alarm here.
          */
-        disablePool(PoolV2Mode.DISABLED_DEAD | PoolV2Mode.DISABLED_STRICT,
-                666, "Shutdown");
+        disablePool(PoolV2Mode.DISABLED_DEAD
+                        | PoolV2Mode.DISABLED_STRICT, true, 666, "Shutdown");
     }
 
     /**
@@ -515,20 +523,20 @@ public class PoolV4
         switch (event.getAction()) {
         case READONLY:
             poolState = "Pool read-only: ";
-            disablePool(PoolV2Mode.DISABLED_RDONLY, 99,
-                        poolState + event.getMessage());
+            disablePool(PoolV2Mode.DISABLED_RDONLY,
+                            true, 99, poolState + event.getMessage());
             break;
 
         case DISABLED:
             poolState = "Pool disabled: ";
-            disablePool(PoolV2Mode.DISABLED_STRICT, 99,
-                        poolState + event.getMessage());
+            disablePool(PoolV2Mode.DISABLED_STRICT, true, 99, poolState + event.getMessage());
             break;
 
         default:
             poolState = "Pool restart required: ";
-            disablePool(PoolV2Mode.DISABLED_STRICT | PoolV2Mode.DISABLED_DEAD, 666,
-                        poolState + event.getMessage());
+            disablePool(PoolV2Mode.DISABLED_STRICT
+                            | PoolV2Mode.DISABLED_DEAD,
+                            true, 666, poolState + event.getMessage());
             break;
         }
 
@@ -634,6 +642,9 @@ public class PoolV4
         if (_suppressHsmLoad) {
             pw.println("pool suppress hsmload on");
         }
+        if (!_poolMode.isReplicationEnabled()) {
+            pw.println("pool suppress replication -on");
+        }
         pw.println("set duplicate request "
                 + ((_dupRequest == DUP_REQ_NONE)
                 ? "none"
@@ -652,6 +663,10 @@ public class PoolV4
         poolinfo.setErrorStatus(_poolStatusCode, _poolStatusMessage);
         poolinfo.setCellVersion(VERSION);
         return poolinfo;
+    }
+
+    public ImmutableMap<String, String> getTagMap() {
+        return ImmutableMap.copyOf(_tags);
     }
 
     @Override
@@ -673,6 +688,8 @@ public class PoolV4
                    + " seconds");
         pw.println("Breakeven         : " + getBreakEven());
         pw.println("ReplicationMgr    : " + _replicationHandler);
+        pw.println("Replication       : "
+            + (_poolMode.isReplicationEnabled() ? "on" : "off"));
         if (_hasTapeBackend) {
             pw.println("LargeFileStore    : None");
         } else if (_isVolatile) {
@@ -934,7 +951,8 @@ public class PoolV4
                 case 41:
                 case 42:
                 case 43:
-                    disablePool(PoolV2Mode.DISABLED_STRICT, errorCode, ce.getMessage());
+                    disablePool(PoolV2Mode.DISABLED_STRICT, true,
+                                    errorCode, ce.getMessage());
                     _log.error(AlarmMarkerFactory.getMarker(PredefinedAlarm.POOL_DISABLED,
                                                             _poolName),
                                     "Error encountered during fetch of {}",
@@ -1277,9 +1295,9 @@ public class PoolV4
         PoolV2Mode mode = msg.getPoolMode();
         if (mode != null) {
             if (mode.isEnabled()) {
-                enablePool();
+                enablePool(mode.getMode(), true);
             } else {
-                disablePool(mode.getMode(),
+                disablePool(mode.getMode(), true,
                             msg.getStatusCode(), msg.getStatusMessage());
             }
         }
@@ -1392,12 +1410,13 @@ public class PoolV4
     /**
      * Partially or fully disables normal operation of this pool.
      */
-    private synchronized void disablePool(int mode, int errorCode, String errorString)
+    private synchronized void disablePool(int mode, boolean repEnabled,
+                                          int errorCode, String errorString)
     {
         _poolStatusCode = errorCode;
         _poolStatusMessage =
             (errorString == null) ? "Requested by operator" : errorString;
-        _poolMode.setMode(mode);
+        _poolMode.setMode(getModeWithReplicationSuppression(mode, repEnabled));
 
         _pingThread.sendPoolManagerMessage(true);
         _log.warn("Pool mode changed to {}: {}", _poolMode, _poolStatusMessage);
@@ -1407,14 +1426,20 @@ public class PoolV4
      * Fully enables this pool. The status code is set to 0 and the
      * status message is cleared.
      */
-    private synchronized void enablePool()
+    private synchronized void enablePool(int mode, boolean repEnabled)
     {
-        _poolMode.setMode(PoolV2Mode.ENABLED);
+        _poolMode.setMode(getModeWithReplicationSuppression(mode, repEnabled));
         _poolStatusCode = 0;
         _poolStatusMessage = "OK";
 
         _pingThread.sendPoolManagerMessage(true);
         _log.warn("Pool mode changed to " + _poolMode);
+    }
+
+    private int getModeWithReplicationSuppression(int mode, boolean repEnabled) {
+        PoolV2Mode modified = new PoolV2Mode(mode);
+        modified.setReplicationEnabled(repEnabled && !_suppressReplication);
+        return modified.getMode();
     }
 
     private class PoolManagerPingThread implements Runnable
@@ -1753,6 +1778,7 @@ public class PoolV4
         }
     }
 
+    // TODO REMOVE THIS WHEN NEW REPLICATION SYSTEM IS IN PLACE
     public static final String hh_set_replication = "[-off] [<mgr> [<host>]]";
     public String ac_set_replication_$_0_2(Args args)
     {
@@ -1765,6 +1791,22 @@ public class PoolV4
             }
         }
         return _replicationHandler.toString();
+    }
+
+    public static final String hh_pool_suppress_replication = "[-on|-off]";
+    public String ac_pool_suppress_replication_$_0_2(Args args) {
+        boolean on = false;
+        if (args.hasOption("on")) {
+            on = true;
+        } else if (args.hasOption("off")) {
+            on = false;
+        } else {
+            return "No -on or -off option was set; no action was taken.";
+        }
+
+        suppressReplication(on);
+        return "suppress replication on mode change : "
+                        + (_suppressReplication ? "on" : "off");
     }
 
     public static final String hh_pool_suppress_hsmload = "on|off";
@@ -1821,7 +1863,8 @@ public class PoolV4
         + "        -store    #  disallows store (transfer from client)\n"
         + "        -p2p-client\n"
         + "        -rdonly   #  := store,stage,p2p-client\n"
-        + "        -strict   #  := disallows everything\n";
+        + "        -strict   #  := disallows everything\n"
+        + "        -norep    #  := do not initiate replication on mode change\n";
     public static final String hh_pool_disable = "[options] [<errorCode> [<errorMessage>]] # suspend sending 'up messages'";
     public String ac_pool_disable_$_0_2(Args args)
     {
@@ -1859,19 +1902,20 @@ public class PoolV4
          * No need for alarm here.
          */
 
-        disablePool(modeBits, rc, rm);
+        disablePool(modeBits, !args.hasOption("norep"), rc, rm);
 
         return "Pool " + _poolName + " " + _poolMode;
     }
 
-    public static final String hh_pool_enable = " # resume sending up messages'";
+    public static final String hh_pool_enable = "[-norep] # resume sending up messages'";
     public String ac_pool_enable(Args args)
     {
         if (_poolMode.isDisabled(PoolV2Mode.DISABLED_DEAD)) {
             return "The pool is dead and a restart is required to enable it";
         }
-        enablePool();
-        return "Pool " + _poolName + " enabled";
+
+        enablePool(PoolV2Mode.ENABLED, !args.hasOption("norep"));
+        return "Pool " + _poolName + " " + _poolMode;
     }
 
     public static final String hh_set_max_movers = "!!! Please use 'mover|st|rh set max active <jobs>'";
@@ -2158,5 +2202,10 @@ public class PoolV4
 
             return "Heartbeat set to " + (_pingThread.getHeartbeat()) + " seconds";
         }
+    }
+
+    private synchronized void suppressReplication(boolean on) {
+        _suppressReplication = on;
+        _poolMode.setReplicationEnabled(!on);
     }
 }

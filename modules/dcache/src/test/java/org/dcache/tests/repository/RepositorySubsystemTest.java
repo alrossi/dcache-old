@@ -27,12 +27,11 @@ import diskCacheV111.util.LockedCacheException;
 import diskCacheV111.util.PnfsHandler;
 import diskCacheV111.util.PnfsId;
 import diskCacheV111.vehicles.GenericStorageInfo;
+import diskCacheV111.vehicles.NotifyReplicaMessage;
 import diskCacheV111.vehicles.PnfsAddCacheLocationMessage;
 import diskCacheV111.vehicles.PnfsClearCacheLocationMessage;
 import diskCacheV111.vehicles.StorageInfo;
-
 import dmg.cells.nucleus.CellPath;
-
 import org.dcache.namespace.FileAttribute;
 import org.dcache.pool.classic.FairQueueAllocation;
 import org.dcache.pool.classic.SpaceSweeper2;
@@ -57,8 +56,19 @@ import org.dcache.tests.cells.Message;
 import org.dcache.vehicles.FileAttributes;
 import org.dcache.vehicles.PnfsSetFileAttributes;
 
-import static org.dcache.pool.repository.EntryState.*;
-import static org.junit.Assert.*;
+import static org.dcache.pool.repository.EntryState.BROKEN;
+import static org.dcache.pool.repository.EntryState.CACHED;
+import static org.dcache.pool.repository.EntryState.DESTROYED;
+import static org.dcache.pool.repository.EntryState.FROM_CLIENT;
+import static org.dcache.pool.repository.EntryState.FROM_STORE;
+import static org.dcache.pool.repository.EntryState.NEW;
+import static org.dcache.pool.repository.EntryState.PRECIOUS;
+import static org.dcache.pool.repository.EntryState.REMOVED;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class RepositorySubsystemTest
     extends AbstractStateChangeListener
@@ -118,6 +128,12 @@ public class RepositorySubsystemTest
             @Message(cell="pnfs")
             public Object message(PnfsSetFileAttributes msg)
             {
+                msg.setSucceeded();
+                return msg;
+            }
+
+            @Message(cell="pnfs")
+            public Object message(NotifyReplicaMessage msg) {
                 msg.setSucceeded();
                 return msg;
             }
@@ -466,7 +482,8 @@ public class RepositorySubsystemTest
 
     @Test
     public void testCreateEntryFromStore() throws Throwable {
-
+        repository.setResilienceEnabled(true);
+        repository.setResilienceDestination("ResilienceTopic");
         repository.init();
         repository.load();
         stateChangeEvents.clear();
@@ -477,6 +494,12 @@ public class RepositorySubsystemTest
                 if( msg.getFileAttributes().isDefined(FileAttribute.SIZE) ) {
                     return new CacheException("");
                 }
+                msg.setSucceeded();
+                return msg;
+            }
+
+            @Message(required = true, step = 1, cell = "ResilienceTopic")
+            public Object message(NotifyReplicaMessage msg) {
                 msg.setSucceeded();
                 return msg;
             }
@@ -778,6 +801,16 @@ public class RepositorySubsystemTest
                     msg.setSucceeded();
                 }
                 setAttr = true;
+                return msg;
+            }
+
+            @Message(required=false,step=3,cell="pnfs")
+            public Object whenDescriptorIsCommitted(NotifyReplicaMessage msg) {
+                if (failSetAttributes) {
+                    msg.setFailed(1, null);
+                } else {
+                    msg.setSucceeded();
+                }
                 return msg;
             }
 

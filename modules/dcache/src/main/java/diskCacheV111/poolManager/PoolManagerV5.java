@@ -44,7 +44,6 @@ import diskCacheV111.vehicles.PoolMgrSelectWritePoolMsg;
 import diskCacheV111.vehicles.PoolStatusChangedMessage;
 import diskCacheV111.vehicles.ProtocolInfo;
 import diskCacheV111.vehicles.QuotaMgrCheckQuotaMessage;
-
 import dmg.cells.nucleus.AbstractCellComponent;
 import dmg.cells.nucleus.CellAddressCore;
 import dmg.cells.nucleus.CellCommandListener;
@@ -53,7 +52,6 @@ import dmg.cells.nucleus.CellMessage;
 import dmg.cells.nucleus.CellMessageReceiver;
 import dmg.cells.nucleus.CellVersion;
 import dmg.cells.nucleus.DelayedReply;
-
 import org.dcache.alarms.AlarmMarkerFactory;
 import org.dcache.alarms.PredefinedAlarm;
 import org.dcache.cells.CellStub;
@@ -95,7 +93,6 @@ public class PoolManagerV5
 
     private boolean _quotasEnabled;
     private CellStub _quotaManager;
-
 
     private static final Logger _log = LoggerFactory.getLogger(PoolManagerV5.class);
     private static final Logger _logPoolMonitor = LoggerFactory.getLogger("logger.org.dcache.poolmonitor." + PoolManagerV5.class.getName());
@@ -401,14 +398,15 @@ public class PoolManagerV5
             } else {
                 _requestContainer.poolStatusChanged(poolName,
                                                     PoolStatusChangedMessage.UP);
-                sendPoolStatusRelay(poolName, PoolStatusChangedMessage.RESTART);
+                sendPoolStatusRelay(poolName, PoolStatusChangedMessage.RESTART,
+                                poolMessage.getPoolMode());
             }
         }
     }
 
-    private void sendPoolStatusRelay(String poolName, int status)
+    private void sendPoolStatusRelay(String poolName, int status, PoolV2Mode poolMode)
     {
-        sendPoolStatusRelay(poolName, status, null, 0, null);
+        sendPoolStatusRelay(poolName, status, poolMode, 0, null);
     }
 
     private void sendPoolStatusRelay(String poolName, int status, PoolV2Mode poolMode,
@@ -417,6 +415,7 @@ public class PoolManagerV5
         PoolStatusChangedMessage msg = new PoolStatusChangedMessage(poolName, status);
         msg.setPoolMode(poolMode);
         msg.setDetail(statusCode, statusMessage);
+
         _poolStatusTopic.notify(msg);
     }
 
