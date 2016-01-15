@@ -70,8 +70,8 @@ public final class EmbeddedResilienceCommands extends ResilienceCommands {
     @Command(name = "rs check", hint = HINT_CHECK, description = DESC_CHECK)
     class CheckCommand extends ResilienceCommands.CheckCommand {}
 
-    @Command(name = "rs checkpoint", hint = HINT_CHCKPT, description = DESC_CHCKPT)
-    class CheckpointCommand extends ResilienceCommands.CheckpointCommand {}
+    @Command(name = "rs pnfs ctrl", hint = HINT_PNFS_CTRL, description = DESC_PNFS_CTRL)
+    class PnfsControlCommand extends ResilienceCommands.PnfsControlCommand {}
 
     @Command(name = "rs counts", hint = HINT_COUNT, description = DESC_COUNT)
     class CountsCommand extends ResilienceCommands.CountsCommand {}
@@ -100,11 +100,11 @@ public final class EmbeddedResilienceCommands extends ResilienceCommands {
     @Command(name = "rs pnfs ls", hint =  HINT_PNFSLS, description = DESC_PNFSLS)
     class PnfsOpLsCommand extends ResilienceCommands.PnfsOpLsCommand {}
 
-    @Command(name = "rs pnfs set", hint= HINT_PNFSSET, description = DESC_PNFSSET)
-    class PnfsOpSetCommand extends ResilienceCommands.PnfsOpSetCommand {}
-
     @Command(name = "rs pool cancel", hint = HINT_POOLCNCL, description = DESC_POOLCNCL)
     class PoolOpCancelCommand extends ResilienceCommands.PoolOpCancelCommand {}
+
+    @Command(name = "rs pool ctrl", hint= HINT_POOL_CTRL,  description = DESC_POOL_CTRL)
+    class PoolControlCommand extends ResilienceCommands.PoolControlCommand {}
 
     @Command(name = "rs pool info ", hint = HINT_POOLINFO, description = DESC_POOLINFO)
     class PoolInfoCommand extends ResilienceCommands.PoolInfoCommand {}
@@ -115,9 +115,6 @@ public final class EmbeddedResilienceCommands extends ResilienceCommands {
     @Command(name = "rs pool name ", hint = HINT_PNAME, description = DESC_PNAME)
     class PoolNameCommand extends ResilienceCommands.PoolNameCommand {}
 
-    @Command(name = "rs pool set ", hint = HINT_POOLSET, description = DESC_POOLSET)
-    class PoolOpSetCommand extends ResilienceCommands.PoolOpSetCommand {}
-
     @Command(name = "rs scan", hint = HINT_SCAN, description = DESC_SCAN)
     class ScanCommand extends ResilienceCommands.ScanCommand {}
 
@@ -126,7 +123,4 @@ public final class EmbeddedResilienceCommands extends ResilienceCommands {
 
     @Command(name = "rs verify", hint = HINT_VERIFY, description = DESC_VERIFY)
     class VerifyCommand extends ResilienceCommands.VerifyCommand {}
-
-    @Command(name = "rs watchdog", hint=HINT_WATCHDOG,  description = DESC_WATCHDOG)
-    class WatchdogCommand extends ResilienceCommands.WatchdogCommand {}
 }

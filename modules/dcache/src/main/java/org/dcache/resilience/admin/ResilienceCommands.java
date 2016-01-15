@@ -88,8 +88,8 @@ import org.dcache.resilience.db.NamespaceAccess;
 import org.dcache.resilience.handlers.PnfsOperationHandler;
 import org.dcache.resilience.util.MapInitializer;
 import org.dcache.resilience.util.MessageGuard;
-import org.dcache.resilience.util.OperationStatistics;
 import org.dcache.resilience.util.OperationHistory;
+import org.dcache.resilience.util.OperationStatistics;
 import org.dcache.util.ExceptionMessage;
 import org.dcache.vehicles.FileAttributes;
 
@@ -197,8 +197,6 @@ public abstract class ResilienceCommands implements CellCommandListener {
     protected static final String HINT_CHECK
                     = "Launch an operation to adjust replicas for a "
                     + "single pnfsid.";
-    protected static final String HINT_CHCKPT
-                    = "Control checkpoint configuration or force a save.";
     protected static final String HINT_COUNT
                     = "List pnfsids and replica counts for a pool.";
     protected static final String HINT_DIAG
@@ -216,12 +214,15 @@ public abstract class ResilienceCommands implements CellCommandListener {
                     + "pnfs operations.";
     protected static final String HINT_PNFSCNCL
                     = "Cancel pnfs operations.";
+    protected static final String HINT_PNFS_CTRL
+                    = "Control checkpointing or handling of pnfs operations.";
     protected static final String HINT_PNFSLS
                     = "List entries in the pnfs operation table.";
-    protected static final String HINT_PNFSSET
-                    = "Reset pnfs operation configuration properties.";
     protected static final String HINT_POOLCNCL
                     = "Cancel pool operations.";
+    protected static final String HINT_POOL_CTRL
+                    = "Control the periodic check of active resilient pools "
+                    + "or processing of pool state changes.";
     protected static final String HINT_POOLINFO
                     = "List tags and dynamic info for a pool or pools.";
     protected static final String HINT_POOLLS
@@ -239,17 +240,18 @@ public abstract class ResilienceCommands implements CellCommandListener {
                     = "List the storage units linked to a pool group "
                                     + "and confirm resilience constraints "
                                     + "can be met by the member pools.";
-    protected static final String HINT_WATCHDOG
-                    = "Control the periodic check of active resilient pools.";
 
     protected static final String DESC_CHECK
                     = "Run a check to see that the number of replicas is properly "
                                     + "constrained, creating new "
                                     + "copies or removing redundant ones "
                                     + "as necessary.";
-    protected static final String DESC_CHCKPT
+    protected static final String DESC_PNFS_CTRL
                     = "Run checkpointing, reset checkpoint "
-                                    + "properties or get checkpoint info.";
+                                    + "properties, reset operation properties,"
+                                    + "turn processing of operations on or off "
+                                    + "(restart/shutdown), or display info relevant "
+                                    + " to operation processing and checkpointing.";
     protected static final String DESC_COUNT
                     = "Issues a query to the namespace; "
                                     + "results can be written to a file.";
@@ -270,10 +272,15 @@ public abstract class ResilienceCommands implements CellCommandListener {
                                     + "(see diag command).";
     protected static final String DESC_DISABLE
                     = "Prevents messages from being processed by "
-                                    + "the replication system.";
+                                    + "the replication system.  "
+                    + "To disable all internal operations; either use "
+                    + "the two 'ctrl' commands individually, or "
+                    + "the 'strict' argument to this command.";
     protected static final String DESC_ENABLE
                     = "Allows messages to be processed by "
-                                    + "the replication system.";
+                                    + "the replication system."
+                    + "Will also (re-)enable all internal operations if they "
+                    + "are not running.";
     protected static final String DESC_GNAME
                     = "Looks up the name of the pool group using the "
                                     + "index key.";
@@ -292,13 +299,15 @@ public abstract class ResilienceCommands implements CellCommandListener {
     protected static final String DESC_PNFSLS
                     = "Scans the table and returns operations matching "
                     + "the filter parameters.";
-    protected static final String DESC_PNFSSET
-                    = "Resets the number of retries allowed.";
     protected static final String DESC_POOLCNCL
                     = "Scans the pool table and cancels "
                                     + "operations matching the filter parameters; "
                                     + "if 'includeParents' is true, also "
                                     + "scans the pnfs table.";
+    protected static final String DESC_POOL_CTRL
+                    = "Activates, deactivates, or resets the periodic checking "
+                    + "of active pools; turns all pool state handling on or off "
+                    + "(restart/shutdown)";
     protected static final String DESC_POOLINFO
                     = "Does NOT refresh the cost info.";
     protected static final String DESC_POOLLS
@@ -307,8 +316,6 @@ public abstract class ResilienceCommands implements CellCommandListener {
     protected static final String DESC_PNAME
                     = "Looks up the name of the pool "
                     + "using the index key.";
-    protected static final String DESC_POOLSET
-                    = "Resets the grace period or restart properties.";
     protected static final String DESC_SCAN
                     = "A check will be initiated to see that the "
                                     + "number of replicas on the pool is "
@@ -327,9 +334,6 @@ public abstract class ResilienceCommands implements CellCommandListener {
                                     + "attempting to assign the required number "
                                     + "of locations for a hypothetical file on"
                                     + "belonging to each.";
-    protected static final String DESC_WATCHDOG
-                    = "Activates, deactivates, or resets the periodic checking "
-                                    + "of active pools.";
 
     private static final String FORMAT_STRING = "yyyy/MM/dd-HH:mm:ss";
     private static final DateFormat DATE_FORMAT
@@ -345,6 +349,8 @@ public abstract class ResilienceCommands implements CellCommandListener {
     enum ControlMode {
         ON,
         OFF,
+        RESTART,
+        SHUTDOWN,
         RESET,
         RUN,
         INFO;
@@ -416,7 +422,7 @@ public abstract class ResilienceCommands implements CellCommandListener {
         }
     }
 
-    abstract class CheckpointCommand extends ResilienceCommand {
+    abstract class PnfsControlCommand extends ResilienceCommand {
         @Argument(index = 0,
                         valueSpec = "off|on|info|reset|run ",
                         required = false,
@@ -427,15 +433,26 @@ public abstract class ResilienceCommands implements CellCommandListener {
                                         + "run = checkpoint to disk immediately." )
         String arg = "INFO";
 
-        @Option(name = "interval",
-                        usage = "Interval length between checkpointing of the "
-                                        + "pnfs operation data.")
-        String interval;
+        @Option(name = "checkpoint",
+                        usage = "With reset mode (one of checkpoint|sweep). "
+                                        + "Interval length between checkpointing "
+                                        + "of the pnfs operation data.")
+        String checkpoint;
+
+        @Option(name = "sweep",
+                        usage = "With reset mode (one of checkpoint|sweep). "
+                                        + "Minimal interval between sweeps of "
+                                        + "the pnfs operations.")
+        String sweep;
 
         @Option(name = "unit",
                         valueSpec = "SECONDS|MINUTES|HOURS ",
-                        usage = "Checkpoint interval unit.")
+                        usage = "Checkpoint or sweep interval unit.")
         String unit;
+
+        @Option(name = "retries",
+                        usage = "Maximum number of retries on a failed operation.")
+        String retries;
 
         @Option(name = "file",
                         usage = "Alternate (full) path for checkpoint file.")
@@ -445,12 +462,25 @@ public abstract class ResilienceCommands implements CellCommandListener {
         protected String doCall() throws Exception {
             ControlMode mode = ControlMode.valueOf(arg.toUpperCase());
 
+            TimeUnit timeUnit = null;
+            if (unit != null) {
+                timeUnit = TimeUnit.valueOf(unit);
+            }
+
             switch (mode) {
-                case INFO:
-                    if (!pnfsOperationMap.isCheckpointingOn()) {
-                        return "Checkpointing is off.";
+                case RESTART:
+                    if (pnfsOperationMap.isRunning()) {
+                        return "Consumer is already running.";
                     }
-                    return infoMessage();
+                    pnfsOperationMap.initialize();
+                    pnfsOperationMap.reload();
+                    return "Consumer initialized and checkpoint file reloaded.";
+                case SHUTDOWN:
+                    if (!pnfsOperationMap.isRunning()) {
+                        return "Consumer is not running.";
+                    }
+                    pnfsOperationMap.shutdown();
+                    return "Consumer has been shutdown.";
                 case OFF:
                     if (pnfsOperationMap.isCheckpointingOn()) {
                         pnfsOperationMap.stopCheckpointer();
@@ -474,14 +504,20 @@ public abstract class ResilienceCommands implements CellCommandListener {
                         return "Checkpointing is off; please turn it on first.";
                     }
 
-                    if (interval != null) {
-                        pnfsOperationMap.setCheckpointExpiry(
-                                        Integer.parseInt(interval));
+                    if (checkpoint != null) {
+                        pnfsOperationMap.setCheckpointExpiry(Integer.parseInt(checkpoint));
+                        if (timeUnit != null) {
+                            pnfsOperationMap.setCheckpointExpiryUnit(timeUnit);
+                        }
+                    } else if (sweep != null) {
+                        pnfsOperationMap.setTimeout(Integer.parseInt(sweep));
+                        if (timeUnit != null) {
+                            pnfsOperationMap.setCheckpointExpiryUnit(timeUnit);
+                        }
                     }
 
-                    if (unit != null) {
-                        pnfsOperationMap.setCheckpointExpiryUnit(
-                                        TimeUnit.valueOf(unit));
+                    if (retries != null) {
+                        pnfsOperationMap.setMaxRetries(Integer.parseInt(retries));
                     }
 
                     if (file != null) {
@@ -490,6 +526,7 @@ public abstract class ResilienceCommands implements CellCommandListener {
 
                     pnfsOperationMap.reset();
                     // fall through here
+                case INFO:
                 default:
                     return infoMessage();
             }
@@ -497,11 +534,15 @@ public abstract class ResilienceCommands implements CellCommandListener {
 
         private String infoMessage() {
             StringBuilder info = new StringBuilder();
-            info.append(String.format("checkpoint interval %s %s\n"
-                                                      + "checkpoint file path %s\n",
-                                      pnfsOperationMap.getCheckpointExpiry(),
-                                      pnfsOperationMap.getCheckpointExpiryUnit(),
-                                      pnfsOperationMap.getCheckpointFilePath()));
+            info.append(String.format("maximum concurrent operations %s.\n"
+                                            + "maximum retries on failure %s.\n",
+                            pnfsOperationMap.getMaxRunning(),
+                            pnfsOperationMap.getMaxRetries()));
+            info.append(String.format("checkpoint interval %s %s.\n"
+                                            + "checkpoint file path %s.\n",
+                            pnfsOperationMap.getCheckpointExpiry(),
+                            pnfsOperationMap.getCheckpointExpiryUnit(),
+                            pnfsOperationMap.getCheckpointFilePath()));
             counters.getCheckpointInfo(info);
             return info.toString();
         }
@@ -599,10 +640,34 @@ public abstract class ResilienceCommands implements CellCommandListener {
     }
 
     abstract class DisableCommand extends ResilienceCommand {
+        @Argument(required = false,
+                        usage = "Whether to shutdown all operations "
+                                        + "(without this operation, only "
+                                        + "incoming messages are blocked",
+                        valueSpec = "strict")
+        String strict;
+
         @Override
         protected String doCall() throws Exception {
+            String message = "Processing of incoming messages has been disabled.";
+            if (strict != null) {
+                if (!"strict".equals(strict.toLowerCase())) {
+                    return "Unrecognized argument " + strict;
+                }
+
+                if (pnfsOperationMap.isRunning()) {
+                    pnfsOperationMap.shutdown();
+                }
+
+                if (poolOperationMap.isRunning()) {
+                    poolOperationMap.shutdown();
+                }
+
+                message = "All resilience operations have been shutdown.";
+            }
+
             messageGuard.setEnabled(false);
-            return "Replication has been disabled.";
+            return message;
         }
     }
 
@@ -611,9 +676,20 @@ public abstract class ResilienceCommands implements CellCommandListener {
         protected String doCall() throws Exception {
             if (!initializer.initialize()) {
                 messageGuard.setEnabled(true);
-            }
 
-            return "Replication has been enabled.";
+                if (!poolOperationMap.isRunning()) {
+                    poolOperationMap.loadPools();
+                    poolOperationMap.initialize();
+                }
+
+                if (!pnfsOperationMap.isRunning()) {
+                    pnfsOperationMap.initialize();
+                    pnfsOperationMap.reload();
+                }
+
+                return "Resilience system has been re-enabled.";
+            }
+            return "Resilience system has not yet been initialized.";
         }
     }
 
@@ -849,24 +925,6 @@ public abstract class ResilienceCommands implements CellCommandListener {
         }
     }
 
-    abstract class PnfsOpSetCommand extends ResilienceCommand {
-        @Option(name = "retries",
-                        usage = "Maximum number of retries on a failed operation.")
-        String retries;
-
-        @Override
-        protected String doCall() throws Exception {
-            if (retries != null) {
-                pnfsOperationMap.setMaxRetries(Integer.parseInt(retries));
-            }
-
-            return String.format("maximum concurrent operations %s\n"
-                                            + "maximum retries on failure %s\n",
-                                pnfsOperationMap.getMaxRunning(),
-                                pnfsOperationMap.getMaxRetries());
-        }
-    }
-
     abstract class PoolOpCancelCommand extends ResilienceCommand {
         @Option(name = "status",
                         valueSpec = "DOWN | RESTART ",
@@ -1045,49 +1103,6 @@ public abstract class ResilienceCommands implements CellCommandListener {
         }
     }
 
-    abstract class PoolOpSetCommand extends ResilienceCommand {
-        @Option(name = "down",
-                        usage = "Minimum grace period between reception of a "
-                                        + "DOWN status message and scan of the "
-                                        + "given pool.")
-        String down;
-
-        @Option(name = "unit",
-                        valueSpec = "SECONDS | MINUTES | HOURS | DAYS ",
-                        usage = "For the down option.")
-        String unit;
-
-        @Option(name = "restart",
-                        valueSpec = "true | false (default)",
-                        usage = "Whether or not to scan a pool when "
-                                        + "a restart message is received.")
-        String restart;
-
-        @Override
-        protected String doCall() throws Exception {
-            if (down != null) {
-                poolOperationMap.setDownGracePeriod(Integer.parseInt(down));
-            }
-
-            if (unit != null) {
-                poolOperationMap.setDownGracePeriodUnit(
-                                TimeUnit.valueOf(unit));
-            }
-
-            if (restart != null) {
-                poolOperationMap.setHandleRestarts(Boolean.valueOf(restart));
-            }
-
-            return String.format("down grace period %s %s\n"
-                                            + "handle restarts %s\n"
-                                            + "maximum concurrent operations %s\n",
-                            poolOperationMap.getDownGracePeriod(),
-                            poolOperationMap.getDownGracePeriodUnit(),
-                            poolOperationMap.isHandleRestarts(),
-                            poolOperationMap.getMaxConcurrentRunning());
-        }
-    }
-
     abstract class ScanCommand extends ResilienceCommand {
         @Argument(required = true,
                         usage = "Regular expression for pool(s) on which to "
@@ -1216,32 +1231,47 @@ public abstract class ResilienceCommands implements CellCommandListener {
         }
     }
 
-    abstract class WatchdogCommand extends ResilienceCommand {
+    abstract class PoolControlCommand extends ResilienceCommand {
         @Argument(index = 0,
-                        valueSpec = "off|on|info|reset|run ",
+                        valueSpec = "off|on|shutdown|restart|info|reset|run ",
                         required = false,
                         usage = "off = turn the watchdog off; on = turn the watchdog on; "
+                                        + "shutdown = turn the consumer completely off; "
+                                        + "restart = restart the consumer (and watchdog); "
                                         + "info = show status of watchdog and scan window (default); "
                                         + "reset = reset period or scan window; "
                                         + "run = interrupt current wait and do a sweep." )
         String operation = "INFO";
 
         @Option(name = "window",
-                        usage = "With reset mode (one of window | sweep). "
+                        usage = "With reset mode (one of window|sweep|down). "
                                         + "Amount of time which must pass since "
                                         + "the last scan of a pool for it to be "
                                         + "scanned again.")
         String window;
 
         @Option(name = "sweep",
-                        usage = "With reset mode (one of window | sweep). "
+                        usage = "With reset mode (one of window|sweep|down). "
                                         + "How often a sweep of the pool "
                                         + "operations is made.")
         String sweep;
 
+        @Option(name = "down",
+                        usage = "With reset mode (one of window|sweep|down). "
+                                        + "Minimum grace period between reception "
+                                        + "of a DOWN status message and scan of  "
+                                        + "the given pool.")
+        String down;
+
+        @Option(name = "restart",
+                        valueSpec = "true | false (default)",
+                        usage = "Whether or not to scan a pool when "
+                                        + "a restart message is received.")
+        String restart;
+
         @Option(name = "unit",
                         valueSpec = "SECONDS | MINUTES | HOURS | DAYS ",
-                        usage = "For the sweep/window options.")
+                        usage = "For the sweep/window/down options.")
         String unit;
 
         @Override
@@ -1249,18 +1279,24 @@ public abstract class ResilienceCommands implements CellCommandListener {
             ControlMode mode = ControlMode.valueOf(operation.toUpperCase());
 
             TimeUnit timeUnit = null;
-            Integer time = null;
-
             if (unit != null) {
                 timeUnit = TimeUnit.valueOf(unit);
             }
 
             switch (mode) {
-                case INFO:
-                    if (!poolOperationMap.isWatchdogOn()) {
-                        return "Watchdog is off.";
+                case RESTART:
+                    if (poolOperationMap.isRunning()) {
+                        return "Consumer is already running.";
                     }
-                    return scanWindowMessage();
+                    poolOperationMap.loadPools();
+                    poolOperationMap.initialize();
+                    return "Consumer initialized and pools reloaded.";
+                case SHUTDOWN:
+                    if (!poolOperationMap.isRunning()) {
+                        return "Consumer is not running.";
+                    }
+                    poolOperationMap.shutdown();
+                    return "Consumer has been shutdown.";
                 case OFF:
                     if (poolOperationMap.isWatchdogOn()) {
                         poolOperationMap.setWatchdog(false);
@@ -1270,7 +1306,7 @@ public abstract class ResilienceCommands implements CellCommandListener {
                 case ON:
                     if (!poolOperationMap.isWatchdogOn()) {
                         poolOperationMap.setWatchdog(true);
-                        return scanWindowMessage();
+                        return infoMessage();
                     }
                     return "Watchdog already on.";
                 case RUN:
@@ -1285,29 +1321,42 @@ public abstract class ResilienceCommands implements CellCommandListener {
                     }
 
                     if (window != null) {
-                        time = Integer.parseInt(window);
-                        poolOperationMap.setRescanWindow(time);
+                        poolOperationMap.setRescanWindow(Integer.parseInt(window));
                         if (timeUnit != null) {
                             poolOperationMap.setRescanWindowUnit(timeUnit);
                         }
                     } else if (sweep != null) {
-                        time = Integer.parseInt(sweep);
-                        poolOperationMap.setTimeout(time);
+                        poolOperationMap.setTimeout(Integer.parseInt(sweep));
                         if (timeUnit != null) {
                             poolOperationMap.setTimeoutUnit(timeUnit);
                         }
+                    } else if (down != null) {
+                        poolOperationMap.setDownGracePeriod(Integer.parseInt(down));
+                        if (timeUnit != null) {
+                            poolOperationMap.setDownGracePeriodUnit(timeUnit);
+                        }
                     }
 
+                    if (restart != null) {
+                        poolOperationMap.setHandleRestarts(Boolean.valueOf(restart));
+                    }
                     poolOperationMap.reset();
                     // fall through here
+                case INFO:
                 default:
-                    return scanWindowMessage();
+                    return infoMessage();
             }
         }
 
-        private String scanWindowMessage() {
-            return String.format("Watchdog scan window set to %s %s.\n"
-                                            + "Watchdog period set to %s %s.\n",
+        private String infoMessage() {
+            return String.format("down grace period %s %s\n"
+                                            + "handle restarts %s\n"
+                                            + "maximum concurrent operations %s\n"
+                                            + "scan window set to %s %s.\n" + "period set to %s %s.\n",
+                            poolOperationMap.getDownGracePeriod(),
+                            poolOperationMap.getDownGracePeriodUnit(),
+                            poolOperationMap.isHandleRestarts(),
+                            poolOperationMap.getMaxConcurrentRunning(),
                             poolOperationMap.getScanWindow(),
                             poolOperationMap.getScanWindowUnit(),
                             poolOperationMap.getTimeout(),

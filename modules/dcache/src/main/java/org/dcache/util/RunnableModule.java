@@ -85,9 +85,13 @@ public abstract class RunnableModule implements Runnable {
         return timeoutUnit;
     }
 
-    public void initialize() {
+    public synchronized void initialize() {
         myThread = new Thread(this, this.getClass().getSimpleName());
         myThread.start();
+    }
+
+    public synchronized boolean isRunning() {
+        return myThread != null;
     }
 
     public void setTimeout(long timeout) {
@@ -98,11 +102,12 @@ public abstract class RunnableModule implements Runnable {
         this.timeoutUnit = timeoutUnit;
     }
 
-    public void shutdown() {
+    public synchronized void shutdown() {
         threadInterrupt();
+        myThread = null;
     }
 
-    protected void threadInterrupt() {
+    protected synchronized void threadInterrupt() {
         if (myThread != null) {
             myThread.interrupt();
         }

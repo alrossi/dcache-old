@@ -465,6 +465,7 @@ public final class PnfsOperationMap extends RunnableModule {
         return deque.get(pnfsId);
     }
 
+    @Override
     public void initialize() {
         super.initialize();
         startCheckpointer();
@@ -643,6 +644,13 @@ public final class PnfsOperationMap extends RunnableModule {
         this.poolTaskCompletionHandler = poolTaskCompletionHandler;
     }
 
+    @Override
+    public void shutdown() {
+        stopCheckpointer();
+        super.shutdown();
+        deque.clear();
+    }
+
     public long size() {
         return deque.size();
     }
@@ -654,7 +662,9 @@ public final class PnfsOperationMap extends RunnableModule {
 
     public void stopCheckpointer() {
         checkpointer.running = false;
-        checkpointer.thread.interrupt();
+        if (checkpointer.thread != null) {
+            checkpointer.thread.interrupt();
+        }
     }
 
     /**

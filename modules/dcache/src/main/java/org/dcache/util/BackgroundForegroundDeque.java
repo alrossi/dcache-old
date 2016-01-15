@@ -87,6 +87,18 @@ public final class BackgroundForegroundDeque<K, V extends Backgroundable> {
     private Deque<V> foreground = new ArrayDeque<>();
     private Deque<V> background = new ArrayDeque<>();
 
+    public void clear() {
+        synchronized(foreground) {
+            foreground.clear();
+        }
+
+        synchronized(background) {
+            background.clear();
+        }
+
+        map.clear();
+    }
+
     public V get(K key) {
         return map.get(key);
     }
