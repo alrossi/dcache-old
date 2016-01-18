@@ -1,0 +1,59 @@
+# Starts resilience with an independent Chimera provider
+
+onerror shutdown
+check -strong resilience.enabled
+
+# start only if 'resilience.enabled' is true
+define env resilience.exe endExe
+  onerror shutdown
+
+  check resilience.cell.subscribe
+  check -strong resilience.cell.name
+  check -strong resilience.cell.export
+  check -strong resilience.db.dialect
+  check -strong resilience.db.user
+  check -strong resilience.db.url
+  check -strong resilience.db.connections.idle
+  check -strong resilience.db.connections.max
+  check resilience.db.password
+  check resilience.db.password.file
+  check -strong resilience.home
+  check -strong resilience.inaccessible-files.directory
+  check -strong resilience.pnfs-fetch-size
+  check -strong resilience.pnfs-scan.period
+  check -strong resilience.pnfs-scan.period.unit
+  check -strong resilience.cache-expiry
+  check -strong resilience.cache-expiry.unit
+  check -strong resilience.submit-threads
+  check -strong resilience.pnfs-op-threads
+  check -strong resilience.file-copy-threads
+  check -strong resilience.pool-scan-threads
+  check -strong resilience.db.connections.max
+  check -strong resilience.db.connections.idle
+  check -strong resilience.pool-down-grace-period
+  check -strong resilience.pool-down-grace-period.unit
+  check -strong resilience.scan-on-pool-restart
+  check -strong resilience.pool-down-grace-period.unit
+  check -strong resilience.startup-delay-sample-interval
+  check -strong resilience.startup-delay-sample-interval.unit
+  check -strong resilience.pool-scan.period
+  check -strong resilience.pool-scan.period.unit
+  check -strong resilience.pool-scan.window
+  check -strong resilience.pool-scan.window.unit
+  check -strong resilience.pool-selection-strategy
+  check -strong resilience.max-retries
+  check -strong resilience.checkpoint-expiry
+  check -strong resilience.checkpoint-expiry.unit
+  check -strong resilience.history.buffer-size
+    
+  create org.dcache.cells.UniversalSpringCell ${resilience.cell.name} \
+     "classpath:org/dcache/resilience/resilience.xml \
+          -export=${resilience.cell.export} \
+          -subscribe=${resilience.cell.subscribe} \
+          -namespace-provider=org.dcache.chimera.namespace.ChimeraNameSpaceProviderFactory \
+         "
+endExe
+
+onerror shutdown
+eval ${resilience.enabled} true ==
+exec env resilience.exe -ifok

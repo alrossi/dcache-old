@@ -19,7 +19,7 @@ import org.dcache.services.info.gathers.cells.CellInfoMsgHandler;
 
 /**
  * This class handles incoming messages from the RoutingMgr cell of some specific domain.  The messages are the
- * result of an "ls -x" admin command, which returns a dump of that RoutingMgr's current routing knowledge.
+ * result of an "ls -x" admin command, which returns a print of that RoutingMgr's current routing knowledge.
  * <p>
  * The message is an array of three items: the domain Name (that the RoutingMgr cell is running within), the
  * Set of locally registered cells and the knowledge of remote cells.  The remote knowledge is in the form of a Map between

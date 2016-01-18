@@ -37,7 +37,7 @@ class Link implements SelectionLink, Serializable {
     public Collection<SelectionPoolGroup> getPoolGroupsPointingTo() {
         Collection<SelectionPoolGroup> pGroups = new ArrayList<>();
         for (PoolCore pGroup : _poolList.values()) {
-            PGroup newPGroup = new PGroup(pGroup.getName());
+            PGroup newPGroup = new PGroup(pGroup.getName(), pGroup.resilient);
             pGroups.add(newPGroup);
         }
         return pGroups;
