@@ -76,7 +76,7 @@ import diskCacheV111.vehicles.RemoveStorageUnitsFromGroupMessage;
 import dmg.cells.nucleus.CellMessageReceiver;
 import org.dcache.pool.migration.PoolMigrationCopyFinishedMessage;
 import org.dcache.resilience.data.PnfsUpdate;
-import org.dcache.resilience.data.PnfsUpdate.MessageType;
+import org.dcache.resilience.data.MessageType;
 import org.dcache.resilience.data.PoolInfoMap;
 import org.dcache.resilience.data.PoolOperationMap;
 import org.dcache.resilience.data.PoolStateUpdate;

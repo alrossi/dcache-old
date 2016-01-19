@@ -81,7 +81,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
-import org.dcache.resilience.data.PnfsUpdate.MessageType;
+import org.dcache.resilience.data.MessageType;
 import org.dcache.resilience.handlers.PnfsOperationHandler.Type;
 
 /**

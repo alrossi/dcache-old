@@ -61,7 +61,7 @@ package org.dcache.resilience.data;
 
 import diskCacheV111.pools.PoolV2Mode;
 import diskCacheV111.vehicles.PoolStatusChangedMessage;
-import org.dcache.resilience.data.PnfsUpdate.MessageType;
+import org.dcache.resilience.data.MessageType;
 
 /**
  * <p> Interprets a {@link PoolStatusChangedMessage}

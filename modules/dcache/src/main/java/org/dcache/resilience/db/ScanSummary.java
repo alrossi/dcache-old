@@ -59,7 +59,7 @@ documents or software obtained from this server.
  */
 package org.dcache.resilience.db;
 
-import org.dcache.resilience.data.PnfsUpdate.MessageType;
+import org.dcache.resilience.data.MessageType;
 import org.dcache.resilience.util.PoolSelectionUnitDecorator.SelectionAction;
 
 /**

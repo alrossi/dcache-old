@@ -73,7 +73,7 @@ import diskCacheV111.util.CacheException;
 import diskCacheV111.util.PnfsId;
 import org.dcache.resilience.TestBase;
 import org.dcache.resilience.TestSynchronousExecutor.Mode;
-import org.dcache.resilience.data.PnfsUpdate.MessageType;
+import org.dcache.resilience.data.MessageType;
 import org.dcache.resilience.handlers.PoolTaskCompletionHandler;
 import org.dcache.resilience.util.InaccessibleFileHandler;
 import org.dcache.util.BackgroundForegroundProcessor;

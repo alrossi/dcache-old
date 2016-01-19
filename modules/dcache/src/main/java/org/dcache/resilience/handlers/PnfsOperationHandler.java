@@ -86,7 +86,7 @@ import org.dcache.pool.repository.StickyRecord;
 import org.dcache.resilience.data.PnfsOperation;
 import org.dcache.resilience.data.PnfsOperationMap;
 import org.dcache.resilience.data.PnfsUpdate;
-import org.dcache.resilience.data.PnfsUpdate.MessageType;
+import org.dcache.resilience.data.MessageType;
 import org.dcache.resilience.data.PoolInfoMap;
 import org.dcache.resilience.data.StorageUnitConstraints;
 import org.dcache.resilience.db.NamespaceAccess;

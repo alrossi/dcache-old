@@ -89,8 +89,7 @@ import org.dcache.vehicles.FileAttributes;
  * @see PnfsOperationMap#register(PnfsUpdate)
  * @see PnfsOperationHandler#handleLocationUpdate(PnfsUpdate)
  * @see ResilienceMessageHandler#updatePnfsLocation(PnfsUpdate)
- * @see LocalNamespaceAccess#handleQuery(Connection,
- *  String, MessageType, SelectionAction, Integer, Integer, ScanSummary)
+ * @see LocalNamespaceAccess#handleQuery(Connection, ScanSummary)
  *
  * Created by arossi on 09/11/2015.
  */
@@ -160,14 +159,6 @@ public final class PnfsUpdate {
                          pnfsId);
             return null;
         }
-    }
-
-    public enum MessageType {
-        CORRUPT_FILE,
-        CLEAR_CACHE_LOCATION,
-        NEW_FILE_LOCATION,
-        POOL_STATUS_DOWN,
-        POOL_STATUS_RESTART
     }
 
     public final PnfsId  pnfsId;

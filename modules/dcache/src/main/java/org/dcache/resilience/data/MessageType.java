@@ -57,62 +57,15 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.resilience.util;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.Callable;
-import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
-
-import org.dcache.pool.classic.Cancellable;
-import org.dcache.resilience.data.MessageType;
-import org.dcache.resilience.db.ScanSummary;
-import org.dcache.resilience.handlers.PoolOperationHandler;
-import org.dcache.resilience.util.PoolSelectionUnitDecorator.SelectionAction;
+package org.dcache.resilience.data;
 
 /**
- * <p>Simple wrapper for calling the
- * {@link PoolOperationHandler) method.
- * The task is cancellable through its {@link Future}.</p>
- * <p>
- * Created by arossi on 8/6/15.
+ * Created by arossi on 01/19/2016.
  */
-public final class PoolScanTask implements Cancellable, Callable<Void> {
-    private static final Logger LOGGER
-                    = LoggerFactory.getLogger(PoolScanTask.class);
-
-    private final PoolOperationHandler handler;
-    private final ScanSummary scan;
-    private Future future;
-
-    public PoolScanTask(String pool,
-                        MessageType type,
-                        SelectionAction action,
-                        Integer group,
-                        Integer storageUnit,
-                        PoolOperationHandler handler) {
-        scan = new ScanSummary(pool, type, action, group, storageUnit);
-        this.handler = handler;
-    }
-
-    @Override
-    public Void call() {
-        MessageGuard.setResilienceSession();
-        handler.handlePoolScan(scan);
-        return null;
-    }
-
-    @Override
-    public synchronized void cancel() {
-        scan.setCancelled(true);
-        if (future != null) {
-            future.cancel(true);
-        }
-    }
-
-    public void submit() {
-        future = handler.getScanService().submit(new FutureTask<Void>(this));
-    }
+public enum MessageType {
+    CORRUPT_FILE,
+    CLEAR_CACHE_LOCATION,
+    NEW_FILE_LOCATION,
+    POOL_STATUS_DOWN,
+    POOL_STATUS_RESTART
 }

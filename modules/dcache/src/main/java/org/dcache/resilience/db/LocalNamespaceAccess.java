@@ -62,7 +62,6 @@ package org.dcache.resilience.db;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -70,6 +69,7 @@ import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.Map;
 import java.util.TreeMap;
+import javax.sql.DataSource;
 
 import diskCacheV111.namespace.NameSpaceProvider;
 import diskCacheV111.util.CacheException;
@@ -80,7 +80,7 @@ import org.dcache.chimera.IOHimeraFsException;
 import org.dcache.commons.util.SqlHelper;
 import org.dcache.resilience.data.PnfsOperationMap;
 import org.dcache.resilience.data.PnfsUpdate;
-import org.dcache.resilience.data.PnfsUpdate.MessageType;
+import org.dcache.resilience.data.MessageType;
 import org.dcache.resilience.handlers.PnfsOperationHandler;
 import org.dcache.resilience.handlers.PoolOperationHandler;
 import org.dcache.resilience.util.PoolSelectionUnitDecorator.SelectionAction;
@@ -196,8 +196,9 @@ public class LocalNamespaceAccess implements NamespaceAccess {
 
     /**
      * Database connection pool for queries returning multiple pnfsid
-     * info.  This should be independent of the main pool
-     * for the namespace.
+     * info.  This may be independent of the main pool
+     * for the namespace (in embedded mode), or may be shared
+     * (in standalone mode).
      */
     private DataSource connectionPool;
 
@@ -365,8 +366,6 @@ public class LocalNamespaceAccess implements NamespaceAccess {
      * have access latency = ONLINE.  These are sent one-by-one to the
      * {@link PnfsOperationHandler} to either create or update a corresponding
      * entry in the {@link PnfsOperationMap}.</p>
-     *
-     * @return the number of pnfsids which needed processing and the total number of bytes.
      */
     private void handleQuery(Connection connection, ScanSummary scan)
                     throws SQLException, CacheException {
