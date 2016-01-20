@@ -9,18 +9,25 @@ class PGroup extends PoolCore implements SelectionPoolGroup {
     private static final long serialVersionUID = 3883973457610397314L;
     final Map<String, Pool> _poolList = new ConcurrentHashMap<>();
 
-    PGroup(String name) {
+    PGroup(String name, boolean resilient) {
         super(name);
+        this.resilient = resilient;
     }
 
-    private String[] getPools()
-    {
-        return _poolList.keySet().toArray(new String[_poolList.size()]);
+    @Override
+    public boolean isResilient() {
+        return resilient;
     }
 
     @Override
     public String toString() {
-        return getName() + "  (links=" + _linkList.size() + ";pools=" + _poolList.size() + ")";
+        return String.format(
+                        "%s %s (links=%s; pools=%s; resilient=%s)",
+                        super.toString(), getName(), _linkList.size(),
+                        _poolList.size(), resilient);
     }
 
+    private String[] getPools() {
+        return _poolList.keySet().toArray(new String[_poolList.size()]);
+    }
 }

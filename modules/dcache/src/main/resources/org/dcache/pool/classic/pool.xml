@@ -139,6 +139,8 @@
               value="#{ '${pool.lfs}' == 'volatile' or '${pool.lfs}' == 'transient' }"/>
     <property name="maxDiskSpaceString" value="${pool.size}"/>
     <property name="metaDataStore" ref="meta-store"/>
+    <property name="resilienceEnabled" value="${pool.enable.resilience}"/>
+    <property name="resilienceDestination" value="${pool.destination.resilience}"/>
   </bean>
 
   <bean id="repository-interpreter" class="org.dcache.pool.repository.RepositoryInterpreter">
@@ -149,10 +151,10 @@
   <bean id="scanner" class="org.dcache.pool.classic.ChecksumScanner">
     <description>Implements background checksum verification</description>
     <property name="poolName" value="${pool.name}"/>
-    <property name="pnfs" ref="pnfs"/>
     <property name="repository" ref="rep"/>
     <property name="checksumModule" ref="csm"/>
     <property name="scrubberStateFile" value="${pool.path}/scrubber.state"/>
+    <property name="corruptFileTopic" ref="corrupt-file-topic"/>
   </bean>
 
   <bean id="csm" class="org.dcache.pool.classic.ChecksumModuleV1">
@@ -203,6 +205,11 @@
   <bean id="billing-stub" class="org.dcache.cells.CellStub">
       <description>Billing communication stub</description>
       <property name="destination" value="${pool.service.billing}"/>
+  </bean>
+
+  <bean id="corrupt-file-topic" class="org.dcache.cells.CellStub">
+        <description>Topic communication stub</description>
+        <property name="destination" value="${pool.destination.corrupt-file}"/>
   </bean>
 
   <bean id="pnfsStub" class="org.dcache.cells.CellStub">
@@ -463,4 +470,28 @@
 
     <task:scheduler id="healthcheck-scheduler"/>
   </beans>
+
+  <!-- **************************************** Resilience ****************************************** -->
+
+  <beans profile="resilience-true">
+    <bean id="resilience-executor" class="org.dcache.util.CDCFixedPoolTaskExecutor"
+          init-method="initialize" destroy-method="shutdownNow">
+      <property name="numberOfThreads" value="${pool.resilience.request-threads}"/>
+    </bean>
+
+    <bean id="repository-proxy" class="org.dcache.pool.repository.v5.RepositoryResilienceProxy">
+      <description>Specialized access to the repository</description>
+      <property name="repository" ref="rep"/>
+      <property name="pool" ref="pool"/>
+      <property name="replicaStickyExpiry" value="${pool.resilience.sticky-lifetime}"/>
+      <property name="replicaStickyExpiryUnit" value="${pool.resilience.sticky-lifetime.unit}"/>
+    </bean>
+
+    <bean id="resilience-message-handler" class="org.dcache.pool.resilience.ResilienceMessageHandler">
+      <description>For communication with the replica manager</description>
+      <property name="executionService" ref="resilience-executor"/>
+      <property name="proxy" ref="repository-proxy"/>
+    </bean>
+  </beans>
+
 </beans>

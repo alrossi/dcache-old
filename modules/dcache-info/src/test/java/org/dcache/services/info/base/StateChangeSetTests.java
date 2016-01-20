@@ -481,8 +481,8 @@ public class StateChangeSetTests {
     public void testDumpContentsInitial() {
         String dump = _scs.dumpContents();
 
-        assertNotNull( "checking initial dump not null", dump);
-        assertTrue( "checking initial dump not empty", dump.length() > 0);
+        assertNotNull( "checking initial print not null", dump);
+        assertTrue( "checking initial print not empty", dump.length() > 0);
     }
 
     @Test
@@ -495,10 +495,10 @@ public class StateChangeSetTests {
 
         String afterUpdateDump = _scs.dumpContents();
 
-        assertNotNull( "checking dump after update not null", afterUpdateDump);
-        assertTrue( "checking dump after update not empty",
+        assertNotNull( "checking print after update not null", afterUpdateDump);
+        assertTrue( "checking print after update not empty",
                     afterUpdateDump.length() > 0);
-        assertFalse( "checking dump before and after add are not equal",
+        assertFalse( "checking print before and after add are not equal",
                      initialDump.equals( afterUpdateDump));
     }
 

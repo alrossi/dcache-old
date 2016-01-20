@@ -1,0 +1,290 @@
+WRITE ONLY
+
+    RES_OFF     200 X 10 X 4h           DONE, but we can rerun with only 100
+    EMBEDDED    200 X 10 X 4h           "
+    STANDALONE  200 X 10 X 4h           "
+
+FILL POOLS TO 1M each using RES_OFF     DONE
+
+Start a single pool, see what happens.
+
+Observations.
+
+1.  Slow pool restarts when they come on line with 1M+ files.
+2.  Hz on single pool scan is slow
+3.  Migration tasks take longer to complete
+
+    -   pool response degradation manifests itself via errors like:
+        Tue Dec 22 10:29:36 CST 2015 (000052EBCAA6F127402196BBDD1D99BEFAED REPLICA)(COPY ABORTED)(parent none, retried 0)
+        CacheException: Migration task for 000052EBCAA6F127402196BBDD1D99BEFAED failed:
+        Transfer to [dmsdca21-1@local] failed (Ping failed (Unexpected reply: p2p ls -binary 0)).
+
+4,  Operations get stuck in the running state.
+
+    -   Are we not receiving the proper response from the migration Task?
+        or is there another issue?
+
+5.  Cancellation fails to liberate the running queue for the next set of jobs.
+
+        there seems to be an incorrect behavior in the running counter upon cancellation.
+
+
+Start up rest of system
+
+POOL STATUS A:
+
+    EMBEDDED    bring down several, then restart later
+    STANDALONE  bring down several, then restart later
+
+POOL STATUS B:
+
+    repeat A with incoming writes
+
+    ---------------------------------------------------------------------------------------------------------------------------------
+
+    1a)  Changes to PSU
+
+    deleted:    modules/dcache/src/main/java/org/dcache/poolmanager/replication/PoolSelectionUnitDecorator.java
+
+    modified:   modules/dcache/src/main/java/diskCacheV111/poolManager/Link.java
+    modified:   modules/dcache/src/main/java/diskCacheV111/poolManager/PGroup.java
+    modified:   modules/dcache/src/main/java/diskCacheV111/poolManager/PoolCore.java
+    modified:   modules/dcache/src/main/java/diskCacheV111/poolManager/PoolSelectionUnit.java
+    modified:   modules/dcache/src/main/java/diskCacheV111/poolManager/PoolSelectionUnitAccess.java
+    modified:   modules/dcache/src/main/java/diskCacheV111/poolManager/PoolSelectionUnitCommands.java
+    modified:   modules/dcache/src/main/java/diskCacheV111/poolManager/PoolSelectionUnitV2.java
+    new file:   modules/dcache/src/main/java/diskCacheV111/poolManager/StorageUnit.java
+
+    modified:   modules/dcache-info/src/main/java/org/dcache/services/info/gathers/poolmanager/PoolGroupInfoMsgHandler.java
+    modified:   modules/dcache-info/src/main/java/org/dcache/services/info/gathers/poolmanager/UnitInfoMsgHandler.java
+    modified:   modules/dcache-info/src/main/java/org/dcache/services/info/gathers/routingmanager/RoutingMgrMsgHandler.java
+    modified:   modules/dcache-info/src/test/java/org/dcache/services/info/base/StateChangeSetTests.java
+
+    ---------------------------------------------------------------------------------------------------------------------------------
+
+    1b)  Messages in support of PSU changes
+
+    new file:   modules/dcache/src/main/java/diskCacheV111/vehicles/AddStorageUnitToGroupsMessage.java
+    new file:   modules/dcache/src/main/java/diskCacheV111/vehicles/AddStorageUnitsToGroupMessage.java
+    new file:   modules/dcache/src/main/java/diskCacheV111/vehicles/ReloadPsuMessage.java
+    new file:   modules/dcache/src/main/java/diskCacheV111/vehicles/RemoveStorageUnitsFromGroupMessage.java
+    new file:   modules/dcache-vehicles/src/main/java/org/dcache/vehicles/resilience/AddPoolToPoolGroupMessage.java
+    new file:   modules/dcache-vehicles/src/main/java/org/dcache/vehicles/resilience/ModifyStorageUnitMessage.java
+    new file:   modules/dcache-vehicles/src/main/java/org/dcache/vehicles/resilience/RemovePoolFromPoolGroupMessage.java
+    new file:   modules/dcache-vehicles/src/main/java/org/dcache/vehicles/resilience/RemovePoolGroupMessage.java
+    new file:   modules/dcache-vehicles/src/main/java/org/dcache/vehicles/resilience/RemovePoolMessage.java
+    new file:   modules/dcache-vehicles/src/main/java/org/dcache/vehicles/resilience/RemoveStorageUnitFromPoolGroupsMessage.java
+    new file:   modules/dcache-vehicles/src/main/java/org/dcache/vehicles/resilience/RemoveStorageUnitMessage.java
+
+    ---------------------------------------------------------------------------------------------------------------------------------
+
+    1c) Psu-related utilities
+
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/PoolTagConstraintDiscriminator.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/AbstractLocationExtractor.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/CostModuleLocationExtractor.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/StorageUnitInfoExtractor.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/PoolSelectionUnitDecorator.java
+
+    ---------------------------------------------------------------------------------------------------------------------------------
+
+    2) Changes to PoolManager
+
+    modified:   modules/dcache/src/main/java/diskCacheV111/poolManager/PoolManagerV5.java
+
+    ---------------------------------------------------------------------------------------------------------------------------------
+
+    3) Alarm message support
+
+    modified:   modules/common/src/main/java/org/dcache/alarms/PredefinedAlarm.java
+    modified:   modules/dcache/src/main/java/org/dcache/pool/classic/ChecksumScanner.java
+    new file:   modules/dcache-vehicles/src/main/java/org/dcache/vehicles/CorruptFileMessage.java
+
+    ---------------------------------------------------------------------------------------------------------------------------------
+
+    4) Utils extending CDC-preserving thread executor
+
+    new file:   modules/dcache/src/main/java/org/dcache/util/CDCFixedPoolTaskExecutor.java
+    new file:   modules/dcache/src/main/java/org/dcache/util/CDCScheduledPoolTaskExecutor.java
+    new file:   modules/dcache/src/main/java/org/dcache/util/CDCTaskExecutor.java
+
+    ---------------------------------------------------------------------------------------------------------------------------------
+
+    5) Changes to pool
+
+    modified:   modules/dcache-vehicles/src/main/java/diskCacheV111/pools/PoolV2Mode.java
+    modified:   modules/dcache/src/main/java/org/dcache/pool/classic/PoolV4.java
+    modified:   modules/dcache/src/main/java/org/dcache/pool/repository/ConsistentStore.java
+    modified:   modules/dcache/src/main/java/org/dcache/pool/repository/v5/CacheRepositoryV5.java
+    modified:   modules/dcache/src/main/java/org/dcache/pool/repository/v5/WriteHandleImpl.java
+    modified:   modules/dcache/src/main/java/diskCacheV111/util/PnfsHandler.java
+    modified:   modules/dcache/src/main/resources/org/dcache/pool/classic/pool.xml
+    modified:   modules/dcache/src/test/java/org/dcache/pool/repository/ConsistentStoreTest.java
+    modified:   modules/dcache/src/test/java/org/dcache/tests/repository/RepositorySubsystemTest.java
+
+    new file:   modules/dcache-vehicles/src/main/java/org/dcache/vehicles/resilience/GetPoolModeMessage.java
+    new file:   modules/dcache-vehicles/src/main/java/org/dcache/vehicles/resilience/GetPoolTagsMessage.java
+    new file:   modules/dcache-vehicles/src/main/java/diskCacheV111/vehicles/NotifyReplicaMessage.java
+    new file:   modules/dcache-vehicles/src/main/java/org/dcache/vehicles/resilience/EnsureSystemStickyBitMessage.java
+    new file:   modules/dcache-vehicles/src/main/java/org/dcache/vehicles/resilience/RemoveReplicaMessage.java
+    new file:   modules/dcache-vehicles/src/main/java/org/dcache/vehicles/resilience/ResilienceStickyBitMessage.java
+    new file:   modules/dcache/src/main/java/org/dcache/pool/repository/v5/RepositoryResilienceProxy.java
+
+    new file:   modules/dcache/src/main/java/org/dcache/pool/resilience/tasks/GetPoolMode.java
+    new file:   modules/dcache/src/main/java/org/dcache/pool/resilience/tasks/GetPoolTags.java
+    new file:   modules/dcache/src/main/java/org/dcache/pool/resilience/tasks/InnerCommandTask.java
+    new file:   modules/dcache/src/main/java/org/dcache/pool/resilience/tasks/RemoveReplica.java
+    new file:   modules/dcache/src/main/java/org/dcache/pool/resilience/tasks/SetResilienceSticky.java
+    new file:   modules/dcache/src/main/java/org/dcache/pool/resilience/tasks/SetSystemSticky.java
+
+    ---------------------------------------------------------------------------------------------------------------------------------
+
+    6)  Selection utilities for migration task
+
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/DegenerateSelectionStrategy.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/RandomSelectionStrategy.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/StaticSinglePoolList.java
+    ---------------------------------------------------------------------------------------------------------------------------------
+
+    7) Utilities -- general purpose
+
+    new file:   modules/dcache/src/main/java/org/dcache/util/BackgroundForegroundDeque.java
+    new file:   modules/dcache/src/main/java/org/dcache/util/BackgroundForegroundProcessor.java
+    new file:   modules/dcache/src/main/java/org/dcache/util/Backgroundable.java
+    new file:   modules/dcache/src/main/java/org/dcache/util/CellStubFactory.java
+    new file:   modules/dcache/src/main/java/org/dcache/util/CollectionElementSelectionStrategy.java
+    new file:   modules/dcache/src/main/java/org/dcache/util/ExceptionMessage.java
+    new file:   modules/dcache/src/main/java/org/dcache/util/NonReindexableList.java
+    new file:   modules/dcache/src/main/java/org/dcache/util/RunnableModule.java
+
+    ---------------------------------------------------------------------------------------------------------------------------------
+
+    8a) Pool Info Map utilities
+
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/data/PoolInformation.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/data/PoolStateUpdate.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/data/PoolStatusForResilience.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/data/ResilienceMarker.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/data/StorageUnitConstraints.java
+
+    8b)  Pool Info Map
+
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/data/PoolInfoMap.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/CopyLocationExtractor.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/RemoveLocationExtractor.java
+
+    ---------------------------------------------------------------------------------------------------------------------------------
+
+    9)  Namespace query support
+
+
+
+
+
+
+
+
+
+    Data filters
+
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/data/PoolFilter.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/data/PoolMatcher.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/data/PnfsFilter.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/data/PnfsMatcher.java
+
+
+
+
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/data/PoolOperationMap.java
+
+
+    modified:   modules/dcache-chimera/src/main/resources/diskCacheV111/namespace/pnfsmanager-chimera.xml
+    modified:   modules/dcache/src/main/resources/diskCacheV111/poolManager/poolmanager.xml
+
+
+    modified:   packages/fhs/src/main/assembly/filter.properties
+    modified:   packages/fhs/src/main/rpm/dcache-server.spec
+    modified:   packages/pom.xml
+    modified:   packages/system-test/src/main/assembly/filter.properties
+    modified:   packages/tar/src/main/assembly/filter.properties
+    modified:   pom.xml
+    modified:   skel/share/defaults/dcache.properties
+    modified:   skel/share/defaults/pnfsmanager.properties
+    modified:   skel/share/defaults/pool.properties
+    modified:   skel/share/defaults/poolmanager.properties
+    modified:   skel/share/services/pnfsmanager.batch
+    modified:   skel/share/services/pool.batch
+    modified:   skel/share/services/poolmanager.batch
+    new file:   modules/dcache-resilience/pom.xml
+    new file:   modules/dcache-resilience/src/main/resources/org/dcache/resilience/resilience.xml
+    new file:   modules/dcache-resilience/src/test/resources/TESTING
+
+
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/data/PoolOperation.java
+
+    new file:   modules/dcache/src/main/java/org/dcache/pool/resilience/ResilienceMessageHandler.java
+
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/admin/EmbeddedResilienceCommands.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/admin/ResilienceCommands.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/admin/StandaloneResilienceCommands.java
+
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/data/PnfsOperation.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/data/PnfsOperationMap.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/data/PnfsUpdate.java
+
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/db/LocalNamespaceAccess.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/db/NamespaceAccess.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/db/ScanSummary.java
+
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/handlers/PnfsOperationHandler.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/handlers/PnfsTaskCompletionHandler.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/handlers/PoolOperationHandler.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/handlers/PoolTaskCompletionHandler.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/handlers/ResilienceMessageHandler.java
+
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/BackloggedMessageHandler.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/BrokenFileTask.java
+
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/CacheExceptionUtils.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/CheckpointUtils.java
+
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/InaccessibleFileAlarmSender.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/InaccessibleFileHandler.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/MapInitializer.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/MessageGuard.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/Operation.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/OperationHistory.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/OperationStatistics.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/PoolScanTask.java
+    new file:   modules/dcache/src/main/java/org/dcache/resilience/util/ResilientFileTask.java
+
+
+
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/TestBase.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/TestCostModule.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/TestData.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/TestMessageProcessor.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/TestNamespaceAccess.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/TestNotifyProcessor.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/TestPoolMonitor.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/TestSelectionUnit.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/TestStub.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/TestSynchronousExecutor.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/data/PnfsFilterTest.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/data/PnfsOperationMapTest.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/data/PoolFilterTest.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/data/PoolInfoMapTest.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/data/PoolOperationMapTest.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/data/PoolStatusForReplicationTest.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/handlers/PnfsOperationHandlerTest.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/handlers/PoolOperationHandlerTest.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/handlers/ResilienceMessageHandlerTest.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/util/CopyLocationExtractorTest.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/util/MessageGuardTest.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/util/NonReindexableListTest.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/util/PoolManagerInfoExtractorTest.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/util/PoolSelectionUnitDecoratorTest.java
+    new file:   modules/dcache/src/test/java/org/dcache/resilience/util/RemoveLocationExtractorTest.java
+    new file:   skel/share/defaults/resilience.properties
+    new file:   skel/share/services/resilience.batch
+    new file:   skel/var/resilience/.empty-dir

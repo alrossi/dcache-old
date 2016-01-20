@@ -5,6 +5,7 @@ onerror shutdown
 check -strong poolmanager.cell.name
 check -strong poolmanager.cell.export
 check poolmanager.cell.subscribe
+check -strong poolmanager.enable.resilience
 check -strong poolmanager.plugins.selection-unit
 check -strong poolmanager.plugins.quota-manager
 check -strong poolmanager.service.pnfsmanager
@@ -62,10 +63,26 @@ define context poolmanager.defaults endDefine
     pm create -type=wass default
 endDefine
 
+# Additional params, if 'poolmanager.enable.resilience' is true
+define env resilience.exe endExe
+  onerror shutdown
+
+  check -strong poolmanager.resilience.threads
+  check -strong poolmanager.service.pnfsmanager.timeout
+  check -strong poolmanager.service.pnfsmanager.timeout.unit
+
+endExe
+
+onerror continue
+eval ${poolmanager.enable.resilience} true ==
+exec env resilience.exe -ifok
+onerror shutdown
+
 # Start PoolManager
 create org.dcache.cells.UniversalSpringCell ${poolmanager.cell.name} \
    "!poolmanager.defaults \
     classpath:diskCacheV111/poolManager/poolmanager.xml \
+    -profiles=resilience-${poolmanager.enable.resilience} \
     -setupFile=${poolmanager.setup.file} \
     -export=${poolmanager.cell.export} \
     -subscribe=${poolmanager.cell.subscribe} \

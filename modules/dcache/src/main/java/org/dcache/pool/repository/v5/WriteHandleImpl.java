@@ -15,9 +15,10 @@ import diskCacheV111.util.DiskErrorCacheException;
 import diskCacheV111.util.FileCorruptedCacheException;
 import diskCacheV111.util.PnfsHandler;
 import diskCacheV111.util.PnfsId;
-
+import diskCacheV111.vehicles.NotifyReplicaMessage;
 import org.dcache.alarms.AlarmMarkerFactory;
 import org.dcache.alarms.PredefinedAlarm;
+import org.dcache.cells.CellStub;
 import org.dcache.pool.repository.Allocator;
 import org.dcache.pool.repository.EntryState;
 import org.dcache.pool.repository.MetaDataRecord;
@@ -29,10 +30,14 @@ import org.dcache.vehicles.FileAttributes;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.Iterables.*;
-import java.util.Collections;
+import static com.google.common.collect.Iterables.concat;
+import static com.google.common.collect.Iterables.isEmpty;
+import static com.google.common.collect.Iterables.unmodifiableIterable;
 import static java.util.Collections.singleton;
-import static org.dcache.namespace.FileAttribute.*;
+import static org.dcache.namespace.FileAttribute.ACCESS_LATENCY;
+import static org.dcache.namespace.FileAttribute.CHECKSUM;
+import static org.dcache.namespace.FileAttribute.RETENTION_POLICY;
+import static org.dcache.namespace.FileAttribute.SIZE;
 
 class WriteHandleImpl implements ReplicaDescriptor
 {
@@ -85,6 +90,9 @@ class WriteHandleImpl implements ReplicaDescriptor
     /** Last access time of new replica. */
     private Long _atime;
 
+    /** Topic for publishing resilience message, if activated. */
+    private CellStub _resilienceTopic;
+
     WriteHandleImpl(CacheRepositoryV5 repository,
                     Allocator allocator,
                     PnfsHandler pnfs,
@@ -92,7 +100,8 @@ class WriteHandleImpl implements ReplicaDescriptor
                     FileAttributes fileAttributes,
                     EntryState targetState,
                     List<StickyRecord> stickyRecords,
-                    Set<Repository.OpenFlags> flags) throws DiskErrorCacheException
+                    Set<Repository.OpenFlags> flags,
+                    CellStub resilienceTopic) throws DiskErrorCacheException
     {
         _repository = checkNotNull(repository);
         _allocator = checkNotNull(allocator);
@@ -104,6 +113,7 @@ class WriteHandleImpl implements ReplicaDescriptor
         _stickyRecords = checkNotNull(stickyRecords);
         _state = HandleState.OPEN;
         _allocated = 0;
+        _resilienceTopic = resilienceTopic;
 
         checkState(_initialState != EntryState.FROM_CLIENT || _fileAttributes.isDefined(EnumSet.of(RETENTION_POLICY, ACCESS_LATENCY)));
         checkState(_initialState == EntryState.FROM_CLIENT || _fileAttributes.isDefined(SIZE));
@@ -276,6 +286,19 @@ class WriteHandleImpl implements ReplicaDescriptor
         }
     }
 
+    /**
+     * It is safer for the resilience system, if running, to respond to
+     * the new cache location after commit has occurred.  A proprietary
+     * message is sent and received in lieu of listening for one of the
+     * PnfsMessages.
+     */
+    private void notifyResilience() throws CacheException {
+        if (_resilienceTopic != null) {
+            _resilienceTopic.notify(new NotifyReplicaMessage(_entry.getPnfsId(),
+                                                             _repository.getPoolName()));
+        }
+    }
+
     private void registerFileAttributesInNameSpace()
             throws CacheException
     {
@@ -353,6 +376,11 @@ class WriteHandleImpl implements ReplicaDescriptor
             setToTargetState();
 
             setState(HandleState.COMMITTED);
+
+            /*
+             *  In case resilience is enabled.
+             */
+            notifyResilience();
         } catch (CacheException e) {
             /* If any of the PNFS operations return FILE_NOT_FOUND,
              * then we change the target state and the close method

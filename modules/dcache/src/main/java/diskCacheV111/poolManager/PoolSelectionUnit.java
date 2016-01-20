@@ -108,8 +108,6 @@ public interface PoolSelectionUnit  {
 
         /**
          * Returns the pool mode.
-         *
-         * @see setPoolMode
          */
         PoolV2Mode getPoolMode();
 
@@ -148,9 +146,12 @@ public interface PoolSelectionUnit  {
 
         void setAddress(CellAddressCore address);
     }
+
     interface SelectionPoolGroup extends SelectionEntity {
+        boolean isResilient();
     }
-   interface SelectionLinkGroup extends SelectionEntity{
+
+    interface SelectionLinkGroup extends SelectionEntity{
 	   void add(SelectionLink link);
 	   boolean remove(SelectionLink link);
 	   Collection<SelectionLink> getLinks();
@@ -167,29 +168,33 @@ public interface PoolSelectionUnit  {
 	   boolean isOnlineAllowed();
 	   boolean isNearlineAllowed();
 	}
+
     interface SelectionUnit extends SelectionEntity{
-        String getUnitType();
-        Collection<SelectionUnitGroup> getMemberOfUnitGroups();
+        public int getType();
+        public String getUnitType();
+        public Collection<SelectionUnitGroup> getMemberOfUnitGroups();
     }
 
     interface SelectionUnitGroup extends SelectionEntity {
         Collection<SelectionUnit> getMemeberUnits();
         Collection<SelectionLink> getLinksPointingTo();
     }
-   SelectionPool getPool(String poolName) ;
-   SelectionPool getPool(String poolName, boolean create) ;
-   SelectionLink getLinkByName(String linkName) throws NoSuchElementException ;
+
+   SelectionPool getPool( String poolName ) ;
+   SelectionPool getPool( String poolName , boolean create ) ;
+   SelectionLink getLinkByName( String linkName ) throws NoSuchElementException ;
    PoolPreferenceLevel []
-            match(DirectionType type, String net, String protocol,
-                  FileAttributes fileAttributes, String linkGroup) ;
+            match( DirectionType type, String net , String protocol,
+                   FileAttributes fileAttributes, String linkGroup ) ;
    String [] getActivePools() ;
-   String [] getDefinedPools(boolean enabledOnly) ;
+   String [] getDefinedPools( boolean enabledOnly ) ;
    String    getVersion() ;
-   String getNetIdentifier(String address) throws UnknownHostException;
-   String getProtocolUnit(String protocolUnitName) ;
+   String getNetIdentifier( String address ) throws UnknownHostException;
+   String getProtocolUnit( String protocolUnitName ) ;
+   StorageUnit getStorageUnit( String storageClass ) ;
    SelectionLinkGroup getLinkGroupByName(String linkGroupName) throws NoSuchElementException ;
    Collection<SelectionPool> getPoolsByPoolGroup(String poolGroup) throws NoSuchElementException;
-   Collection<SelectionPool> getAllDefinedPools(boolean enabledOnly) ;
+   Collection<SelectionPool> getAllDefinedPools( boolean enabledOnly ) ;
    Collection<SelectionPoolGroup> getPoolGroupsOfPool(String PoolName);
    Collection<SelectionLink> getLinksPointingToPoolGroup(String poolGroup) throws NoSuchElementException;
 

@@ -20,6 +20,7 @@ check -strong pool.authn.ocsp-mode
 check pool.authn.ciphers
 
 check -strong pool.limits.worker-threads
+check -strong pool.enable.resilience
 check -strong pool.enable.repository-check
 check -strong pool.enable.remove-precious-files-on-delete
 check -strong pool.plugins.meta
@@ -91,9 +92,26 @@ define context PoolDefaults endDefine
    movermap define GFtp-2  org.dcache.pool.movers.GFtpProtocol_2_nio
 endDefine
 
+
+# Additional params, if 'pool.enable.resilience' is true
+define env resilience.exe endExe
+  onerror shutdown
+
+    check -strong pool.resilience.request-threads
+    check -strong pool.resilience.sticky-lifetime
+    check -strong pool.resilience.sticky-lifetime.unit
+
+endExe
+
+onerror continue
+eval ${pool.enable.resilience} true ==
+exec env resilience.exe -ifok
+onerror shutdown
+
 create org.dcache.cells.UniversalSpringCell "${pool.cell.name}" \
     "!PoolDefaults classpath:org/dcache/pool/classic/pool.xml \
-    -export=${pool.cell.export} -cellClass=Pool -profiles=healthcheck-${pool.enable.repository-check} \
+    -export=${pool.cell.export} -cellClass=Pool \
+    -profiles=resilience-${pool.enable.resilience},healthcheck-${pool.enable.repository-check} \
     -cell.max-message-threads=${pool.cell.max-message-threads} -cell.max-messages-queued=${pool.cell.max-messages-queued} \
     -setupClass=pool -setupFile=\"${pool.path}/setup\" \
     -ftpAllowIncomingConnections=\"${pool.mover.ftp.allow-incoming-connections}\" \
