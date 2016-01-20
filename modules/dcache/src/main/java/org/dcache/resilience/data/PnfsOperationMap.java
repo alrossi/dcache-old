@@ -833,6 +833,8 @@ public final class PnfsOperationMap extends RunnableModule {
                                                                   operation.getPnfsId());
                     }
                     history.add(operation.toHistoryString(), failed);
+                    counters.incrementTimings(operation.getTimeInWait(),
+                                              operation.getTimeInRun());
                 }
             }
         });

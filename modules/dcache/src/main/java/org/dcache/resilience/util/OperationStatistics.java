@@ -95,10 +95,11 @@ public final class OperationStatistics {
     private static final Logger LOGGER = LoggerFactory.getLogger(
                     OperationStatistics.class);
 
-    private static final String FORMAT_MSG   = "    %-26s %15s %9s\n";
-    private static final String FORMAT_OPS   = "    %-26s %15s %9s %12s\n";
-    private static final String FORMAT_POOLS = "%-24s %15s %15s %15s %12s   %15s %15s %12s\n";
-    private static final String FORMAT_FILE  = "%-28s | %15s %9s %9s | %15s %9s %9s %12s | %15s\n";
+    private static final String FORMAT_MSG      = "    %-26s %15s %9s\n";
+    private static final String FORMAT_OPS      = "    %-26s %15s %9s %12s\n";
+    private static final String FORMAT_TIMING   = "    %-26s %15s %15s\n";
+    private static final String FORMAT_POOLS    = "%-24s %15s %15s %15s %12s   %15s %15s %12s\n";
+    private static final String FORMAT_FILE     = "%-28s | %15s %9s %9s | %15s %9s %9s %12s | %15s\n";
 
     private static final String MSGS_TITLE
                     = String.format("%-30s %15s %9s\n",
@@ -108,6 +109,10 @@ public final class OperationStatistics {
                     = String.format("%-30s %15s %9s %12s\n",
                                     CounterType.OPERATION.name(),
                                     "completed", "ops/sec", "failed");
+    private static final String TIMING_TITLE
+                    = String.format("%-30s %15s %15s\n",
+                        "PNFS Average Timing (secs)", "waiting", "running");
+
     private static final String POOLS_TITLE
                     = String.format(FORMAT_POOLS, "TRANSFERS BY POOL",
                                     "from", "to", "failed", "size",
@@ -179,6 +184,10 @@ public final class OperationStatistics {
 
     private long lastCheckpoint         = started.getTime();
     private long lastCheckpointDuration = 0;
+
+    private long totalWait          = 0;
+    private long totalRun           = 0;
+    private long totalOps           = 0;
 
     private File statisticsPath;
 
@@ -278,6 +287,12 @@ public final class OperationStatistics {
         if (counter != null) {
             counter.incrementAndGet();
         }
+    }
+
+    public synchronized void incrementTimings(long inWait, long inRun) {
+        totalWait += inWait;
+        totalRun  += inRun;
+        ++totalOps;
     }
 
     public void initialize() {
@@ -603,6 +618,18 @@ public final class OperationStatistics {
             builder.append(String.format(FORMAT_OPS, t, received,
                                          getRatePerSecond(current),
                                          failed));
+        }
+
+        builder.append("\n");
+        builder.append(TIMING_TITLE);
+
+        if (totalOps == 0) {
+            builder.append(String.format(FORMAT_TIMING, "0.00", "0.00"));
+        } else {
+            double Q = (double) totalOps;
+            builder.append(String.format(FORMAT_TIMING,
+                            String.format("%.2f %s", (double)totalWait/Q),
+                            String.format("%.2f %s", (double)totalRun/Q)));
         }
 
         builder.append("\n");

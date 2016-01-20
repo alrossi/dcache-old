@@ -142,6 +142,7 @@ public final class PnfsOperation implements Backgroundable {
     static final byte FAILED   = 4;     // CURRENT TASK FAILED WITH EXCEPTION
     static final byte VOID     = 5;     // NO FURTHER WORK NEEDS TO BE DONE
     static final byte ABORTED  = 6;     // CANNOT DO ANYTHING FURTHER
+    static final byte UNINITIALIZED = 7;
 
     private static final String TO_STRING =
                     "%s (%s %s)(%s %s)(parent %s, count %s, retried %s)";
@@ -181,12 +182,17 @@ public final class PnfsOperation implements Backgroundable {
     private ResilientFileTask task;
     private CacheException    exception;
 
+    private long              inWait = 0;
+    private long              inRun  = 0;
+    private long              lastStateChange;
+
     PnfsOperation(PnfsId pnfsId, int pgroup, Integer sunit, byte action,
                   short opCount, long size) {
         this(pnfsId, opCount, size);
         selectionAction = action;
         poolGroup = pgroup;
         storageUnit = sunit;
+        state = UNINITIALIZED;
     }
 
     PnfsOperation(PnfsId pnfsId, short opCount, long size) {
@@ -194,6 +200,7 @@ public final class PnfsOperation implements Backgroundable {
         this.opCount = opCount;
         retried = 0;
         this.size = size;
+        state = UNINITIALIZED;
     }
 
     @VisibleForTesting
@@ -317,6 +324,10 @@ public final class PnfsOperation implements Backgroundable {
         return target;
     }
 
+    public long getTimeInRun() { return inRun; }
+
+    public long getTimeInWait() { return inWait; }
+
     public Set<Integer> getTried() {
         if (tried == null) {
             return Collections.EMPTY_SET;
@@ -384,7 +395,7 @@ public final class PnfsOperation implements Backgroundable {
 
     void abortOperation() {
         synchronized( this) {
-            state = ABORTED;
+            updateState(ABORTED);
             opCount = 0;
         }
 
@@ -417,7 +428,7 @@ public final class PnfsOperation implements Backgroundable {
 
     void cancelCurrent() {
         synchronized( this) {
-            state = CANCELED;
+            updateState(CANCELED);
             --opCount;
         }
 
@@ -430,11 +441,11 @@ public final class PnfsOperation implements Backgroundable {
 
     String getRetentionPolicyName() {
         switch (retentionPolicy) {
-            case 1:
+            case OUTPUT:
                 return "OUTPUT";
-            case 2:
+            case CUSTODIAL:
                 return "CUSTODIAL";
-            case 0:
+            case REPLICA:
             default:
                 return "REPLICA";
         }
@@ -446,20 +457,22 @@ public final class PnfsOperation implements Backgroundable {
 
     String getStateName() {
         switch (state) {
-            case 0:
+            case WAITING:
                 return "WAITING";
-            case 1:
+            case RUNNING:
                 return "RUNNING";
-            case 2:
+            case DONE:
                 return "DONE";
-            case 3:
+            case CANCELED:
                 return "CANCELED";
-            case 4:
+            case FAILED:
                 return "FAILED";
-            case 5:
+            case VOID:
                 return "VOID";
-            case 6:
+            case ABORTED:
                 return "ABORTED";
+            case UNINITIALIZED:
+                return "UNINITIALIZED";
         }
 
         throw new IllegalArgumentException("No such state: " + state);
@@ -478,7 +491,7 @@ public final class PnfsOperation implements Backgroundable {
 
     void resetOperation() {
         synchronized( this) {
-            state = WAITING;
+            updateState(WAITING);
             task = null;
         }
         exception = null;
@@ -512,13 +525,13 @@ public final class PnfsOperation implements Backgroundable {
     void setRetentionPolicy(String policy) {
         switch (policy) {
             case "REPLICA":
-                retentionPolicy = 0;
+                retentionPolicy = REPLICA;
                 break;
             case "OUTPUT":
-                retentionPolicy = 1;
+                retentionPolicy = OUTPUT;
                 break;
             case "CUSTODIAL":
-                retentionPolicy = 2;
+                retentionPolicy = CUSTODIAL;
                 break;
             default:
                 throw new IllegalArgumentException("No such policy: " + policy);
@@ -526,33 +539,22 @@ public final class PnfsOperation implements Backgroundable {
     }
 
     synchronized void setState(byte state) {
-        this.state = state;
+        updateState(state);
     }
 
     @VisibleForTesting
     void setState(String state) {
         switch (state) {
-            case "WAITING":
-                this.state = 0;
-                break;
-            case "RUNNING":
-                this.state = 1;
-                break;
-            case "DONE":
-                this.state = 2;
-                break;
-            case "CANCELED":
-                this.state = 3;
-                break;
-            case "FAILED":
-                this.state = 4;
-                break;
-            case "VOID":
-                this.state = 5;
-                break;
-            case "ABORTED":
-                this.state = 6;
-                break;
+            case "WAITING":     updateState(WAITING);   break;
+            case "RUNNING":     updateState(RUNNING);   break;
+            case "DONE":        updateState(DONE);      break;
+            case "CANCELED":    updateState(CANCELED);  break;
+            case "FAILED":      updateState(FAILED);    break;
+            case "VOID":        updateState(VOID);      break;
+            case "ABORTED":     updateState(ABORTED);   break;
+            case "UNINITIALIZED":
+                throw new IllegalArgumentException("Cannot set "
+                                + "operation to UNINITIALIZED.");
             default:
                 throw new IllegalArgumentException("No such state: " + state);
         }
@@ -565,12 +567,10 @@ public final class PnfsOperation implements Backgroundable {
     void updateOperation(CacheException error) {
         if (error != null) {
             exception = error;
-            synchronized( this) {
-                state = FAILED;
-            }
+            setState(FAILED);
         } else {
             synchronized( this) {
-                state = DONE;
+                updateState(DONE);
                 --opCount;
             }
             retried = 0;
@@ -580,7 +580,7 @@ public final class PnfsOperation implements Backgroundable {
 
     synchronized void voidOperation() {
         synchronized( this) {
-            state = VOID;
+            updateState(VOID);
             opCount = 0;
         }
         retried = 0;
@@ -593,5 +593,25 @@ public final class PnfsOperation implements Backgroundable {
 
     private synchronized String lastTypeName() {
         return lastType == null ? "" : Type.values()[lastType].toString();
+    }
+
+    private void updateState(byte state) {
+        if (this.state == state) {
+            return;
+        }
+
+        switch(this.state) {
+            case WAITING:
+                inWait += (System.currentTimeMillis() - lastStateChange);
+                break;
+            case RUNNING:
+                inRun  += (System.currentTimeMillis() - lastStateChange);
+                break;
+            default:
+                break;
+        }
+
+        this.state = state;
+        lastStateChange = System.currentTimeMillis();
     }
 }
