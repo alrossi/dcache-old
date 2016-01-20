@@ -248,10 +248,10 @@ public abstract class ResilienceCommands implements CellCommandListener {
                                     + "as necessary.";
     protected static final String DESC_PNFS_CTRL
                     = "Run checkpointing, reset checkpoint "
-                                    + "properties, reset operation properties,"
+                                    + "properties, reset operation properties, "
                                     + "turn processing of operations on or off "
-                                    + "(restart/shutdown), or display info relevant "
-                                    + " to operation processing and checkpointing.";
+                                    + "(start/shutdown), or display info relevant "
+                                    + "to operation processing and checkpointing.";
     protected static final String DESC_COUNT
                     = "Issues a query to the namespace; "
                                     + "results can be written to a file.";
@@ -307,7 +307,7 @@ public abstract class ResilienceCommands implements CellCommandListener {
     protected static final String DESC_POOL_CTRL
                     = "Activates, deactivates, or resets the periodic checking "
                     + "of active pools; turns all pool state handling on or off "
-                    + "(restart/shutdown)";
+                    + "(start/shutdown)";
     protected static final String DESC_POOLINFO
                     = "Does NOT refresh the cost info.";
     protected static final String DESC_POOLLS
@@ -349,7 +349,7 @@ public abstract class ResilienceCommands implements CellCommandListener {
     enum ControlMode {
         ON,
         OFF,
-        RESTART,
+        START,
         SHUTDOWN,
         RESET,
         RUN,
@@ -361,6 +361,10 @@ public abstract class ResilienceCommands implements CellCommandListener {
                     return ControlMode.ON;
                 case "OFF":
                     return ControlMode.OFF;
+                case "START":
+                    return ControlMode.START;
+                case "SHUTDOWN":
+                    return ControlMode.SHUTDOWN;
                 case "RESET":
                     return ControlMode.RESET;
                 case "RUN":
@@ -419,132 +423,6 @@ public abstract class ResilienceCommands implements CellCommandListener {
             pnfsOperationHandler.handleLocationUpdate(update);
             return "An adjustment activity has been started for " + pnfsId
                             + " from source pool " + pool + ".";
-        }
-    }
-
-    abstract class PnfsControlCommand extends ResilienceCommand {
-        @Argument(index = 0,
-                        valueSpec = "off|on|info|reset|run ",
-                        required = false,
-                        usage = "off = turn the checkpointing off; "
-                                        + "on = turn the checkpointing on; "
-                                        + "info = checkpoint information (default); "
-                                        + "reset = reset the checkpoint interval; "
-                                        + "run = checkpoint to disk immediately." )
-        String arg = "INFO";
-
-        @Option(name = "checkpoint",
-                        usage = "With reset mode (one of checkpoint|sweep). "
-                                        + "Interval length between checkpointing "
-                                        + "of the pnfs operation data.")
-        String checkpoint;
-
-        @Option(name = "sweep",
-                        usage = "With reset mode (one of checkpoint|sweep). "
-                                        + "Minimal interval between sweeps of "
-                                        + "the pnfs operations.")
-        String sweep;
-
-        @Option(name = "unit",
-                        valueSpec = "SECONDS|MINUTES|HOURS ",
-                        usage = "Checkpoint or sweep interval unit.")
-        String unit;
-
-        @Option(name = "retries",
-                        usage = "Maximum number of retries on a failed operation.")
-        String retries;
-
-        @Option(name = "file",
-                        usage = "Alternate (full) path for checkpoint file.")
-        String file;
-
-        @Override
-        protected String doCall() throws Exception {
-            ControlMode mode = ControlMode.valueOf(arg.toUpperCase());
-
-            TimeUnit timeUnit = null;
-            if (unit != null) {
-                timeUnit = TimeUnit.valueOf(unit);
-            }
-
-            switch (mode) {
-                case RESTART:
-                    if (pnfsOperationMap.isRunning()) {
-                        return "Consumer is already running.";
-                    }
-                    pnfsOperationMap.initialize();
-                    pnfsOperationMap.reload();
-                    return "Consumer initialized and checkpoint file reloaded.";
-                case SHUTDOWN:
-                    if (!pnfsOperationMap.isRunning()) {
-                        return "Consumer is not running.";
-                    }
-                    pnfsOperationMap.shutdown();
-                    return "Consumer has been shutdown.";
-                case OFF:
-                    if (pnfsOperationMap.isCheckpointingOn()) {
-                        pnfsOperationMap.stopCheckpointer();
-                        return "Shut down checkpointing.";
-                    }
-                    return "Checkpointing already off.";
-                case ON:
-                    if (!pnfsOperationMap.isCheckpointingOn()) {
-                        pnfsOperationMap.startCheckpointer();
-                        return infoMessage();
-                    }
-                    return "Checkpointing already on.";
-                case RUN:
-                    if (!pnfsOperationMap.isCheckpointingOn()) {
-                        return "Checkpointing is off; please turn it on first.";
-                    }
-                    pnfsOperationMap.runCheckpointNow();
-                    return "Forced checkpoint.";
-                case RESET:
-                    if (!pnfsOperationMap.isCheckpointingOn()) {
-                        return "Checkpointing is off; please turn it on first.";
-                    }
-
-                    if (checkpoint != null) {
-                        pnfsOperationMap.setCheckpointExpiry(Integer.parseInt(checkpoint));
-                        if (timeUnit != null) {
-                            pnfsOperationMap.setCheckpointExpiryUnit(timeUnit);
-                        }
-                    } else if (sweep != null) {
-                        pnfsOperationMap.setTimeout(Integer.parseInt(sweep));
-                        if (timeUnit != null) {
-                            pnfsOperationMap.setCheckpointExpiryUnit(timeUnit);
-                        }
-                    }
-
-                    if (retries != null) {
-                        pnfsOperationMap.setMaxRetries(Integer.parseInt(retries));
-                    }
-
-                    if (file != null) {
-                        pnfsOperationMap.setCheckpointFilePath(file);
-                    }
-
-                    pnfsOperationMap.reset();
-                    // fall through here
-                case INFO:
-                default:
-                    return infoMessage();
-            }
-        }
-
-        private String infoMessage() {
-            StringBuilder info = new StringBuilder();
-            info.append(String.format("maximum concurrent operations %s.\n"
-                                            + "maximum retries on failure %s.\n",
-                            pnfsOperationMap.getMaxRunning(),
-                            pnfsOperationMap.getMaxRetries()));
-            info.append(String.format("checkpoint interval %s %s.\n"
-                                            + "checkpoint file path %s.\n",
-                            pnfsOperationMap.getCheckpointExpiry(),
-                            pnfsOperationMap.getCheckpointExpiryUnit(),
-                            pnfsOperationMap.getCheckpointFilePath()));
-            counters.getCheckpointInfo(info);
-            return info.toString();
         }
     }
 
@@ -642,8 +520,8 @@ public abstract class ResilienceCommands implements CellCommandListener {
     abstract class DisableCommand extends ResilienceCommand {
         @Argument(required = false,
                         usage = "Whether to shutdown all operations "
-                                        + "(without this operation, only "
-                                        + "incoming messages are blocked",
+                                        + "(without this argument, only "
+                                        + "incoming messages are blocked).",
                         valueSpec = "strict")
         String strict;
 
@@ -704,6 +582,134 @@ public abstract class ResilienceCommands implements CellCommandListener {
             } catch (IndexOutOfBoundsException | NoSuchElementException e) {
                 return "No such pool group: " + key;
             }
+        }
+    }
+
+    abstract class PnfsControlCommand extends ResilienceCommand {
+        @Argument(index = 0,
+                        valueSpec = "off|on|info|reset|start|shutdown|run ",
+                        required = false,
+                        usage = "off = turn checkpointing off; "
+                                        + "on = turn checkpointing on; "
+                                        + "info = information (default); "
+                                        + "reset = reset properties; "
+                                        + "start = (re)start processing of pnfs operations; "
+                                        + "shutdown = stop all processing of pnfs operations; "
+                                        + "run = checkpoint to disk immediately." )
+        String arg = "INFO";
+
+        @Option(name = "checkpoint",
+                        usage = "With reset mode (one of checkpoint|sweep). "
+                                        + "Interval length between checkpointing "
+                                        + "of the pnfs operation data.")
+        String checkpoint;
+
+        @Option(name = "sweep",
+                        usage = "With reset mode (one of checkpoint|sweep). "
+                                        + "Minimal interval between sweeps of "
+                                        + "the pnfs operations.")
+        String sweep;
+
+        @Option(name = "unit",
+                        valueSpec = "SECONDS|MINUTES|HOURS ",
+                        usage = "Checkpoint or sweep interval unit.")
+        String unit;
+
+        @Option(name = "retries",
+                        usage = "Maximum number of retries on a failed operation.")
+        String retries;
+
+        @Option(name = "file",
+                        usage = "Alternate (full) path for checkpoint file.")
+        String file;
+
+        @Override
+        protected String doCall() throws Exception {
+            ControlMode mode = ControlMode.valueOf(arg.toUpperCase());
+
+            TimeUnit timeUnit = null;
+            if (unit != null) {
+                timeUnit = TimeUnit.valueOf(unit);
+            }
+
+            switch (mode) {
+                case START:
+                    if (pnfsOperationMap.isRunning()) {
+                        return "Consumer is already running.";
+                    }
+                    pnfsOperationMap.initialize();
+                    pnfsOperationMap.reload();
+                    return "Consumer initialized and checkpoint file reloaded.";
+                case SHUTDOWN:
+                    if (!pnfsOperationMap.isRunning()) {
+                        return "Consumer is not running.";
+                    }
+                    pnfsOperationMap.shutdown();
+                    return "Consumer has been shutdown.";
+                case OFF:
+                    if (pnfsOperationMap.isCheckpointingOn()) {
+                        pnfsOperationMap.stopCheckpointer();
+                        return "Shut down checkpointing.";
+                    }
+                    return "Checkpointing already off.";
+                case ON:
+                    if (!pnfsOperationMap.isCheckpointingOn()) {
+                        pnfsOperationMap.startCheckpointer();
+                        return infoMessage();
+                    }
+                    return "Checkpointing already on.";
+                case RUN:
+                    if (!pnfsOperationMap.isCheckpointingOn()) {
+                        return "Checkpointing is off; please turn it on first.";
+                    }
+                    pnfsOperationMap.runCheckpointNow();
+                    return "Forced checkpoint.";
+                case RESET:
+                    if (!pnfsOperationMap.isCheckpointingOn()) {
+                        return "Checkpointing is off; please turn it on first.";
+                    }
+
+                    if (checkpoint != null) {
+                        pnfsOperationMap.setCheckpointExpiry(Integer.parseInt(checkpoint));
+                        if (timeUnit != null) {
+                            pnfsOperationMap.setCheckpointExpiryUnit(timeUnit);
+                        }
+                    } else if (sweep != null) {
+                        pnfsOperationMap.setTimeout(Integer.parseInt(sweep));
+                        if (timeUnit != null) {
+                            pnfsOperationMap.setCheckpointExpiryUnit(timeUnit);
+                        }
+                    }
+
+                    if (retries != null) {
+                        pnfsOperationMap.setMaxRetries(Integer.parseInt(retries));
+                    }
+
+                    if (file != null) {
+                        pnfsOperationMap.setCheckpointFilePath(file);
+                    }
+
+                    pnfsOperationMap.reset();
+                    // fall through here
+                case INFO:
+                default:
+                    return infoMessage();
+            }
+        }
+
+        private String infoMessage() {
+            StringBuilder info = new StringBuilder();
+            info.append(String.format("maximum concurrent operations %s.\n"
+                                            + "maximum retries on failure %s.\n",
+                            pnfsOperationMap.getMaxRunning(),
+                            pnfsOperationMap.getMaxRetries()));
+            info.append(String.format("checkpoint interval %s %s.\n"
+                                            + "checkpoint file path %s.\n",
+                            pnfsOperationMap.getCheckpointExpiry(),
+                            pnfsOperationMap.getCheckpointExpiryUnit(),
+                            pnfsOperationMap.getCheckpointFilePath()));
+            counters.getCheckpointInfo(info);
+            return info.toString();
         }
     }
 
@@ -922,6 +928,141 @@ public abstract class ResilienceCommands implements CellCommandListener {
             }
 
             return pnfsOperationMap.list(filter, limitValue);
+        }
+    }
+
+
+    abstract class PoolControlCommand extends ResilienceCommand {
+        @Argument(index = 0,
+                        valueSpec = "off|on|start|shutdown|info|reset|run ",
+                        required = false,
+                        usage = "off = turn scanning off; on = turn scanning on; "
+                                        + "shutdown = turn off all pool operations; "
+                                        + "start = activate all pool operations; "
+                                        + "info = show status of watchdog and scan window (default); "
+                                        + "reset = reset properties; "
+                                        + "run = interrupt current wait and do a sweep." )
+        String operation = "INFO";
+
+        @Option(name = "window",
+                        usage = "With reset mode (one of window|sweep|down). "
+                                        + "Amount of time which must pass since "
+                                        + "the last scan of a pool for it to be "
+                                        + "scanned again.")
+        String window;
+
+        @Option(name = "sweep",
+                        usage = "With reset mode (one of window|sweep|down). "
+                                        + "How often a sweep of the pool "
+                                        + "operations is made.")
+        String sweep;
+
+        @Option(name = "down",
+                        usage = "With reset mode (one of window|sweep|down). "
+                                        + "Minimum grace period between reception "
+                                        + "of a DOWN status message and scan of  "
+                                        + "the given pool.")
+        String down;
+
+        @Option(name = "restarts",
+                        valueSpec = "true | false (default)",
+                        usage = "Whether or not to scan a pool when "
+                                        + "a restart message is received.")
+        String restart;
+
+        @Option(name = "unit",
+                        valueSpec = "SECONDS | MINUTES | HOURS | DAYS ",
+                        usage = "For the sweep/window/down options.")
+        String unit;
+
+        @Override
+        protected String doCall() throws Exception {
+            ControlMode mode = ControlMode.valueOf(operation.toUpperCase());
+
+            TimeUnit timeUnit = null;
+            if (unit != null) {
+                timeUnit = TimeUnit.valueOf(unit);
+            }
+
+            switch (mode) {
+                case START:
+                    if (poolOperationMap.isRunning()) {
+                        return "Consumer is already running.";
+                    }
+                    poolOperationMap.loadPools();
+                    poolOperationMap.initialize();
+                    return "Consumer initialized and pools reloaded.";
+                case SHUTDOWN:
+                    if (!poolOperationMap.isRunning()) {
+                        return "Consumer is not running.";
+                    }
+                    poolOperationMap.shutdown();
+                    return "Consumer has been shutdown.";
+                case OFF:
+                    if (poolOperationMap.isWatchdogOn()) {
+                        poolOperationMap.setWatchdog(false);
+                        return "Shut down watchdog.";
+                    }
+                    return "Watchdog already off.";
+                case ON:
+                    if (!poolOperationMap.isWatchdogOn()) {
+                        poolOperationMap.setWatchdog(true);
+                        return infoMessage();
+                    }
+                    return "Watchdog already on.";
+                case RUN:
+                    if (!poolOperationMap.isWatchdogOn()) {
+                        return "Watchdog is off; please turn it on first.";
+                    }
+                    poolOperationMap.runNow();
+                    return "Forced watchdog scan";
+                case RESET:
+                    if (!poolOperationMap.isWatchdogOn()) {
+                        return "Watchdog is off; please turn it on first.";
+                    }
+
+                    if (window != null) {
+                        poolOperationMap.setRescanWindow(Integer.parseInt(window));
+                        if (timeUnit != null) {
+                            poolOperationMap.setRescanWindowUnit(timeUnit);
+                        }
+                    } else if (sweep != null) {
+                        poolOperationMap.setTimeout(Integer.parseInt(sweep));
+                        if (timeUnit != null) {
+                            poolOperationMap.setTimeoutUnit(timeUnit);
+                        }
+                    } else if (down != null) {
+                        poolOperationMap.setDownGracePeriod(Integer.parseInt(down));
+                        if (timeUnit != null) {
+                            poolOperationMap.setDownGracePeriodUnit(timeUnit);
+                        }
+                    }
+
+                    if (restart != null) {
+                        poolOperationMap.setHandleRestarts(Boolean.valueOf(restart));
+                    }
+                    poolOperationMap.reset();
+                    // fall through here
+                case INFO:
+                default:
+                    return infoMessage();
+            }
+        }
+
+        private String infoMessage() {
+            return String.format("down grace period %s %s\n"
+                                            + "handle restarts %s\n"
+                                            + "maximum concurrent operations %s\n"
+                                            + "scan window set to %s %s.\n"
+                                            + "period set to %s %s.\n",
+                            poolOperationMap.getDownGracePeriod(),
+                            poolOperationMap.getDownGracePeriodUnit(),
+                            poolOperationMap.isHandleRestarts(),
+                            poolOperationMap.getMaxConcurrentRunning(),
+                            poolOperationMap.getScanWindow(),
+                            poolOperationMap.getScanWindowUnit(),
+                            poolOperationMap.getTimeout(),
+                            poolOperationMap.getTimeoutUnit());
         }
     }
 
@@ -1228,139 +1369,6 @@ public abstract class ResilienceCommands implements CellCommandListener {
                        .forEach((u) -> builder.append("    ")
                                               .append(u).append("\n"));
             return builder.toString();
-        }
-    }
-
-    abstract class PoolControlCommand extends ResilienceCommand {
-        @Argument(index = 0,
-                        valueSpec = "off|on|shutdown|restart|info|reset|run ",
-                        required = false,
-                        usage = "off = turn the watchdog off; on = turn the watchdog on; "
-                                        + "shutdown = turn the consumer completely off; "
-                                        + "restart = restart the consumer (and watchdog); "
-                                        + "info = show status of watchdog and scan window (default); "
-                                        + "reset = reset period or scan window; "
-                                        + "run = interrupt current wait and do a sweep." )
-        String operation = "INFO";
-
-        @Option(name = "window",
-                        usage = "With reset mode (one of window|sweep|down). "
-                                        + "Amount of time which must pass since "
-                                        + "the last scan of a pool for it to be "
-                                        + "scanned again.")
-        String window;
-
-        @Option(name = "sweep",
-                        usage = "With reset mode (one of window|sweep|down). "
-                                        + "How often a sweep of the pool "
-                                        + "operations is made.")
-        String sweep;
-
-        @Option(name = "down",
-                        usage = "With reset mode (one of window|sweep|down). "
-                                        + "Minimum grace period between reception "
-                                        + "of a DOWN status message and scan of  "
-                                        + "the given pool.")
-        String down;
-
-        @Option(name = "restart",
-                        valueSpec = "true | false (default)",
-                        usage = "Whether or not to scan a pool when "
-                                        + "a restart message is received.")
-        String restart;
-
-        @Option(name = "unit",
-                        valueSpec = "SECONDS | MINUTES | HOURS | DAYS ",
-                        usage = "For the sweep/window/down options.")
-        String unit;
-
-        @Override
-        protected String doCall() throws Exception {
-            ControlMode mode = ControlMode.valueOf(operation.toUpperCase());
-
-            TimeUnit timeUnit = null;
-            if (unit != null) {
-                timeUnit = TimeUnit.valueOf(unit);
-            }
-
-            switch (mode) {
-                case RESTART:
-                    if (poolOperationMap.isRunning()) {
-                        return "Consumer is already running.";
-                    }
-                    poolOperationMap.loadPools();
-                    poolOperationMap.initialize();
-                    return "Consumer initialized and pools reloaded.";
-                case SHUTDOWN:
-                    if (!poolOperationMap.isRunning()) {
-                        return "Consumer is not running.";
-                    }
-                    poolOperationMap.shutdown();
-                    return "Consumer has been shutdown.";
-                case OFF:
-                    if (poolOperationMap.isWatchdogOn()) {
-                        poolOperationMap.setWatchdog(false);
-                        return "Shut down watchdog.";
-                    }
-                    return "Watchdog already off.";
-                case ON:
-                    if (!poolOperationMap.isWatchdogOn()) {
-                        poolOperationMap.setWatchdog(true);
-                        return infoMessage();
-                    }
-                    return "Watchdog already on.";
-                case RUN:
-                    if (!poolOperationMap.isWatchdogOn()) {
-                        return "Watchdog is off; please turn it on first.";
-                    }
-                    poolOperationMap.runNow();
-                    return "Forced watchdog scan";
-                case RESET:
-                    if (!poolOperationMap.isWatchdogOn()) {
-                        return "Watchdog is off; please turn it on first.";
-                    }
-
-                    if (window != null) {
-                        poolOperationMap.setRescanWindow(Integer.parseInt(window));
-                        if (timeUnit != null) {
-                            poolOperationMap.setRescanWindowUnit(timeUnit);
-                        }
-                    } else if (sweep != null) {
-                        poolOperationMap.setTimeout(Integer.parseInt(sweep));
-                        if (timeUnit != null) {
-                            poolOperationMap.setTimeoutUnit(timeUnit);
-                        }
-                    } else if (down != null) {
-                        poolOperationMap.setDownGracePeriod(Integer.parseInt(down));
-                        if (timeUnit != null) {
-                            poolOperationMap.setDownGracePeriodUnit(timeUnit);
-                        }
-                    }
-
-                    if (restart != null) {
-                        poolOperationMap.setHandleRestarts(Boolean.valueOf(restart));
-                    }
-                    poolOperationMap.reset();
-                    // fall through here
-                case INFO:
-                default:
-                    return infoMessage();
-            }
-        }
-
-        private String infoMessage() {
-            return String.format("down grace period %s %s\n"
-                                            + "handle restarts %s\n"
-                                            + "maximum concurrent operations %s\n"
-                                            + "scan window set to %s %s.\n" + "period set to %s %s.\n",
-                            poolOperationMap.getDownGracePeriod(),
-                            poolOperationMap.getDownGracePeriodUnit(),
-                            poolOperationMap.isHandleRestarts(),
-                            poolOperationMap.getMaxConcurrentRunning(),
-                            poolOperationMap.getScanWindow(),
-                            poolOperationMap.getScanWindowUnit(),
-                            poolOperationMap.getTimeout(),
-                            poolOperationMap.getTimeoutUnit());
         }
     }
 
