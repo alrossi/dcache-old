@@ -61,8 +61,6 @@ package org.dcache.resilience.admin;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -497,14 +495,7 @@ public abstract class ResilienceCommands implements CellCommandListener {
 
         @Override
         protected String doCall() throws Exception {
-            try {
-                return counters.print(pools);
-            } catch (Exception e) {
-                StringWriter sw = new StringWriter();
-                PrintWriter pw = new PrintWriter(sw);
-                e.printStackTrace(pw);
-                return sw.toString() + "\n";
-            }
+            return counters.print(pools);
         }
     }
 

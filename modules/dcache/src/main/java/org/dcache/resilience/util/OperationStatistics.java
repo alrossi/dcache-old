@@ -628,7 +628,7 @@ public final class OperationStatistics {
         if (totalOps == 0) {
             builder.append(String.format(FORMAT_TIMING, label, "0.00", "0.00"));
         } else {
-            double Q = (double) totalOps;
+            double Q = (double) totalOps * 1000.0;
             builder.append(String.format(FORMAT_TIMING, label,
                             String.format("%.2f", (double)totalWait/Q),
                             String.format("%.2f", (double)totalRun/Q)));
