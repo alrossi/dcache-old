@@ -67,6 +67,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -204,6 +205,8 @@ public final class PnfsOperationMap extends RunnableModule {
     }
 
     final class TerminalOperationProcessor extends PnfsOperationProcessor {
+        protected AtomicInteger requeued = new AtomicInteger(0);
+
         @Override
         protected void process(Iterator<PnfsOperation> iterator, Type type) {
             while (iterator.hasNext()) {
@@ -563,6 +566,15 @@ public final class PnfsOperationMap extends RunnableModule {
             while (true) {
                 LOGGER.trace("Calling scan.");
                 scan();
+                if (terminal.requeued.getAndSet(0) > 0) {
+                    /*
+                     *  Give the requeued operations a chance to run
+                     *  immediately, if possible, by rescanning now.
+                     */
+                    LOGGER.trace("Scan complete, "
+                                    + "rechecking for requeued operations ...");
+                    continue;
+                }
                 LOGGER.trace("Scan complete, waiting ...");
                 await();
             }
@@ -824,6 +836,7 @@ public final class PnfsOperationMap extends RunnableModule {
             if (remove) {
                 if (restore) {
                     deque.moveToBack(operation);
+                    terminal.requeued.incrementAndGet();
                 } else {
                     deque.remove(operation.getPnfsId());
                     if (operation.isBackground()) {

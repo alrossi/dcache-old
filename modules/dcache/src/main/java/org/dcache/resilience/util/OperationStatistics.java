@@ -630,8 +630,8 @@ public final class OperationStatistics {
         } else {
             double Q = (double) totalOps;
             builder.append(String.format(FORMAT_TIMING, label,
-                            String.format("%.2f %s", (double)totalWait/Q),
-                            String.format("%.2f %s", (double)totalRun/Q)));
+                            String.format("%.2f", (double)totalWait/Q),
+                            String.format("%.2f", (double)totalRun/Q)));
         }
 
         builder.append("\n");
