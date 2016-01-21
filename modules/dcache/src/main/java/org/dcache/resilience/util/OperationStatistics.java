@@ -111,7 +111,7 @@ public final class OperationStatistics {
                                     "completed", "ops/sec", "failed");
     private static final String TIMING_TITLE
                     = String.format("%-30s %15s %15s\n",
-                        "PNFS Average Timing (secs)", "waiting", "running");
+                        "PNFS OPERATIONS", "waiting", "running");
 
     private static final String POOLS_TITLE
                     = String.format(FORMAT_POOLS, "TRANSFERS BY POOL",
@@ -623,11 +623,13 @@ public final class OperationStatistics {
         builder.append("\n");
         builder.append(TIMING_TITLE);
 
+        String label = "Average Duration (secs)";
+
         if (totalOps == 0) {
-            builder.append(String.format(FORMAT_TIMING, "0.00", "0.00"));
+            builder.append(String.format(FORMAT_TIMING, label, "0.00", "0.00"));
         } else {
             double Q = (double) totalOps;
-            builder.append(String.format(FORMAT_TIMING,
+            builder.append(String.format(FORMAT_TIMING, label,
                             String.format("%.2f %s", (double)totalWait/Q),
                             String.format("%.2f %s", (double)totalRun/Q)));
         }
