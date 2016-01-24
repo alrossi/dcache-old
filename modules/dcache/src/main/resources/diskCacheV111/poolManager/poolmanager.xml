@@ -15,27 +15,6 @@
       <property name="excludedDestinations" value="${poolmanager.destination.pool-status}"/>
   </bean>
 
-  <bean id="poolManager" class="diskCacheV111.poolManager.PoolManagerV5"
-        init-method="init" destroy-method="shutdown">
-    <description>Pool manager</description>
-    <property name="poolSelectionUnit" ref="psu"/>
-    <property name="costModule" ref="cm"/>
-    <property name="poolMonitor" ref="poolMonitor"/>
-    <property name="requestContainer" ref="rc"/>
-    <property name="poolStatusTopic" ref="poolStatusTopic"/>
-    <property name="quotaManager" value="#{ '${poolmanager.plugins.quota-manager}' == 'none' ? null : quota-stub }"/>
-    <property name="pnfsHandler" ref="pnfs"/>
-  </bean>
-
-  <bean id="psu" class="${poolmanager.plugins.selection-unit}">
-    <description>Pool selection unit</description>
-  </bean>
-
-  <bean id="poolManagerCLI" class="diskCacheV111.poolManager.PoolSelectionUnitCommands">
-    <description>Provides commands for cell</description>
-    <property name="psuAccess" ref="psu"/>
-  </bean>
-
   <bean id="cm" class="diskCacheV111.poolManager.CostModuleV1">
     <description>Cost module</description>
   </bean>
@@ -51,6 +30,10 @@
         <constructor-arg value="${poolmanager.service.pnfsmanager}"/>
       </bean>
     </constructor-arg>
+  </bean>
+
+  <bean id="psu" class="${poolmanager.plugins.selection-unit}">
+    <description>Pool selection unit</description>
   </bean>
 
   <bean id="poolMonitor" class="diskCacheV111.poolManager.PoolMonitorV5">
@@ -112,5 +95,50 @@
     </property>
   </bean>
 
+  <bean id="poolManager" class="diskCacheV111.poolManager.PoolManagerV5"
+        init-method="init" destroy-method="shutdown">
+    <description>Pool manager</description>
+    <property name="poolSelectionUnit" ref="psu"/>
+    <property name="costModule" ref="cm"/>
+    <property name="poolMonitor" ref="poolMonitor"/>
+    <property name="requestContainer" ref="rc"/>
+    <property name="poolStatusTopic" ref="poolStatusTopic"/>
+    <property name="quotaManager" value="#{ '${poolmanager.plugins.quota-manager}' == 'none' ? null : quota-stub }"/>
+    <property name="pnfsHandler" ref="pnfs"/>
+  </bean>
 
+  <beans profile="resilience-false">
+    <bean id="poolManagerCLI" class="diskCacheV111.poolManager.PoolSelectionUnitCommands">
+      <description>Provides commands for cell</description>
+      <property name="psuAccess" ref="psu"/>
+    </bean>
+  </beans>
+
+  <!-- **************************************** Resilience ****************************************** -->
+
+  <beans profile="resilience-true">
+
+    <bean id="resilienceTopic" class="org.dcache.cells.CellStub">
+      <property name="destination" value="${poolmanager.destination.resilience}"/>
+    </bean>
+
+    <bean id="poolManagerResilienceCLI" class="diskCacheV111.poolManager.PoolSelectionUnitCommands">
+      <description>Provides commands for cell</description>
+      <property name="psuAccess" ref="psuAccess"/>
+    </bean>
+
+    <bean id="psuAccess" class="org.dcache.resilience.util.PoolSelectionUnitDecorator">
+      <description>Implements interface to which the cell commands delegate</description>
+      <property name="delegate" ref="psu"/>
+      <property name="psu" ref="psu"/>
+      <property name="costModule" ref="cm"/>
+      <property name="service">
+        <bean class="org.dcache.util.CDCFixedPoolTaskExecutor"
+              init-method="initialize" destroy-method="shutdownNow">
+          <property name="numberOfThreads" value="${poolmanager.resilience.threads}"/>
+        </bean>
+      </property>
+      <property name="resilienceTopic" ref="resilienceTopic"/>
+    </bean>
+  </beans>
 </beans>
