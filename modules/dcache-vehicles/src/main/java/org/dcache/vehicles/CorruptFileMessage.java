@@ -57,34 +57,28 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.alarms;
+package org.dcache.vehicles;
+
+import diskCacheV111.util.PnfsId;
+import diskCacheV111.vehicles.Message;
 
 /**
- * All internally marked alarm types must be defined via this enum.
+ * Used to communicate a broken file discovered during a replication attempt.
  *
  * @author arossi
  */
-public enum PredefinedAlarm implements Alarm {
-   GENERIC,
-   FATAL_JVM_ERROR,
-   DOMAIN_STARTUP_FAILURE,
-   OUT_OF_FILE_DESCRIPTORS,
-   LOCATION_MANAGER_FAILURE,
-   DB_CONNECTION_FAILURE,
-   HSM_SCRIPT_FAILURE,
-   POOL_DOWN,
-   POOL_DISABLED,
-   POOL_SIZE,
-   POOL_FREE_SPACE,
-   BROKEN_FILE,
-   CHECKSUM,
-   INACCESSIBLE_FILE,
-   FAILED_REPLICATION,
-   FAILED_REPLICA_UNPIN,
-   RESILIENCE_OFFLINE;
+public class CorruptFileMessage extends Message {
+    private static final long serialVersionUID = -637754740160107244L;
 
-   @Override
-   public String getType() {
-       return toString();
+    public final String pool;
+    public final PnfsId pnfsId;
+
+    public CorruptFileMessage(String pool, PnfsId pnfsId) {
+        this.pool = pool;
+        this.pnfsId = pnfsId;
+    }
+
+    public String toString() {
+        return pool + ": " + pnfsId + "-INVALID_FILE";
     }
 }
