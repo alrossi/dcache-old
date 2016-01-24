@@ -4,13 +4,12 @@ import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.security.auth.Subject;
-
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import javax.security.auth.Subject;
 
 import diskCacheV111.vehicles.PnfsAddCacheLocationMessage;
 import diskCacheV111.vehicles.PnfsClearCacheLocationMessage;
@@ -25,11 +24,9 @@ import diskCacheV111.vehicles.PnfsMessage;
 import diskCacheV111.vehicles.PnfsRenameMessage;
 import diskCacheV111.vehicles.PnfsSetChecksumMessage;
 import diskCacheV111.vehicles.PoolFileFlushedMessage;
-
 import dmg.cells.nucleus.CellEndpoint;
 import dmg.cells.nucleus.CellMessageSender;
 import dmg.cells.nucleus.CellPath;
-
 import org.dcache.acl.enums.AccessMask;
 import org.dcache.cells.CellStub;
 import org.dcache.namespace.FileAttribute;
@@ -48,17 +45,18 @@ public class PnfsHandler
     implements CellMessageSender
 {
     private final String _poolName;
-    private static final long DEFAULT_PNFS_TIMEOUT = TimeUnit.MINUTES.toMillis(30);
+    private static final long DEFAULT_PNFS_TIMEOUT = TimeUnit.MINUTES.toMillis(
+                    30);
 
     private final CellStub _cellStub;
 
     private Subject _subject;
 
     private static final Logger _logNameSpace =
-        LoggerFactory.getLogger("logger.org.dcache.namespace." + PnfsHandler.class.getName());
+                    LoggerFactory.getLogger("logger.org.dcache.namespace."
+                                                            + PnfsHandler.class.getName());
 
-    private static CellStub createStub(CellPath path)
-    {
+    private static CellStub createStub(CellPath path) {
         CellStub stub = new CellStub();
         stub.setDestinationPath(path);
         stub.setTimeout(DEFAULT_PNFS_TIMEOUT);
@@ -68,30 +66,25 @@ public class PnfsHandler
     }
 
     public PnfsHandler(CellEndpoint endpoint,
-                       CellPath pnfsManagerPath)
-    {
+                       CellPath pnfsManagerPath) {
         this(pnfsManagerPath);
         setCellEndpoint(endpoint);
     }
 
-    public PnfsHandler(CellPath pnfsManagerPath)
-    {
+    public PnfsHandler(CellPath pnfsManagerPath) {
         this(createStub(pnfsManagerPath));
     }
 
     public PnfsHandler(CellPath pnfsManagerPath,
-                       String poolName)
-    {
+                       String poolName) {
         this(createStub(pnfsManagerPath), poolName);
     }
 
-    public PnfsHandler(CellStub stub)
-    {
+    public PnfsHandler(CellStub stub) {
         this(stub, "<client>");
     }
 
-    public PnfsHandler(CellStub stub, String poolName)
-    {
+    public PnfsHandler(CellStub stub, String poolName) {
         _cellStub = stub;
         _poolName = poolName;
     }
@@ -105,29 +98,25 @@ public class PnfsHandler
      * @param handler The PnfsHandler to copy
      * @param subject The Subject to apply to the copy
      */
-    public PnfsHandler(PnfsHandler handler, Subject subject)
-    {
+    public PnfsHandler(PnfsHandler handler, Subject subject) {
         _poolName = handler._poolName;
         _cellStub = handler._cellStub;
         _subject = subject;
     }
 
     @Override
-    public void setCellEndpoint(CellEndpoint endpoint)
-    {
+    public void setCellEndpoint(CellEndpoint endpoint) {
         _cellStub.setCellEndpoint(endpoint);
     }
 
-    public void setSubject(Subject subject)
-    {
+    public void setSubject(Subject subject) {
         _subject = subject;
     }
 
     /**
      * Sends a PnfsMessage to PnfsManager.
      */
-    public void send(PnfsMessage msg)
-    {
+    public void send(PnfsMessage msg) {
         if (_cellStub == null) {
             throw new IllegalStateException("Missing endpoint");
         }
