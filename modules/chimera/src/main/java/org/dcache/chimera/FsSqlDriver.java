@@ -981,15 +981,23 @@ public class FsSqlDriver {
      *
      * @param inode
      * @param type
-     * @param location
+     * @param location (can be <code>null</code>)
      */
     void clearInodeLocation(FsInode inode, int type, String location) {
-        _jdbc.update("DELETE FROM t_locationinfo WHERE inumber=? AND itype=? AND ilocation=?",
-                     ps -> {
-                         ps.setLong(1, inode.ino());
-                         ps.setInt(2, type);
-                         ps.setString(3, location);
-                     });
+        if (location == null) {
+            _jdbc.update("DELETE FROM t_locationinfo WHERE inumber=? AND itype=?",
+                         ps -> {
+                             ps.setLong(1, inode.ino());
+                             ps.setInt(2, type);
+                         });
+        } else {
+            _jdbc.update("DELETE FROM t_locationinfo WHERE inumber=? AND itype=? AND ilocation=?",
+                         ps -> {
+                             ps.setLong(1, inode.ino());
+                             ps.setInt(2, type);
+                             ps.setString(3, location);
+                         });
+        }
     }
 
     String[] tags(FsInode inode) {

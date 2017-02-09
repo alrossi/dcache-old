@@ -872,6 +872,9 @@ public class JdbcFs implements FileSystemProvider {
                     case "checksum":
                     case "checksums":
                         return new FsInode_PCRC(this, inode.ino());
+                    case "storageuri":
+                        return new FsInode_SURI(this, inode.ino(),
+                                                FsInodeType.SURIGET);
                     default:
                         throw new FileNotFoundHimeraFsException(cmd[2]);
                 }
@@ -898,16 +901,22 @@ public class JdbcFs implements FileSystemProvider {
                 if (cmd.length < 3) {
                     throw new FileNotFoundHimeraFsException(name);
                 }
+
+                FsInode inode = _sqlDriver.inodeOf(parent, cmd[1], NO_STAT);
+                if (inode == null) {
+                    throw new FileNotFoundHimeraFsException(cmd[1]);
+                }
+
+                if (cmd[2].equalsIgnoreCase("storageuri")) {
+                    return new FsInode_SURI(this, inode.ino(),
+                                            FsInodeType.SURISET);
+                }
+
                 String[] args = new String[cmd.length - 2];
                 System.arraycopy(cmd, 2, args, 0, args.length);
 
-                FsInode fsetInode = _sqlDriver.inodeOf(parent, cmd[1], NO_STAT);
-                if (fsetInode == null) {
-                    throw new FileNotFoundHimeraFsException(cmd[1]);
-                }
-                return new FsInode_PSET(this, fsetInode.ino(), args);
+                return new FsInode_PSET(this, inode.ino(), args);
             }
-
         }
 
         FsInode inode = _sqlDriver.inodeOf(parent, name, cacheOption);
