@@ -25,6 +25,7 @@ import java.net.URI;
 import java.util.List;
 
 import org.dcache.chimera.posix.Stat;
+import org.dcache.util.NDC;
 
 public class FsInode_SURI extends FsInode {
     private static final String NEWLINE = "\n\r";
@@ -100,7 +101,7 @@ public class FsInode_SURI extends FsInode {
     @Override
     public int write(long pos, byte[] data, int offset, int len)
                     throws ChimeraFsException {
-        String uid = MDC.get("nfs.principal");
+        String uid = NDC.pop();
 
         logger.error("WRITE: pos {}, offset {}, len {}; uid {}, {}", pos, offset, len, uid, MDC.getCopyOfContextMap());
 
