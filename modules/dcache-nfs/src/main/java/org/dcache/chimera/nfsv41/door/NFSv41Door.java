@@ -467,11 +467,14 @@ public class NFSv41Door extends AbstractCellComponent implements
         Transfer.initSession(false, false);
         NDC.push(pnfsId.toString());
         NDC.push(context.getRpcCall().getTransport().getRemoteSocketAddress().toString());
-        // added -alr in order to know whether root is writing or not
+
+        /*
+         * added -alr in order to know whether root is writing or not
+         */
         Map contextMap = MDC.getCopyOfContextMap();
         contextMap.put("nfs.principal", context.getPrincipal().getName());
         MDC.setContextMap(contextMap);
-        _log.error("CONTEXT MAP {}.", MDC.getCopyOfContextMap());
+
         try {
 
             deviceid4 deviceid;

@@ -100,12 +100,12 @@ public class FsInode_SURI extends FsInode {
     @Override
     public int write(long pos, byte[] data, int offset, int len)
                     throws ChimeraFsException {
+        String uid = MDC.get("nfs.principal");
 
-        logger.error("WRITE: pos {}, offset {}, len {}; context {}", pos, offset, len, MDC.get("nfs.principal"));
+        logger.error("WRITE: pos {}, offset {}, len {}; uid {}", pos, offset, len, uid);
 
-        if (!getLocations().isEmpty()) {
-           //throw new PermissionDeniedChimeraFsException("User not allowed to overwrite.");
-            return -1;
+        if (!getLocations().isEmpty() && !"0".equals(uid)) {
+            throw new PermissionDeniedChimeraFsException("User not allowed to overwrite.");
         }
 
         if (pos == 0) {
@@ -132,7 +132,7 @@ public class FsInode_SURI extends FsInode {
                              StorageGenericLocation.TAPE,
                              uriString);
 
-        return uriString.length();
+        return Math.max(len, uriString.length());
     }
 
     private String getLocations() throws ChimeraFsException {
