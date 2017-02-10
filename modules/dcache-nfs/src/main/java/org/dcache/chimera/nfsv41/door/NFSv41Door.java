@@ -6,7 +6,6 @@ import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Required;
 
 import javax.annotation.concurrent.GuardedBy;
@@ -468,16 +467,6 @@ public class NFSv41Door extends AbstractCellComponent implements
         NDC.push(pnfsId.toString());
         NDC.push(context.getRpcCall().getTransport().getRemoteSocketAddress().toString());
 
-        /*
-         * added -alr in order to know whether root is writing or not
-         */
-//        Map contextMap = MDC.getCopyOfContextMap();
-//        contextMap.put("nfs.principal", context.getPrincipal().getName());
-//        MDC.setContextMap(contextMap);
-        MDC.put("nfs.principal", context.getPrincipal().getName());
-        NDC.push(context.getPrincipal().getName());
-        _log.error("{}", MDC.getCopyOfContextMap());
-
         try {
 
             deviceid4 deviceid;
@@ -615,8 +604,11 @@ public class NFSv41Door extends AbstractCellComponent implements
             CDC.clearMessageContext();
             NDC.pop();
             NDC.pop();
+             /*
+              * added -alr in order to know whether root is writing or not
+              */
+            NDC.push(context.getPrincipal().getName());
         }
-
     }
 
     @Override
