@@ -25,10 +25,9 @@ import java.net.URI;
 import java.util.List;
 
 import org.dcache.chimera.posix.Stat;
-import org.dcache.util.NDC;
 
 public class FsInode_SURI extends FsInode {
-    private static final String NEWLINE = "\n\r";
+    private static final String NEWLINE = "\n";
     Logger logger = LoggerFactory.getLogger(FsInode_SURI.class);
     private List<StorageLocatable> locations;
 
@@ -101,13 +100,12 @@ public class FsInode_SURI extends FsInode {
     @Override
     public int write(long pos, byte[] data, int offset, int len)
                     throws ChimeraFsException {
-        String uid = NDC.pop();
 
-        logger.error("WRITE: pos {}, offset {}, len {}; uid {}, {}", pos, offset, len, uid, MDC.getCopyOfContextMap());
+        logger.error("WRITE: pos {}, offset {}, len {}; uid {}, {}", pos, offset, len, MDC.getCopyOfContextMap());
 
-        if (!getLocations().isEmpty() && !"0".equals(uid)) {
-            throw new PermissionDeniedChimeraFsException("User not allowed to overwrite.");
-        }
+//        if (!getLocations().isEmpty() && !"0".equals(uid)) {
+//            throw new PermissionDeniedChimeraFsException("User not allowed to overwrite.");
+//        }
 
         if (pos == 0) {
             _fs.clearInodeLocation(this,

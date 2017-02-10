@@ -466,13 +466,7 @@ public class NFSv41Door extends AbstractCellComponent implements
         Transfer.initSession(false, false);
         NDC.push(pnfsId.toString());
         NDC.push(context.getRpcCall().getTransport().getRemoteSocketAddress().toString());
-         /*
-          * added -alr in order to know whether root is writing or not
-          */
-        NDC.push(context.getPrincipal().getName());
-        NDC.push(context.getPrincipal().getName());
-        NDC.push(context.getPrincipal().getName());
-        NDC.push(context.getPrincipal().getName());
+
         try {
 
             deviceid4 deviceid;
