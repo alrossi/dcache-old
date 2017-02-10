@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.log4j.MDC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
@@ -468,7 +469,7 @@ public class NFSv41Door extends AbstractCellComponent implements
         NDC.push(context.getRpcCall().getTransport().getRemoteSocketAddress().toString());
         // added -alr in order to know whether root is writing or not
         _log.error("Principal {}.", context.getPrincipal().getName());
-        NDC.push(context.getPrincipal().getName());
+        MDC.put("nfs.principal", context.getPrincipal().getName());
         try {
 
             deviceid4 deviceid;
