@@ -101,7 +101,7 @@ public class FsInode_SURI extends FsInode {
     public int write(long pos, byte[] data, int offset, int len)
                     throws ChimeraFsException {
 
-        logger.error("WRITE: pos {}, offset {}, len {}; context {}", pos, offset, len, MDC.getCopyOfContextMap());
+        logger.error("WRITE: pos {}, offset {}, len {}; context {}", pos, offset, len, MDC.get("nfs.principal"));
 
         if (!getLocations().isEmpty()) {
            //throw new PermissionDeniedChimeraFsException("User not allowed to overwrite.");
