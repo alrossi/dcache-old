@@ -100,7 +100,7 @@ public class FsInode_SURI extends FsInode {
     @Override
     public int write(long pos, byte[] data, int offset, int len)
                     throws ChimeraFsException {
-        String uid = MDC.getCopyOfContextMap().get("nfs.principal");
+        String uid = MDC.get("nfs.principal");
 
         logger.error("WRITE: pos {}, offset {}, len {}; uid {}, {}", pos, offset, len, uid, MDC.getCopyOfContextMap());
 

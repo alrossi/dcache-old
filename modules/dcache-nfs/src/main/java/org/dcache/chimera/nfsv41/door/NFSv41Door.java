@@ -471,9 +471,10 @@ public class NFSv41Door extends AbstractCellComponent implements
         /*
          * added -alr in order to know whether root is writing or not
          */
-        Map contextMap = MDC.getCopyOfContextMap();
-        contextMap.put("nfs.principal", context.getPrincipal().getName());
-        MDC.setContextMap(contextMap);
+//        Map contextMap = MDC.getCopyOfContextMap();
+//        contextMap.put("nfs.principal", context.getPrincipal().getName());
+//        MDC.setContextMap(contextMap);
+        MDC.put("nfs.principal", context.getPrincipal().getName());
 
         try {
 
