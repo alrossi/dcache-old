@@ -475,6 +475,7 @@ public class NFSv41Door extends AbstractCellComponent implements
 //        contextMap.put("nfs.principal", context.getPrincipal().getName());
 //        MDC.setContextMap(contextMap);
         MDC.put("nfs.principal", context.getPrincipal().getName());
+        _log.error("{}", MDC.getCopyOfContextMap());
 
         try {
 
