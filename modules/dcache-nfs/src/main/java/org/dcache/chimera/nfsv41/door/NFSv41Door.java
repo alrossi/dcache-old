@@ -467,6 +467,7 @@ public class NFSv41Door extends AbstractCellComponent implements
         NDC.push(pnfsId.toString());
         NDC.push(context.getRpcCall().getTransport().getRemoteSocketAddress().toString());
         // added -alr in order to know whether root is writing or not
+        _log.error("Principal {}.", context.getPrincipal().getName());
         NDC.push(context.getPrincipal().getName());
         try {
 
