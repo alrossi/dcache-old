@@ -8,31 +8,40 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Required;
 
+import javax.annotation.concurrent.GuardedBy;
 import javax.security.auth.Subject;
-
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import diskCacheV111.util.CacheException;
 import diskCacheV111.util.FileNotFoundCacheException;
 import diskCacheV111.util.FsPath;
 import diskCacheV111.util.PnfsHandler;
-import diskCacheV111.util.PnfsId;;
+import diskCacheV111.util.PnfsId;
 import diskCacheV111.vehicles.DoorTransferFinishedMessage;
 import diskCacheV111.vehicles.IoDoorEntry;
 import diskCacheV111.vehicles.IoDoorInfo;
 import diskCacheV111.vehicles.PoolMoverKillMessage;
 import diskCacheV111.vehicles.PoolPassiveIoFileMessage;
-
 import dmg.cells.nucleus.AbstractCellComponent;
 import dmg.cells.nucleus.CDC;
 import dmg.cells.nucleus.CellCommandListener;
@@ -44,18 +53,8 @@ import dmg.cells.services.login.LoginManagerChildrenInfo;
 import dmg.util.command.Argument;
 import dmg.util.command.Command;
 import dmg.util.command.Option;
-
-import java.io.Serializable;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
-
 import org.dcache.auth.Subjects;
+import org.dcache.auth.attributes.Restrictions;
 import org.dcache.cells.CellStub;
 import org.dcache.chimera.FsInode;
 import org.dcache.chimera.FsInodeType;
@@ -65,18 +64,16 @@ import org.dcache.chimera.nfsv41.door.proxy.ProxyIoFactory;
 import org.dcache.chimera.nfsv41.door.proxy.ProxyIoMdsOpFactory;
 import org.dcache.chimera.nfsv41.mover.NFS4ProtocolInfo;
 import org.dcache.commons.stats.RequestExecutionTimeGauges;
-import org.dcache.poolmanager.PoolManagerStub;
-import org.dcache.util.NDC;
 import org.dcache.namespace.FileAttribute;
 import org.dcache.nfs.ChimeraNFSException;
 import org.dcache.nfs.ExportFile;
 import org.dcache.nfs.FsExport;
+import org.dcache.nfs.status.BadLayoutException;
+import org.dcache.nfs.status.BadStateidException;
 import org.dcache.nfs.status.DelayException;
 import org.dcache.nfs.status.LayoutTryLaterException;
 import org.dcache.nfs.status.LayoutUnavailableException;
-import org.dcache.nfs.status.BadLayoutException;
 import org.dcache.nfs.status.NfsIoException;
-import org.dcache.nfs.status.BadStateidException;
 import org.dcache.nfs.v3.MountServer;
 import org.dcache.nfs.v3.NfsServerV3;
 import org.dcache.nfs.v3.xdr.mount_prot;
@@ -84,6 +81,7 @@ import org.dcache.nfs.v3.xdr.nfs3_prot;
 import org.dcache.nfs.v4.CompoundContext;
 import org.dcache.nfs.v4.FlexFileLayoutDriver;
 import org.dcache.nfs.v4.Layout;
+import org.dcache.nfs.v4.LayoutDriver;
 import org.dcache.nfs.v4.MDSOperationFactory;
 import org.dcache.nfs.v4.NFS4Client;
 import org.dcache.nfs.v4.NFS4State;
@@ -91,40 +89,37 @@ import org.dcache.nfs.v4.NFSServerV41;
 import org.dcache.nfs.v4.NFSv41DeviceManager;
 import org.dcache.nfs.v4.NFSv41Session;
 import org.dcache.nfs.v4.NFSv4Defaults;
+import org.dcache.nfs.v4.NfsV41FileLayoutDriver;
 import org.dcache.nfs.v4.xdr.device_addr4;
 import org.dcache.nfs.v4.xdr.deviceid4;
 import org.dcache.nfs.v4.xdr.layout4;
 import org.dcache.nfs.v4.xdr.layoutiomode4;
 import org.dcache.nfs.v4.xdr.layouttype4;
+import org.dcache.nfs.v4.xdr.length4;
 import org.dcache.nfs.v4.xdr.nfs4_prot;
 import org.dcache.nfs.v4.xdr.nfs_fh4;
-import org.dcache.nfs.v4.xdr.stateid4;
-import org.dcache.nfs.v4.LayoutDriver;
-import org.dcache.nfs.v4.NfsV41FileLayoutDriver;
-import org.dcache.nfs.v4.xdr.length4;
 import org.dcache.nfs.v4.xdr.offset4;
+import org.dcache.nfs.v4.xdr.stateid4;
 import org.dcache.nfs.v4.xdr.utf8str_mixed;
 import org.dcache.nfs.vfs.Inode;
 import org.dcache.nfs.vfs.VfsCache;
 import org.dcache.nfs.vfs.VfsCacheConfig;
+import org.dcache.poolmanager.PoolManagerStub;
+import org.dcache.util.NDC;
 import org.dcache.util.RedirectedTransfer;
 import org.dcache.util.Transfer;
 import org.dcache.util.TransferRetryPolicy;
-import org.dcache.vehicles.FileAttributes;
 import org.dcache.vehicles.DoorValidateMoverMessage;
+import org.dcache.vehicles.FileAttributes;
 import org.dcache.xdr.OncRpcProgram;
 import org.dcache.xdr.OncRpcSvc;
 import org.dcache.xdr.OncRpcSvcBuilder;
 import org.dcache.xdr.gss.GssSessionManager;
 
 import static java.util.stream.Collectors.toList;
-
-import java.util.stream.Stream;
-import javax.annotation.concurrent.GuardedBy;
-
-import org.dcache.auth.attributes.Restrictions;
-
 import static org.dcache.chimera.nfsv41.door.ExceptionUtils.asNfsException;
+
+;
 
 public class NFSv41Door extends AbstractCellComponent implements
         NFSv41DeviceManager, CellCommandListener,
@@ -471,6 +466,8 @@ public class NFSv41Door extends AbstractCellComponent implements
         Transfer.initSession(false, false);
         NDC.push(pnfsId.toString());
         NDC.push(context.getRpcCall().getTransport().getRemoteSocketAddress().toString());
+        // added -alr in order to know whether root is writing or not
+        NDC.push(context.getPrincipal().getName());
         try {
 
             deviceid4 deviceid;
