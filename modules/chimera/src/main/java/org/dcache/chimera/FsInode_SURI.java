@@ -19,6 +19,7 @@ package org.dcache.chimera;
 import com.google.common.base.Joiner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import java.net.URI;
 import java.util.List;
@@ -100,13 +101,9 @@ public class FsInode_SURI extends FsInode {
     public int write(long pos, byte[] data, int offset, int len)
                     throws ChimeraFsException {
 
-        logger.error("WRITE: pos {}, offset {}, len {}.", pos, offset, len);
+        logger.error("WRITE: pos {}, offset {}, len {}; context {}", pos, offset, len, MDC.getCopyOfContextMap());
 
-        Stat stat = stat();
-
-        logger.error("WRITE: curr size {}, uid {}, gid {}.", stat.getSize(), stat.getUid(), stat.getGid());
-
-        if (!getLocations().isEmpty() && !(stat.getUid() == 0 && stat.getGid() == 0)) {
+        if (!getLocations().isEmpty()) {
            //throw new PermissionDeniedChimeraFsException("User not allowed to overwrite.");
             return -1;
         }
