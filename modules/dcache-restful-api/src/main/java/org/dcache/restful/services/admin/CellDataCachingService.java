@@ -76,18 +76,39 @@ import org.dcache.util.RunnableModule;
 
 /**
  * <p>Services supporting restful admin resources should extend
- *    this class and implement their specific service interface.</p>
- *
+ * this class and implement their specific service interface.</p>
+ * <p>
  * <p>Here is provided a common framework for initializing, resetting
- *    and shutting down the thread which calls the collector(s) and
- *    builds the cache(s).  This includes two admin shell commands
- *    for checking current status and for resetting the timeout.</p>
+ * and shutting down the thread which calls the collector(s) and
+ * builds the cache(s).  This includes two admin shell commands
+ * for checking current status and for resetting the timeout.</p>
  */
 public abstract class CellDataCachingService<C extends CellMessagingCollector>
                 extends RunnableModule
-                implements TimestampedService, CellCommandListener {
+                implements CellCommandListener {
     protected static final Logger LOGGER
                     = LoggerFactory.getLogger(CellDataCachingService.class);
+
+    /**
+     * <p>Should be applied to all admin commands with time range parameters.</p>
+     */
+    protected static String DATETIME_FORMAT = "yyyy/MM/dd-HH:mm:ss";
+
+    /**
+     * <p>This is to provide uniform date-time formatting for all services.</p>
+     *
+     * @param datetime in the DATETIME_FORMAT above.
+     * @return corresponding date object.
+     * @throws ParseException if the string does not conform to the format.
+     */
+    protected static Date getDate(String datetime) throws ParseException {
+        if (datetime == null) {
+            return null;
+        }
+
+        DateFormat format = new SimpleDateFormat(DATETIME_FORMAT);
+        return format.parse(datetime);
+    }
 
     /**
      * <p>This class should be subclassed in order to provide the
@@ -149,7 +170,7 @@ public abstract class CellDataCachingService<C extends CellMessagingCollector>
                      * Time the collector communication out at half the
                      * refresh interval.
                      */
-                    collector.reset(timeout/2, timeoutUnit);
+                    collector.reset(timeout / 2, timeoutUnit);
                     rebuildCaches();
                     response = "Update time set to "
                                     + unit.toSeconds(timeout) + " seconds";
@@ -168,25 +189,12 @@ public abstract class CellDataCachingService<C extends CellMessagingCollector>
             return response;
         }
     }
-
     protected C collector;
-
     /**
      * <p>For diagnostic information.</p>
      */
     private long timeUsed;
     private long processCounter;
-
-    @Override
-    public Date getDate(String datetime) throws ParseException {
-        if (datetime == null) {
-            return null;
-        }
-
-        DateFormat format = new SimpleDateFormat(DATETIME_FORMAT);
-
-        return format.parse(datetime);
-    }
 
     @Override
     public void initialize() {
@@ -235,20 +243,20 @@ public abstract class CellDataCachingService<C extends CellMessagingCollector>
     }
 
     /**
-     * <p>If the implementation uses a cache with an eviction protocol,
-     * then this method should be overridden to reset the cache
-     * configuration.</p>
-     *
-     * <p>Called under synchronization on the class instance.</p>
-     */
-    protected void rebuildCaches() {
-        // NOP
-    }
-
-    /**
      * <p>Typically, this will be a two-step procedure involving
      * first the invocation of the collector method(s), and then
      * an update of the internal cache(s).</p>
      */
     protected abstract void refresh();
+
+    /**
+     * <p>If the implementation uses a cache with an eviction protocol,
+     * then this method should be overridden to reset the cache
+     * configuration.</p>
+     * <p>
+     * <p>Called under synchronization on the class instance.</p>
+     */
+    protected void rebuildCaches() {
+        // NOP
+    }
 }
