@@ -46,7 +46,7 @@ public class DcacheResource
     private static final LockToken NO_LOCK = null;
     private static final Logger LOGGER = LoggerFactory.getLogger(DcacheResource.class);
 
-    private static final String XATTR_NAMESPACE_URI =
+    public static final String XATTR_NAMESPACE_URI =
           "http://www.dcache.org/2020/xattr";
     private static final PropertySource.PropertyMetaData XATTR_PROPERTY_METADATA =
           new PropertySource.PropertyMetaData(PropertySource.PropertyAccessibility.WRITABLE,

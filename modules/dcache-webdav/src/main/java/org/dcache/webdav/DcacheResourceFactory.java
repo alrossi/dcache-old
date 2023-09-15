@@ -26,6 +26,13 @@ import static org.dcache.namespace.FileType.LINK;
 import static org.dcache.namespace.FileType.REGULAR;
 import static org.dcache.util.ByteUnit.KiB;
 import static org.dcache.util.TransferRetryPolicy.tryOnce;
+import static org.dcache.webdav.DcacheFileResource.DCACHE_NAMESPACE_URI;
+import static org.dcache.webdav.DcacheFileResource.PROPERTY_ACCESS_LATENCY;
+import static org.dcache.webdav.DcacheFileResource.PROPERTY_CHECKSUMS;
+import static org.dcache.webdav.DcacheFileResource.PROPERTY_FILE_LOCALITY;
+import static org.dcache.webdav.DcacheFileResource.PROPERTY_RETENTION_POLICY;
+import static org.dcache.webdav.DcacheFileResource.SRM_NAMESPACE_URI;
+import static org.dcache.webdav.DcacheResource.XATTR_NAMESPACE_URI;
 import static org.dcache.webdav.InsufficientStorageException.checkStorageSufficient;
 
 import com.google.common.base.Joiner;
@@ -75,6 +82,7 @@ import io.milton.http.Request;
 import io.milton.http.ResourceFactory;
 import io.milton.http.ResponseStatus;
 import io.milton.http.exceptions.BadRequestException;
+import io.milton.http.webdav.PropertiesRequest;
 import io.milton.resource.Resource;
 import io.milton.servlet.ServletRequest;
 import io.milton.servlet.ServletResponse;
@@ -111,9 +119,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import javax.security.auth.Subject;
 import javax.servlet.http.HttpServletRequest;
+import javax.xml.namespace.QName;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
@@ -178,16 +188,40 @@ public class DcacheResourceFactory
 
     private static final Set<FileAttribute> REQUIRED_ATTRIBUTES =
           EnumSet.of(TYPE, PNFSID, CREATION_TIME, MODIFICATION_TIME, SIZE,
-                MODE, OWNER, OWNER_GROUP, XATTR);
+                MODE, OWNER, OWNER_GROUP);
 
     private static final String HTML_TEMPLATE_LISTING_NAME = "page";
     private static final String HTML_TEMPLATE_CLIENT_NAME = "client";
 
+    private static final Map<QName,Set<FileAttribute>> PROPERTY_TO_FILE_ATTRIBUTES;
+
+    static {
+        ImmutableMap.Builder<QName,Set<FileAttribute>> builder = ImmutableMap.builder();
+        builder.put(new QName(SRM_NAMESPACE_URI, PROPERTY_ACCESS_LATENCY), Set.of(ACCESS_LATENCY));
+        builder.put(new QName(SRM_NAMESPACE_URI, PROPERTY_RETENTION_POLICY), Set.of(RETENTION_POLICY));
+        builder.put(new QName(DCACHE_NAMESPACE_URI, PROPERTY_CHECKSUMS), Set.of(CHECKSUM));
+        builder.put(new QName(SRM_NAMESPACE_URI, PROPERTY_FILE_LOCALITY),
+              PoolMonitorV5.getRequiredAttributesForFileLocality());
+        builder.put(new QName("DAV:", "resourcetype"), Set.of(TYPE));
+        builder.put(new QName("DAV:", "getcontentlength"), Set.of(SIZE));
+        builder.put(new QName("DAV:", "getetag"), Set.of(PNFSID));
+        builder.put(new QName("DAV:", "displayname"), Set.of());
+        builder.put(new QName("DAV:", "getcontenttype"), Set.of(XATTR));
+        builder.put(new QName("DAV:", "textcontent"), Set.of(XATTR));
+        builder.put(new QName("DAV:", "getlastmodified"), Set.of(MODIFICATION_TIME));
+        builder.put(new QName("DAV:", "getcreated"), Set.of(CREATION_TIME));
+        builder.put(new QName("DAV:", "creationdate"), Set.of(CREATION_TIME));
+        builder.put(new QName("DAV:", "quota-used-bytes"), Set.of(STORAGEINFO));
+        builder.put(new QName("DAV:", "quota-available-bytes"), Set.of(STORAGEINFO));
+        PROPERTY_TO_FILE_ATTRIBUTES = builder.build();
+    }
+
     // Additional attributes needed for PROPFIND requests; e.g., to supply
     // values for properties.
-    private static final Set<FileAttribute> PROPFIND_ATTRIBUTES = Sets.union(
-          EnumSet.of(CHECKSUM, ACCESS_LATENCY, RETENTION_POLICY, STORAGEINFO),
-          PoolMonitorV5.getRequiredAttributesForFileLocality());
+    private static final Set<FileAttribute> ALL_PROPFIND_ATTRIBUTES =
+          PROPERTY_TO_FILE_ATTRIBUTES.values().stream()
+                .flatMap(s -> s.stream())
+                .collect(Collectors.toSet());
 
     private static final String PROTOCOL_INFO_NAME = "Http";
     private static final String PROTOCOL_INFO_SSL_NAME = "Https";
@@ -1554,15 +1588,49 @@ public class DcacheResourceFactory
             attributes.add(CHECKSUM);
         }
 
-        if (isPropfindRequest()) {
-            // FIXME: Unfortunately, Milton parses the request body after
-            // requesting the Resource, so we cannot know which additional
-            // attributes are being requested; therefore, we must request all
-            // of them.
-            attributes.addAll(PROPFIND_ATTRIBUTES);
+        if (isGetOrHeadRequest()) {
+            // Needed to support calls to DcacheFileResource#getContentType
+            attributes.add(XATTR);
         }
 
+        if (isPropfindRequest()) {
+            var extraAttr = HttpManagerFactory.propertiesRequest()
+                .map(this::attributesForRequest)
+                .orElseGet(() -> {
+                        LOGGER.debug("Missing PropertiesRequest object,"
+                                + " throwing the kitchen sink at it.");
+                        return ALL_PROPFIND_ATTRIBUTES;
+                    });
+
+            attributes.addAll(extraAttr);
+        }
+
+        LOGGER.debug("Resolved request to FileAttributes: {}", attributes);
+
         return attributes;
+    }
+
+    private Set<FileAttribute> attributesForRequest(PropertiesRequest propReq) {
+        return propReq.getProperties().stream()
+            .map(PropertiesRequest.Property::getName)
+            .flatMap(n -> attributesForProperty(n).stream())
+            .collect(Collectors.toSet());
+    }
+
+    private Set<FileAttribute> attributesForProperty(QName name) {
+        if (name.getNamespaceURI().equalsIgnoreCase(XATTR_NAMESPACE_URI)) {
+            return Set.of(XATTR);
+        }
+
+        var attributes = Optional.ofNullable(PROPERTY_TO_FILE_ATTRIBUTES.get(name));
+
+        return attributes.orElseGet(() -> {
+                LOGGER.debug("Client requested property {}, but the"
+                        + " FileAttribute(s) to support this property are not"
+                        + " specified.  Assuming that no FileAttribute(s) are"
+                        + " needed.", name);
+                return Collections.emptySet();
+            });
     }
 
     /**
@@ -1605,6 +1673,11 @@ public class DcacheResourceFactory
 
     private boolean isPropfindRequest() {
         return HttpManager.request().getMethod() == Request.Method.PROPFIND;
+    }
+
+    private boolean isGetOrHeadRequest() {
+        return HttpManager.request().getMethod() == Request.Method.HEAD ||
+                HttpManager.request().getMethod() == Request.Method.GET;
     }
 
     FileLocality calculateLocality(FileAttributes attributes, String clientIP) {

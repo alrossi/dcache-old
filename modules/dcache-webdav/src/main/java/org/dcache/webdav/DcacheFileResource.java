@@ -53,26 +53,26 @@ public class DcacheFileResource
     private static final FileNameMap MIME_TYPE_MAP =
           URLConnection.getFileNameMap();
 
-    private static final String DCACHE_NAMESPACE_URI =
+    public static final String DCACHE_NAMESPACE_URI =
           "http://www.dcache.org/2013/webdav";
 
     private static final String PARAM_ACTION = "action";
 
     // We use the SRM 2.2 WSDL's TargetNamespace for the WebDAV properties
     // associated with SRM concepts.
-    private static final String SRM_NAMESPACE_URI =
+    public static final String SRM_NAMESPACE_URI =
           "http://srm.lbl.gov/StorageResourceManager";
 
     /*
      * Our dCache WebDAV properties.
      */
-    private static final String PROPERTY_CHECKSUMS = "Checksums";
+    public static final String PROPERTY_CHECKSUMS = "Checksums";
     /*
      * Our SRM WebDAV properties.
      */
-    private static final String PROPERTY_ACCESS_LATENCY = "AccessLatency";
-    private static final String PROPERTY_RETENTION_POLICY = "RetentionPolicy";
-    private static final String PROPERTY_FILE_LOCALITY = "FileLocality";
+    public static final String PROPERTY_ACCESS_LATENCY = "AccessLatency";
+    public static final String PROPERTY_RETENTION_POLICY = "RetentionPolicy";
+    public static final String PROPERTY_FILE_LOCALITY = "FileLocality";
 
     private static final ImmutableMap<QName, PropertyMetaData> PROPERTY_METADATA =
           new ImmutableMap.Builder<QName, PropertyMetaData>()
