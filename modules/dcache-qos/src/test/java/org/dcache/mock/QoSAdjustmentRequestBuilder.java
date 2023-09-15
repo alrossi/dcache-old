@@ -57,87 +57,73 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.qos.services.adjuster.handlers;
+package org.dcache.mock;
 
-import diskCacheV111.util.CacheException;
 import diskCacheV111.util.PnfsId;
-import java.util.Optional;
-import org.dcache.pool.migration.Task;
-import org.dcache.pool.migration.TaskCompletionHandler;
+import diskCacheV111.vehicles.PoolManagerPoolInformation;
 import org.dcache.qos.data.QoSAction;
-import org.dcache.qos.services.adjuster.data.QoSAdjusterTaskMap;
-import org.dcache.qos.util.CacheExceptionUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.dcache.qos.vehicles.QoSAdjustmentRequest;
+import org.dcache.util.FileAttributesBuilder;
+import org.dcache.vehicles.FileAttributes;
 
-/**
- * Implements the handling of adjuster task termination. Also implements the migration task
- * termination logic.
- */
-public class QoSAdjustTaskCompletionHandler implements TaskCompletionHandler {
+public class QoSAdjustmentRequestBuilder {
 
-    public static final String FAILED_COPY_MESSAGE
-          = "Migration task for %s failed. %s%s.";
-
-    public static final String FAILED_STATE_CHANGE_MESSAGE
-          = "Failed to change %s to %s; %s. ";
-
-    private static final Logger LOGGER
-          = LoggerFactory.getLogger(QoSAdjustTaskCompletionHandler.class);
-
-    private QoSAdjusterTaskMap map;
-
-    public void setMap(QoSAdjusterTaskMap map) {
-        this.map = map;
+    public static QoSAdjustmentRequestBuilder anAdjustmentRequest() {
+        return new QoSAdjustmentRequestBuilder();
     }
 
-    @Override
-    public void taskCancelled(Task task) {
-        taskCancelled(task.getPnfsId());
+    private PnfsId pnfsId;
+    private QoSAction action;
+    private FileAttributes attributes;
+    private PoolManagerPoolInformation targetInfo;
+    private String source;
+    private String target;
+    private String poolGroup;
+
+    public QoSAdjustmentRequestBuilder withPnfsId(PnfsId pnfsId) {
+        this.pnfsId = pnfsId;
+        return this;
     }
 
-    public void taskCancelled(PnfsId pnfsId) {
-        LOGGER.debug("{}, Task cancelled.", pnfsId);
-        map.cancel(pnfsId);
+    public QoSAdjustmentRequestBuilder withAction(QoSAction action) {
+        this.action = action;
+        return this;
     }
 
-    public void taskCompleted(PnfsId pnfsId, Optional<String> target) {
-        LOGGER.debug("{}. Task completed.", pnfsId);
-        map.updateTask(pnfsId, target, null);
+    public QoSAdjustmentRequestBuilder withAttributes(FileAttributesBuilder builder) {
+        this.attributes = builder.build();
+        return this;
     }
 
-    @Override
-    public void taskCompleted(Task task) {
-        LOGGER.debug("Migration Task for {} completed successfully.", task.getPnfsId());
-        taskCompleted(task.getPnfsId(), Optional.empty());
+    public QoSAdjustmentRequestBuilder withTargetInfo(PoolManagerInformationBuilder targetInfo) {
+        this.targetInfo = targetInfo.build();
+        return this;
     }
 
-    public void taskFailed(PnfsId pnfsId, Optional<String> target, CacheException exception) {
-        LOGGER.debug("{}, Task failed: {}.", pnfsId, exception.getMessage());
-        map.updateTask(pnfsId, target, exception);
+    public QoSAdjustmentRequestBuilder withSource(String source) {
+        this.source = source;
+        return this;
     }
 
-    @Override
-    public void taskFailed(Task task, int rc, String msg) {
-        LOGGER.debug("Migration task {} failed.", task.getPnfsId());
-        PnfsId pnfsId = task.getPnfsId();
-        CacheException exception = CacheExceptionUtils.getCacheException(rc,
-              FAILED_COPY_MESSAGE,
-              pnfsId,
-              QoSAction.COPY_REPLICA,
-              msg,
-              null);
-        taskFailed(pnfsId, Optional.empty(), exception);
+    public QoSAdjustmentRequestBuilder withTarget(String target) {
+        this.target = target;
+        return this;
     }
 
-    /**
-     * Permanent failures do not receive special treatment, since, for example, the file not found
-     * on the source can at times be an ephemeral error.
-     * <p/>
-     * Delegates to #taskFailed(Task task, int rc, String msg) to decide what should be done.
-     */
-    @Override
-    public void taskFailedPermanently(Task task, int rc, String msg) {
-        taskFailed(task, rc, msg);
+    public QoSAdjustmentRequestBuilder withPoolGroup(String poolGroup) {
+        this.poolGroup = poolGroup;
+        return this;
+    }
+
+    public QoSAdjustmentRequest build() {
+        QoSAdjustmentRequest request = new QoSAdjustmentRequest();
+        request.setAction(action);
+        request.setAttributes(attributes);
+        request.setPoolGroup(poolGroup);
+        request.setPnfsId(pnfsId);
+        request.setSource(source);
+        request.setTarget(target);
+        request.setTargetInfo(targetInfo);
+        return request;
     }
 }

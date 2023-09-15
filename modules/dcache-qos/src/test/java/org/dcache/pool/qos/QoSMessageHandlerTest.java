@@ -60,6 +60,7 @@ documents or software obtained from this server.
 package org.dcache.pool.qos;
 
 import static org.dcache.mock.CacheEntryBuilder.aCacheEntry;
+import static org.dcache.qos.util.MessageGuardTest.TEST_PNFSID;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -69,7 +70,6 @@ import static org.mockito.Mockito.when;
 
 import com.google.common.util.concurrent.MoreExecutors;
 import diskCacheV111.util.CacheException;
-import diskCacheV111.util.PnfsId;
 import dmg.cells.nucleus.Reply;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -87,7 +87,6 @@ import org.mockito.Mock;
 
 public class QoSMessageHandlerTest {
 
-    private static final PnfsId TEST_PNFSID = new PnfsId("0000B64FF6C247D84D42BE5ACE9CB688AD00");
     private static final String TEST_POOL = "aTestPool";
 
     @Mock

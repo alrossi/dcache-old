@@ -80,7 +80,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class MessageGuardTest {
-    static final PnfsId TEST_PNFSID = new PnfsId("0000B64FF6C247D84D42BE5ACE9CB688AD00");
+    public static final PnfsId TEST_PNFSID = new PnfsId("0000B64FF6C247D84D42BE5ACE9CB688AD00");
 
     class MessageReceiver implements CellMessageReceiver {
         void messageArrived(CellMessage msg) {

@@ -241,7 +241,7 @@ public final class PoolOpChangeHandler extends
         Collection<StorageUnit> newUnits = diff.getNewUnits();
         for (StorageUnit unit : newUnits) {
             String name = unit.getName();
-            StorageUnitInfoExtractor.getPrimaryGroupsFor(name, nextPsu)
+            StorageUnitInfoExtractor.getPoolGroupsFor(name, nextPsu, false)
                   .forEach((g) -> diff.unitsAdded.put(g, name));
         }
     }

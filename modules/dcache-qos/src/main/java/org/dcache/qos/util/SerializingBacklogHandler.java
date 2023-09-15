@@ -190,7 +190,7 @@ public final class SerializingBacklogHandler implements BackloggedMessageHandler
     final BacklogConsumer consumer;
     final Reloader reloader;
 
-    BlockingQueue<Message> queue;
+    BlockingQueue<Serializable> queue;
 
     public SerializingBacklogHandler(String path) {
         backlogStore = new File(path);
@@ -217,7 +217,7 @@ public final class SerializingBacklogHandler implements BackloggedMessageHandler
     }
 
     @Override
-    public void saveToBacklog(Message message) {
+    public void saveToBacklog(Serializable message) {
         try {
             queue.put(message);
         } catch (InterruptedException t) {

@@ -57,87 +57,9 @@ export control laws.  Anyone downloading information from this server is
 obligated to secure any necessary Government licenses before exporting
 documents or software obtained from this server.
  */
-package org.dcache.qos.services.adjuster.handlers;
+package org.dcache.qos.services.engine.handler;
 
-import diskCacheV111.util.CacheException;
-import diskCacheV111.util.PnfsId;
-import java.util.Optional;
-import org.dcache.pool.migration.Task;
-import org.dcache.pool.migration.TaskCompletionHandler;
-import org.dcache.qos.data.QoSAction;
-import org.dcache.qos.services.adjuster.data.QoSAdjusterTaskMap;
-import org.dcache.qos.util.CacheExceptionUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+public final class FileQoSStatusHandlerTest {
 
-/**
- * Implements the handling of adjuster task termination. Also implements the migration task
- * termination logic.
- */
-public class QoSAdjustTaskCompletionHandler implements TaskCompletionHandler {
 
-    public static final String FAILED_COPY_MESSAGE
-          = "Migration task for %s failed. %s%s.";
-
-    public static final String FAILED_STATE_CHANGE_MESSAGE
-          = "Failed to change %s to %s; %s. ";
-
-    private static final Logger LOGGER
-          = LoggerFactory.getLogger(QoSAdjustTaskCompletionHandler.class);
-
-    private QoSAdjusterTaskMap map;
-
-    public void setMap(QoSAdjusterTaskMap map) {
-        this.map = map;
-    }
-
-    @Override
-    public void taskCancelled(Task task) {
-        taskCancelled(task.getPnfsId());
-    }
-
-    public void taskCancelled(PnfsId pnfsId) {
-        LOGGER.debug("{}, Task cancelled.", pnfsId);
-        map.cancel(pnfsId);
-    }
-
-    public void taskCompleted(PnfsId pnfsId, Optional<String> target) {
-        LOGGER.debug("{}. Task completed.", pnfsId);
-        map.updateTask(pnfsId, target, null);
-    }
-
-    @Override
-    public void taskCompleted(Task task) {
-        LOGGER.debug("Migration Task for {} completed successfully.", task.getPnfsId());
-        taskCompleted(task.getPnfsId(), Optional.empty());
-    }
-
-    public void taskFailed(PnfsId pnfsId, Optional<String> target, CacheException exception) {
-        LOGGER.debug("{}, Task failed: {}.", pnfsId, exception.getMessage());
-        map.updateTask(pnfsId, target, exception);
-    }
-
-    @Override
-    public void taskFailed(Task task, int rc, String msg) {
-        LOGGER.debug("Migration task {} failed.", task.getPnfsId());
-        PnfsId pnfsId = task.getPnfsId();
-        CacheException exception = CacheExceptionUtils.getCacheException(rc,
-              FAILED_COPY_MESSAGE,
-              pnfsId,
-              QoSAction.COPY_REPLICA,
-              msg,
-              null);
-        taskFailed(pnfsId, Optional.empty(), exception);
-    }
-
-    /**
-     * Permanent failures do not receive special treatment, since, for example, the file not found
-     * on the source can at times be an ephemeral error.
-     * <p/>
-     * Delegates to #taskFailed(Task task, int rc, String msg) to decide what should be done.
-     */
-    @Override
-    public void taskFailedPermanently(Task task, int rc, String msg) {
-        taskFailed(task, rc, msg);
-    }
 }

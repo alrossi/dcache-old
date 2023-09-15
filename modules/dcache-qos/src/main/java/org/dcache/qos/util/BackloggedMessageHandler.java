@@ -59,7 +59,7 @@ documents or software obtained from this server.
  */
 package org.dcache.qos.util;
 
-import diskCacheV111.vehicles.Message;
+import java.io.Serializable;
 
 /**
  * Defines a component which manages messages when service is in disabled state.
@@ -71,7 +71,7 @@ public interface BackloggedMessageHandler {
     /**
      * @param message received which cannot be handled in the present state of the service.
      */
-    void saveToBacklog(Message message);
+    void saveToBacklog(Serializable message);
 
     /**
      * Action to take when service has be re-enabled.
