@@ -63,6 +63,12 @@ public class DcacheDirectoryResource
       MakeCollectionableResource, LockingCollectionResource,
       MultiNamespaceCustomPropertyResource {
 
+    static final String DAV_NAMESPACE_URI = "DAV:";
+
+    static final QName QUOTA_AVAILABLE = new QName(DAV_NAMESPACE_URI,
+          "quota-available-bytes");
+    static final QName QUOTA_USED = new QName(DAV_NAMESPACE_URI, "quota-used-bytes");
+
     /**
      * An EntityWriter provides the entity (i.e., the contents) of a GET request.
      */
@@ -72,11 +78,6 @@ public class DcacheDirectoryResource
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DcacheDirectoryResource.class);
 
-    private static final String DAV_NAMESPACE_URI = "DAV:";
-
-    private static final QName QUOTA_AVAILABLE = new QName(DAV_NAMESPACE_URI,
-          "quota-available-bytes");
-    private static final QName QUOTA_USED = new QName(DAV_NAMESPACE_URI, "quota-used-bytes");
     private static final ImmutableSet<QName> QUOTA_PROPERTIES = ImmutableSet.of(QUOTA_AVAILABLE,
           QUOTA_USED);
 
@@ -344,12 +345,12 @@ public class DcacheDirectoryResource
         }
 
         try {
-            if (name.equals(QUOTA_AVAILABLE)) {
+            if (name.equals(QUOTA_AVAILABLE) && _factory.supportsQuotaInfo()) {
                 var maybeToken = getWriteToken();
                 return _factory.spaceForToken(maybeToken).getAvailableSpaceInBytes();
             }
 
-            if (name.equals(QUOTA_USED)) {
+            if (name.equals(QUOTA_USED) && _factory.supportsQuotaInfo()) {
                 var maybeToken = getWriteToken();
                 Space space = _factory.spaceForToken(maybeToken);
                 return space.getUsedSizeInBytes() + space.getAllocatedSpaceInBytes();
@@ -367,7 +368,7 @@ public class DcacheDirectoryResource
 
         // Milton accepts null and PropertyMetaData.UNKNOWN to mean the
         // property is unknown.
-        if ((metadata == null || metadata.isUnknown()) && QUOTA_PROPERTIES.contains(name)) {
+        if ((metadata == null || metadata.isUnknown()) && QUOTA_PROPERTIES.contains(name) && _factory.supportsQuotaInfo()) {
             var maybeToken = getWriteToken();
             if (_factory.isSpaceManaged(maybeToken)) {
                 return READONLY_LONG;
@@ -381,14 +382,18 @@ public class DcacheDirectoryResource
     public List<QName> getAllPropertyNames() {
         List<QName> genericNames = super.getAllPropertyNames();
 
-        var maybeToken = getWriteToken();
-        if (!_factory.isSpaceManaged(maybeToken)) {
-            return genericNames;
+        if (_factory.supportsQuotaInfo()) {
+            var maybeToken = getWriteToken();
+            if (!_factory.isSpaceManaged(maybeToken)) {
+                return genericNames;
+            }
+
+            List<QName> names = new ArrayList<>(QUOTA_PROPERTIES.size() + genericNames.size());
+            names.addAll(QUOTA_PROPERTIES);
+            names.addAll(genericNames);
+            return names;
         }
 
-        List<QName> names = new ArrayList<>(QUOTA_PROPERTIES.size() + genericNames.size());
-        names.addAll(QUOTA_PROPERTIES);
-        names.addAll(genericNames);
-        return names;
+        return genericNames;
     }
 }

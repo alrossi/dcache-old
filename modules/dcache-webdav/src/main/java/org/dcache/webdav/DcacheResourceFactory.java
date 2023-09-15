@@ -26,6 +26,8 @@ import static org.dcache.namespace.FileType.LINK;
 import static org.dcache.namespace.FileType.REGULAR;
 import static org.dcache.util.ByteUnit.KiB;
 import static org.dcache.util.TransferRetryPolicy.tryOnce;
+import static org.dcache.webdav.DcacheDirectoryResource.QUOTA_AVAILABLE;
+import static org.dcache.webdav.DcacheDirectoryResource.QUOTA_USED;
 import static org.dcache.webdav.DcacheFileResource.DCACHE_NAMESPACE_URI;
 import static org.dcache.webdav.DcacheFileResource.PROPERTY_ACCESS_LATENCY;
 import static org.dcache.webdav.DcacheFileResource.PROPERTY_CHECKSUMS;
@@ -159,6 +161,7 @@ import org.dcache.util.list.DirectoryEntry;
 import org.dcache.util.list.DirectoryListPrinter;
 import org.dcache.util.list.ListDirectoryHandler;
 import org.dcache.vehicles.FileAttributes;
+import org.dcache.webdav.HttpManagerFactory.DefaultProperties;
 import org.dcache.webdav.owncloud.OwncloudClients;
 import org.dcache.webdav.transfer.RemoteTransferHandler;
 import org.eclipse.jetty.io.EofException;
@@ -182,7 +185,6 @@ public class DcacheResourceFactory
           LoggerFactory.getLogger(DcacheResourceFactory.class);
 
     private static final XMLOutputFactory XML_OUTPUT_FACTORY = XMLOutputFactory.newFactory();
-
 
     public static final String TRANSACTION_ATTRIBUTE = "org.dcache.transaction";
 
@@ -228,7 +230,6 @@ public class DcacheResourceFactory
 
     private static final int PROTOCOL_INFO_MAJOR_VERSION = 1;
     private static final int PROTOCOL_INFO_MINOR_VERSION = 1;
-    private static final int PROTOCOL_INFO_UNKNOWN_PORT = 0;
 
     private static final long PING_DELAY = 300000;
 
@@ -302,6 +303,8 @@ public class DcacheResourceFactory
 
     private Consumer<DoorRequestInfoMessage> _kafkaSender = (s) -> {
     };
+
+    private DefaultProperties _defaultProperties = DefaultProperties.MICROSOFT_COMPATIBLE;
 
     public DcacheResourceFactory()
           throws UnknownHostException {
@@ -970,6 +973,18 @@ public class DcacheResourceFactory
         return result;
     }
 
+    public void setDefaultProperties(DefaultProperties defaultProperties) {
+        _defaultProperties = defaultProperties;
+    }
+
+    protected boolean supportsQuotaInfo() {
+        if (!isPropfindRequest()) {
+            return true;
+        }
+
+        return _defaultProperties == DefaultProperties.MICROSOFT_COMPATIBLE;
+    }
+
     private class FileLocalityWrapper {
 
         private final FileLocality _inner;
@@ -1595,13 +1610,12 @@ public class DcacheResourceFactory
 
         if (isPropfindRequest()) {
             var extraAttr = HttpManagerFactory.propertiesRequest()
-                .map(this::attributesForRequest)
-                .orElseGet(() -> {
-                        LOGGER.debug("Missing PropertiesRequest object,"
-                                + " throwing the kitchen sink at it.");
-                        return ALL_PROPFIND_ATTRIBUTES;
-                    });
-
+                  .map(this::attributesForRequest)
+                  .orElseGet(() -> {
+                      LOGGER.debug("Missing PropertiesRequest object,"
+                            + " throwing the kitchen sink at it.");
+                      return ALL_PROPFIND_ATTRIBUTES;
+                  });
             attributes.addAll(extraAttr);
         }
 
@@ -1612,9 +1626,12 @@ public class DcacheResourceFactory
 
     private Set<FileAttribute> attributesForRequest(PropertiesRequest propReq) {
         return propReq.getProperties().stream()
-            .map(PropertiesRequest.Property::getName)
-            .flatMap(n -> attributesForProperty(n).stream())
-            .collect(Collectors.toSet());
+              .map(PropertiesRequest.Property::getName)
+              .filter(qn ->
+                    _defaultProperties == DefaultProperties.MICROSOFT_COMPATIBLE ||
+                          !(qn.equals(QUOTA_AVAILABLE) || qn.equals(QUOTA_USED)))
+              .flatMap(n -> attributesForProperty(n).stream())
+              .collect(Collectors.toSet());
     }
 
     private Set<FileAttribute> attributesForProperty(QName name) {
