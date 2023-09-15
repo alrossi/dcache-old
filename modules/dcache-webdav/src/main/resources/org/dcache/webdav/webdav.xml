@@ -261,6 +261,7 @@
         <property name="template" ref="template"/>
         <property name="pathMapper" ref="path-mapper"/>
         <property name="templateConfig" ref="template-config"/>
+        <property name="defaultProperties" value="${webdav.default-propfind-properties}"/>
     </bean>
 
     <bean id="well-known-producer-factory-provider"
