@@ -18,6 +18,7 @@ import static org.dcache.namespace.FileAttribute.OWNER_GROUP;
 import static org.dcache.namespace.FileAttribute.PNFSID;
 import static org.dcache.namespace.FileAttribute.RETENTION_POLICY;
 import static org.dcache.namespace.FileAttribute.SIZE;
+import static org.dcache.namespace.FileAttribute.STORAGEINFO;
 import static org.dcache.namespace.FileAttribute.TYPE;
 import static org.dcache.namespace.FileAttribute.XATTR;
 import static org.dcache.namespace.FileType.DIR;
@@ -185,7 +186,7 @@ public class DcacheResourceFactory
     // Additional attributes needed for PROPFIND requests; e.g., to supply
     // values for properties.
     private static final Set<FileAttribute> PROPFIND_ATTRIBUTES = Sets.union(
-          EnumSet.of(CHECKSUM, ACCESS_LATENCY, RETENTION_POLICY),
+          EnumSet.of(CHECKSUM, ACCESS_LATENCY, RETENTION_POLICY, STORAGEINFO),
           PoolMonitorV5.getRequiredAttributesForFileLocality());
 
     private static final String PROTOCOL_INFO_NAME = "Http";
@@ -1621,7 +1622,7 @@ public class DcacheResourceFactory
         }
     }
 
-    private Optional<String> lookupWriteToken(FsPath path) {
+    public Optional<String> lookupWriteToken(FsPath path) {
         try {
             return _writeTokenCache.get(path);
         } catch (ExecutionException e) {
@@ -1632,14 +1633,14 @@ public class DcacheResourceFactory
         }
     }
 
-    public Space spaceForPath(FsPath path) throws SpaceException {
-        return lookupWriteToken(path)
+    public Space spaceForToken(Optional<String> maybeToken) throws SpaceException {
+        return maybeToken
               .flatMap(this::lookupSpaceById)
               .orElseThrow(() -> new SpaceException("Path not under space management"));
     }
 
-    public boolean isSpaceManaged(FsPath path) {
-        return lookupWriteToken(path)
+    public boolean isSpaceManaged(Optional<String> maybeToken) {
+        return maybeToken
               .flatMap(this::lookupSpaceById)
               .isPresent();
     }
