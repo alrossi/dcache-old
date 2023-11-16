@@ -28,7 +28,7 @@ import org.junit.Test;
 import org.mockito.internal.verification.AtMost;
 
 public class PoolOpChangeHandlerTest {
-    static final String DEFAULT_POOL_INFO = "org/dcache/mock/poolinfo.json";
+    public static final String DEFAULT_POOL_INFO = "org/dcache/mock/poolinfo.json";
     static final String POOL_INFO_WITH_CHANGED_TAGS = "org/dcache/mock/poolinfo-with-tags-changed.json";
     static final String POOL_ON_WHICH_TO_CHANGE_TAGS = "testpool03-3";
 

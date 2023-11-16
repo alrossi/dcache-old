@@ -80,7 +80,7 @@ import javax.annotation.Nullable;
 import org.dcache.pool.classic.IoQueueManager;
 import org.dcache.poolmanager.PoolInfo;
 
-final class CostModuleFactory {
+public final class CostModuleFactory {
 
     static class TestCostModule implements CostModule {
         final Set<String> pools = new HashSet<>();

@@ -59,6 +59,7 @@ documents or software obtained from this server.
  */
 package org.dcache.qos.services.adjuster.util;
 
+import com.google.common.annotations.VisibleForTesting;
 import diskCacheV111.util.PnfsId;
 import diskCacheV111.vehicles.PoolManagerPoolInformation;
 import java.util.Optional;
@@ -306,6 +307,11 @@ public final class QoSAdjusterTask extends ErrorAwareTask implements Cancellable
               retry,
               TimeUnit.MILLISECONDS.toSeconds(endTime - startTime),
               exception == null ? "" : new ExceptionMessage(exception));
+    }
+
+    @VisibleForTesting
+    QoSAdjuster getAdjuster() {
+        return adjuster;
     }
 
     private synchronized void cancel() {

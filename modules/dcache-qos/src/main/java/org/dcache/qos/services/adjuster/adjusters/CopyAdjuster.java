@@ -59,6 +59,7 @@ documents or software obtained from this server.
  */
 package org.dcache.qos.services.adjuster.adjusters;
 
+import com.google.common.annotations.VisibleForTesting;
 import diskCacheV111.vehicles.PoolManagerPoolInformation;
 import java.util.Collections;
 import java.util.List;
@@ -114,6 +115,11 @@ public class CopyAdjuster extends QoSAdjuster {
               Collections.EMPTY_LIST,
               attributes,
               attributes.getAccessTime());
+    }
+
+    @VisibleForTesting
+    public Task getMigrationTask() {
+        return migrationTask;
     }
 
     /**
