@@ -1378,12 +1378,12 @@ public class XrootdRedirectHandler extends ConcurrentXrootdRequestHandler {
      */
     private FsPath createFullPath(String path, Map<String, String> opaque)
           throws CacheException {
-        _log.info("createFullPath, path = {}", path);
+        _log.info("createFullPath, path {}", path);
 
         String fromOpaque = opaque.get(EFFECTIVE_ROOT_NAME);
         FsPath root = fromOpaque != null ? FsPath.create(fromOpaque) : effectiveRoot();
 
-        _log.info("createFullPath, fromOpaque = {}, root {}", fromOpaque, root);
+        _log.info("createFullPath, fromOpaque {}, root: {}", fromOpaque, root);
 
         if (path.charAt(0) != '/') {
             path = "/" + path;
@@ -1394,13 +1394,13 @@ public class XrootdRedirectHandler extends ConcurrentXrootdRequestHandler {
         root = FsPath.create(message.getResolvedPrefix());
         FsPath fullPath = FsPath.create(message.getResolvedPath());
 
-        _log.info("createFullPath, resolved fullPath = {}", fullPath);
+        _log.info("createFullPath, resolved fullPath: {}", fullPath);
 
         if (fullPath.hasPrefix(root)) {
             path = fullPath.stripPrefix(root);
         }
 
-        _log.info("createFullPath, adjusted path {}", path);
+        _log.info("createFullPath, path adjusted for prefix:  {}", path);
 
         FsPath returnedPath = root.chroot(path);
 
@@ -1412,7 +1412,7 @@ public class XrootdRedirectHandler extends ConcurrentXrootdRequestHandler {
     private FsPath effectiveRoot() {
         LoginSessionInfo loginSessionInfo = sessionInfo();
         if (Subjects.isNobody(loginSessionInfo.getSubject())) {
-            _log.info("effectiveRoot, subject is Nobody, returning = {}", _rootPath);
+            _log.info("effectiveRoot, subject is Nobody, returning root path {}", _rootPath);
             return _rootPath;
         }
 
